@@ -21,6 +21,12 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
     private static final int COOKIE_EXPIRE_SECONDS = 180;
     private final CookieUtils cookieUtils;
 
+    /**
+     * Loads the OAuth2 authorization request stored in the request cookie.
+     *
+     * @param request the incoming HTTP request
+     * @return the deserialized authorization request, or {@code null} if the cookie is absent or invalid
+     */
     @Override
     public OAuth2AuthorizationRequest loadAuthorizationRequest(HttpServletRequest request) {
         return cookieUtils.getCookie(request, DEV_OAUTH2_AUTH_REQUEST_COOKIE)
@@ -34,6 +40,13 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
                 .orElse(null);
     }
 
+    /**
+     * Stores the OAuth2 authorization request and, when provided, the development redirect URI in cookies.
+     *
+     * @param authorizationRequest the authorization request to store, or {@code null} to remove related cookies
+     * @param request              the HTTP request containing the optional development redirect URI
+     * @param response             the HTTP response used to set or remove cookies
+     */
     @Override
     public void saveAuthorizationRequest(OAuth2AuthorizationRequest authorizationRequest,
                                          HttpServletRequest request,
@@ -54,6 +67,13 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
         }
     }
 
+    /**
+     * Removes the stored OAuth2 authorization request cookie.
+     *
+     * @param request  the incoming HTTP request
+     * @param response the HTTP response used to remove the cookie
+     * @return the previously stored authorization request, or {@code null} if none could be loaded
+     */
     @Override
     public OAuth2AuthorizationRequest removeAuthorizationRequest(HttpServletRequest request,
                                                                   HttpServletResponse response) {
@@ -62,7 +82,12 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
         return req;
     }
 
-    // 인증 완료 후 모든 Dev OAuth2 관련 쿠키 정리
+    /**
+     * Removes all cookies used to store the development OAuth2 authorization request state.
+     *
+     * @param request  the incoming HTTP request
+     * @param response the HTTP response used to expire the cookies
+     */
     public void removeDevAuthorizationRequestCookies(HttpServletRequest request,
                                                    HttpServletResponse response) {
         cookieUtils.deleteCookie(request, response, DEV_OAUTH2_AUTH_REQUEST_COOKIE);

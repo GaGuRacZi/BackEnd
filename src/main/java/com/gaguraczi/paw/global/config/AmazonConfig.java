@@ -20,6 +20,16 @@ public class AmazonConfig {
     private final String region;
     private final String locationPath;
 
+    /**
+     * Creates Amazon S3 configuration from the supplied connection and storage settings.
+     *
+     * @param bucket       the S3 bucket name
+     * @param cdnUrl       the CDN base URL
+     * @param accessKey    the AWS access key
+     * @param secretKey    the AWS secret key
+     * @param region       the AWS region
+     * @param locationPath the storage path within the bucket
+     */
     public AmazonConfig(
             @Value("${cloud.aws.s3.bucket}") String bucket,
             @Value("${cloud.aws.s3.cdn-url}") String cdnUrl,
@@ -36,6 +46,11 @@ public class AmazonConfig {
         this.locationPath = locationPath;
     }
 
+    /**
+     * Creates an Amazon S3 client configured for the configured region and credentials.
+     *
+     * @return the configured Amazon S3 client
+     */
     @Bean S3Client s3Client() {
         return S3Client.builder()
                 .region(Region.of(region))

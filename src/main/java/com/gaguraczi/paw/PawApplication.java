@@ -11,6 +11,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableConfigurationProperties({JwtProperties.class})
 public class PawApplication {
 
+	/**
+	 * Starts the Paw Spring Boot application.
+	 *
+	 * @param args command-line arguments passed to the application
+	 */
 	public static void main(String[] args) {
 		SpringApplication.run(PawApplication.class, args);
 	}

@@ -12,6 +12,11 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "health", description = "health check 관련 api 입니다.")
 @RestController("/test")
 public class TestController {
+    /**
+     * Provides a health-check response for the test endpoint.
+     *
+     * @return a successful API response with no payload
+     */
     @Operation(summary = "test용입니다")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "COMMON_200", description = "Success"),

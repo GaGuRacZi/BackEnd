@@ -15,6 +15,11 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 @RestControllerAdvice(annotations = {RestController.class})
 public class GlobalSuccessHandler implements ResponseBodyAdvice<Object> {
 
+    /**
+     * Indicates that this advice applies to response bodies.
+     *
+     * @return {@code true} for all response types
+     */
     @Override
     public boolean supports(MethodParameter returnType,
                             Class<? extends HttpMessageConverter<?>> converterType) {
@@ -22,6 +27,12 @@ public class GlobalSuccessHandler implements ResponseBodyAdvice<Object> {
         return true;
     }
 
+    /**
+     * Applies the response status from an {@link ApiResponse} to the HTTP response.
+     *
+     * @param body the response body
+     * @return the original response body
+     */
     @Override
     public Object beforeBodyWrite(Object body,
                                   MethodParameter returnType,

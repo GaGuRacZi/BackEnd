@@ -29,7 +29,13 @@ import java.util.Optional;
 @RestControllerAdvice(annotations = {RestController.class})
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    //ConstraintViolationException
+    /**
+     * Handles constraint violations by returning a bad-request response.
+     *
+     * @param e       the constraint violation exception
+     * @param request the current web request
+     * @return        the standardized bad-request response
+     */
     @ExceptionHandler
     public ResponseEntity<Object> validation(ConstraintViolationException e, WebRequest request) {
         String errorMessage = e.getConstraintViolations().stream()
@@ -39,14 +45,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternalConstraint(e, GeneralErrorCode.BAD_REQUEST, HttpHeaders.EMPTY, request);
     }
 
-    //GeneralException
+    /**
+     * Handles a general application exception and creates a failure response using its error code.
+     *
+     * @param generalException the application exception containing the error code
+     * @param request          the HTTP request associated with the exception
+     * @return                the error response for the exception
+     */
     @ExceptionHandler(value = GeneralException.class)
     public ResponseEntity<Object> onThrowException(GeneralException generalException,
                                                    HttpServletRequest request) {
         return handleExceptionInternal(generalException, generalException.getCode(), null, request);
     }
 
-    // DataIntegrityViolationException
+    /**
+     * Handles data integrity violations and maps nickname conflicts to a specific authentication error.
+     *
+     * @param e       the data integrity violation
+     * @param request the HTTP request associated with the exception
+     * @return a failure response with the appropriate error code
+     */
     @ExceptionHandler(value = DataIntegrityViolationException.class)
     public ResponseEntity<Object> onDataIntegrityViolationException(DataIntegrityViolationException e,
                                                                     HttpServletRequest request) {
@@ -61,7 +79,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(e, GeneralErrorCode.BAD_REQUEST, null, request);
     }
 
-    // MethodArgumentNotValidException
+    /**
+     * Builds a validation error response for invalid method arguments.
+     *
+     * @param e       the exception containing field validation errors
+     * @param headers the response headers
+     * @param status  the HTTP status resolved for the exception
+     * @param request the current web request
+     * @return        a response containing field errors and the applicable error code
+     */
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException e, HttpHeaders headers, HttpStatusCode status,
@@ -86,7 +112,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternalArgs(e, HttpHeaders.EMPTY, errorCode, request, errors);
     }
 
-    // Exception
+    /**
+     * Handles uncaught exceptions by returning an internal server error response.
+     *
+     * @param e       the uncaught exception
+     * @param request the current web request
+     * @return        the internal server error response containing the exception message
+     */
     @ExceptionHandler
     public ResponseEntity<Object> exception(Exception e, WebRequest request) {
         e.printStackTrace();
@@ -94,7 +126,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 GeneralErrorCode.INTERNAL_SERVER_ERROR.getReason().getHttpStatus(), request, e.getMessage());
     }
 
-    // 공통 에러 응답
+    /**
+     * Builds a standardized error response for the specified error code and request.
+     *
+     * @param e       the exception being handled
+     * @param code    the error code describing the failure
+     * @param headers the response headers
+     * @param request the originating HTTP request
+     * @return the standardized error response
+     */
     private ResponseEntity<Object> handleExceptionInternal(Exception e, BaseErrorCode code,
                                                            HttpHeaders headers, HttpServletRequest request) {
         ReasonDTO reason = code.getReason();
@@ -103,6 +143,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return super.handleExceptionInternal(e, body, headers, reason.getHttpStatus(), webRequest);
     }
 
+    /**
+     * Builds a failure response containing the specified error detail.
+     *
+     * @param e          the exception being handled
+     * @param errorCode  the error code for the response
+     * @param headers    the response headers
+     * @param status     the HTTP status for the response
+     * @param request    the current web request
+     * @param errorPoint additional error detail included in the response
+     * @return the constructed error response
+     */
     private ResponseEntity<Object> handleExceptionInternalFalse(Exception e, BaseErrorCode errorCode,
                                                                 HttpHeaders headers, HttpStatus status, WebRequest request,
                                                                 String errorPoint) {
@@ -110,6 +161,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return super.handleExceptionInternal(e, body, headers, status, request);
     }
 
+    /**
+     * Builds a failure response containing field-specific error details.
+     *
+     * @param e         the exception being handled
+     * @param headers   the response headers
+     * @param errorCode the error code for the response
+     * @param request   the current web request
+     * @param errorArgs field-specific error messages
+     * @return          the constructed error response
+     */
     private ResponseEntity<Object> handleExceptionInternalArgs(Exception e, HttpHeaders headers,
                                                                BaseErrorCode errorCode, WebRequest request,
                                                                Map<String, String> errorArgs) {
@@ -117,6 +178,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return super.handleExceptionInternal(e, body, headers, errorCode.getReason().getHttpStatus(), request);
     }
 
+    /**
+     * Builds a failure response for a constraint violation.
+     *
+     * @param e         the handled exception
+     * @param errorCode the error code associated with the failure
+     * @param headers   the response headers
+     * @param request   the current web request
+     * @return          the generated failure response
+     */
     private ResponseEntity<Object> handleExceptionInternalConstraint(Exception e, BaseErrorCode errorCode,
                                                                      HttpHeaders headers, WebRequest request) {
         ApiResponse<Void> body = ApiResponse.onFailure(errorCode);

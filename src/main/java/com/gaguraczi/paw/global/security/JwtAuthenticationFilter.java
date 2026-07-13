@@ -27,6 +27,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
 
+    /**
+     * Authenticates requests carrying a valid access JWT and delegates processing to the filter chain.
+     *
+     * <p>Requests without a token, with an invalid token, or with a non-access token continue without
+     * authentication. JWT processing errors result in an unauthorized response.</p>
+     *
+     * @param request the incoming HTTP request
+     * @param response the HTTP response
+     * @param filterChain the filter chain to continue
+     */
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
@@ -71,6 +81,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * Extracts an access token from the Authorization header or the {@code accessToken} cookie.
+     *
+     * @param request the HTTP request containing the token
+     * @return the access token, or {@code null} if no token is found
+     */
     private static String resolveToken(HttpServletRequest request) {
         // Authorization 헤더 우선 (API 클라이언트 호환)
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);

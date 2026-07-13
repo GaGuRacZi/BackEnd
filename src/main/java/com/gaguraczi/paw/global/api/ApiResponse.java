@@ -25,7 +25,13 @@ public class ApiResponse<T> { // API 응답
     @JsonIgnore
     private final HttpStatus httpStatus;
 
-    //성공 - 바디 + HTTP Status 정보까지 포함
+    /**
+     * Creates a successful API response containing the specified result.
+     *
+     * @param code   the success code defining the response code, message, and HTTP status
+     * @param result the response data
+     * @return       a successful API response with the specified result
+     */
     public static <T> ApiResponse<T> onSuccess(BaseSuccessCode code, T result) {
         return new ApiResponse<>(
                 true,
@@ -36,7 +42,12 @@ public class ApiResponse<T> { // API 응답
         );
     }
 
-    //실패
+    /**
+     * Creates a failed API response without a result payload.
+     *
+     * @param code the error code defining the response code, message, and HTTP status
+     * @return a failed response with no result data
+     */
     public static ApiResponse<Void> onFailure(BaseErrorCode code) {
         return new ApiResponse<>(
                 false,
@@ -47,6 +58,13 @@ public class ApiResponse<T> { // API 응답
         );
     }
 
+    /**
+     * Creates a failure response containing the provided result data.
+     *
+     * @param code the error code and associated response details
+     * @param data the result data to include in the response
+     * @return a failure response with the specified error details and data
+     */
     public static <T> ApiResponse<T> onFailure(BaseErrorCode code, T data) {
         return new ApiResponse<>(
                 false,

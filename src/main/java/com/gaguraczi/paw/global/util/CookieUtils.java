@@ -22,6 +22,13 @@ public class CookieUtils {
     private final boolean cookieSecure;
     private final String cookieSameSite;
 
+    /**
+     * Creates a cookie utility with the mapper and cookie security settings to use.
+     *
+     * @param objectMapper  the mapper used for cookie value serialization
+     * @param cookieSecure  whether generated cookies use the Secure attribute
+     * @param cookieSameSite the SameSite attribute for generated cookies
+     */
     public CookieUtils(
             ObjectMapper objectMapper,
             @Value("${app.cookie.secure:false}") boolean cookieSecure,
@@ -32,6 +39,13 @@ public class CookieUtils {
         this.cookieSameSite = cookieSameSite;
     }
 
+    /**
+     * Finds the first request cookie with the specified name.
+     *
+     * @param request the HTTP request containing the cookies
+     * @param name    the name of the cookie to find
+     * @return the matching cookie, or an empty optional if no cookie matches
+     */
     public Optional<Cookie> getCookie(HttpServletRequest request, String name) {
         if (request.getCookies() == null) return Optional.empty();
         return Arrays.stream(request.getCookies())
@@ -39,6 +53,14 @@ public class CookieUtils {
                 .findFirst();
     }
 
+    /**
+     * Adds a cookie to the HTTP response with the configured security attributes.
+     *
+     * @param response       the HTTP response to which the cookie is added
+     * @param name           the cookie name
+     * @param value          the cookie value
+     * @param maxAgeSeconds  the cookie lifetime in seconds
+     */
     public void addCookie(HttpServletResponse response, String name, String value, int maxAgeSeconds) {
         ResponseCookie responseCookie = ResponseCookie.from(name, value)
                 .path("/")
@@ -50,6 +72,13 @@ public class CookieUtils {
         response.addHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
     }
 
+    /**
+     * Deletes cookies with the specified name from the response.
+     *
+     * @param request  the request containing the cookies to delete
+     * @param response the response to which deletion headers are added
+     * @param name     the name of the cookies to delete
+     */
     public void deleteCookie(HttpServletRequest request, HttpServletResponse response, String name) {
         if (request.getCookies() == null) return;
         for (Cookie cookie : request.getCookies()) {
@@ -66,6 +95,13 @@ public class CookieUtils {
         }
     }
 
+    /**
+     * Serializes an object into a URL-safe Base64-encoded JSON value for use in a cookie.
+     *
+     * @param object the object to serialize
+     * @return the URL-safe Base64-encoded JSON representation
+     * @throws IllegalStateException if serialization fails
+     */
     public String serialize(Object object) {
         try {
             ObjectMapper mapper = objectMapper.copy();
@@ -77,6 +113,15 @@ public class CookieUtils {
         }
     }
 
+    /**
+     * Deserializes a cookie value into an instance of the specified class.
+     *
+     * @param cookie the cookie containing a URL-safe Base64-encoded JSON value
+     * @param cls    the class of the object to create
+     * @param <T>    the deserialized object type
+     * @return       the object represented by the cookie value
+     * @throws IllegalStateException if the cookie value cannot be decoded or deserialized
+     */
     public <T> T deserialize(Cookie cookie, Class<T> cls) {
         try {
             ObjectMapper mapper = objectMapper.copy();

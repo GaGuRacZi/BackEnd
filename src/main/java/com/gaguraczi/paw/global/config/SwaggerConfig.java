@@ -15,6 +15,11 @@ import java.util.List;
 @Configuration
 public class SwaggerConfig {
 
+    /**
+     * Configures the OpenAPI definition for the Paw API, including metadata, JWT bearer security, and the local server.
+     *
+     * @return the configured OpenAPI definition
+     */
     @Bean
     public OpenAPI openAPI() {
         Info apiInfo = new Info()
@@ -49,6 +54,11 @@ public class SwaggerConfig {
                 .servers(List.of(localServer));
     }
 
+    /**
+     * Creates the OpenAPI group containing all API paths.
+     *
+     * @return the configured group named {@code All APIs}
+     */
     @Bean
     public GroupedOpenApi allGroup() {
         return GroupedOpenApi.builder()

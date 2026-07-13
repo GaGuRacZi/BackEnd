@@ -12,12 +12,21 @@ public class GeneralException extends RuntimeException {
 
   private final BaseErrorCode code;
 
-  //예외 생성
+  /**
+   * Creates an exception associated with the specified error code.
+   *
+   * @param code the error code associated with the exception
+   * @return a new exception containing the specified error code
+   */
   public static GeneralException of(BaseErrorCode code) {
     return new GeneralException(code);
   }
 
-  //예외 상세 정보
+  /**
+   * Provides detailed information about the exception's error code.
+   *
+   * @return the reason associated with the error code
+   */
   public ReasonDTO getReason() {
     return this.code.getReason();
   }

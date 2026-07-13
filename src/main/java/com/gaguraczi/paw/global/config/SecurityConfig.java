@@ -34,7 +34,14 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     //private final NaverOAuth2UserService devNaverOAuth2UserService;
     //private final NaverOAuth2LoginSuccessHandler devNaverOAuth2LoginSuccessHandler;
-    //private final HttpCookieOAuth2AuthorizationRequestRepository authRequestRepository;
+    /**
+     * Configures the stateless HTTP security filter chain with CORS, JWT authentication,
+     * authorization rules, and a JSON response for authentication failures.
+     *
+     * @param http the HTTP security configuration
+     * @return the configured security filter chain
+     * @throws Exception if the security configuration cannot be built
+     */
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -87,11 +94,21 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Creates the password encoder used to hash and verify passwords.
+     *
+     * @return a BCrypt password encoder
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Configures cross-origin resource sharing for all application paths.
+     *
+     * @return the CORS configuration source allowing the configured origins, methods, and headers
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
