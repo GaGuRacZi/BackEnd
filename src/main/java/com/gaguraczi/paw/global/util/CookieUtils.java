@@ -23,11 +23,11 @@ public class CookieUtils {
     private final String cookieSameSite;
 
     /**
-     * Creates a cookie utility with the mapper and cookie security settings to use.
+     * Configures cookie serialization and security attributes.
      *
-     * @param objectMapper  the mapper used for cookie value serialization
-     * @param cookieSecure  whether generated cookies use the Secure attribute
-     * @param cookieSameSite the SameSite attribute for generated cookies
+     * @param objectMapper   the mapper used to serialize and deserialize cookie values
+     * @param cookieSecure   whether generated cookies include the {@code Secure} attribute
+     * @param cookieSameSite the {@code SameSite} attribute for generated cookies
      */
     public CookieUtils(
             ObjectMapper objectMapper,
@@ -73,11 +73,11 @@ public class CookieUtils {
     }
 
     /**
-     * Deletes cookies with the specified name from the response.
+     * Adds expiration cookies for each request cookie with the specified name.
      *
-     * @param request  the request containing the cookies to delete
-     * @param response the response to which deletion headers are added
-     * @param name     the name of the cookies to delete
+     * @param request  the request containing cookies to expire
+     * @param response the response to which expiration headers are added
+     * @param name     the cookie name to expire
      */
     public void deleteCookie(HttpServletRequest request, HttpServletResponse response, String name) {
         if (request.getCookies() == null) return;

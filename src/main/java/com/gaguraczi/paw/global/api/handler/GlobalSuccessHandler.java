@@ -28,7 +28,7 @@ public class GlobalSuccessHandler implements ResponseBodyAdvice<Object> {
     }
 
     /**
-     * Applies the response status from an {@link ApiResponse} to the HTTP response.
+     * Applies an {@link ApiResponse}'s HTTP status to the outgoing response when available.
      *
      * @param body the response body
      * @return the original response body

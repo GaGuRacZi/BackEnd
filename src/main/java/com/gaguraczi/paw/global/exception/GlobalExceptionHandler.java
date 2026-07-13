@@ -59,11 +59,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * Handles data integrity violations and maps nickname conflicts to a specific authentication error.
+     * Handles database integrity violations, mapping nickname conflicts to a specific authentication error.
      *
-     * @param e       the data integrity violation
+     * @param e       the database integrity violation
      * @param request the HTTP request associated with the exception
-     * @return a failure response with the appropriate error code
+     * @return a failure response with the applicable error code
      */
     @ExceptionHandler(value = DataIntegrityViolationException.class)
     public ResponseEntity<Object> onDataIntegrityViolationException(DataIntegrityViolationException e,
@@ -80,13 +80,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * Builds a validation error response for invalid method arguments.
+     * Builds a standardized validation response containing field-specific errors and an error code selected for the request endpoint.
      *
      * @param e       the exception containing field validation errors
      * @param headers the response headers
      * @param status  the HTTP status resolved for the exception
      * @param request the current web request
-     * @return        a response containing field errors and the applicable error code
+     * @return        a response containing the validation errors and applicable error code
      */
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
