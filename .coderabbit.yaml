@@ -24,7 +24,7 @@ reviews:
     - "!build/**"
     - "!coverage/**"
     - "!**/*.md"
-    - "!**/*.json"
+    - "!docs/**/*.json"
     - "!src/main/generated/**"
     - "!.idea/**"
 
