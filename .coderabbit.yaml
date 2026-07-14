@@ -23,6 +23,10 @@ reviews:
     - "!.gradle/**"
     - "!build/**"
     - "!coverage/**"
+    - "!**/*.md"
+    - "!**/*.json"
+    - "!src/main/generated/**"
+    - "!.idea/**"
 
   path_instructions:
     # ── 프로젝트 공통 아키텍처 (상세 가이드는 path_instructions 최대 20,000자) ──
@@ -141,12 +145,6 @@ reviews:
         데이터베이스 마이그레이션(Flyway/Liquibase) 스크립트입니다.
         - 스키마 변경의 마이그레이션 안전성, 인덱스/외래키 설정을 확인해주세요.
         - 기존 데이터 무결성 및 락(Lock) 경합에 미치는 영향을 검토해주세요.
-
-ignore_patterns:
-  - "*.md"
-  - "*.json"
-  - "src/main/generated/**" # QueryDSL, MapStruct 등에서 자동 생성되는 Q클래스/Impl 파일 무시
-  - ".idea/**"
 
 chat:
   auto_reply: true
