@@ -1,6 +1,7 @@
 package com.gaguraczi.paw.domain.auth.dto.res;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -13,8 +14,13 @@ public class LoginRes {
     private final String accessToken;
     private final String refreshToken;
 
-    @JsonProperty("isNew")
+    @Getter(AccessLevel.NONE)
     private final boolean isNew;
 
     private final UUID uid;
+
+    @JsonProperty("isNew")
+    public boolean getIsNew() {
+        return isNew;
+    }
 }
