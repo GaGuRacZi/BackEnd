@@ -105,6 +105,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 errorCode = AuthErrorCode.LOCAL_LOGIN_400_1;
             } else if ("/auth/signup/local".equals(uri)) {
                 errorCode = AuthErrorCode.LOCAL_SIGNUP_400_1;
+            } else if ("/auth/login/kakao".equals(uri)) {
+                errorCode = AuthErrorCode.KAKAO_LOGIN_UNAUTHORIZED;
+            } else if ("/auth/onboarding".equals(uri)) {
+                errorCode = AuthErrorCode.ONBOARDING_400;
+            } else if ("/auth/email/send".equals(uri)) {
+                errorCode = AuthErrorCode.EMAIL_SEND_400;
+            } else if ("/auth/email/verify".equals(uri)) {
+                errorCode = AuthErrorCode.EMAIL_CODE_INVALID;
             } else if ("/api/auth/phone/send".equals(uri)) {
                 errorCode = AuthErrorCode.PHONE_SEND_400_1;
             }
