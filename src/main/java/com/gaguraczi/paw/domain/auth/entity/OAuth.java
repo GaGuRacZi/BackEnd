@@ -24,7 +24,8 @@ import lombok.experimental.SuperBuilder;
 public class OAuth extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long oauth_id;
+    @Column(name = "oauth_id")
+    private Long oauthId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "uid", nullable = false)

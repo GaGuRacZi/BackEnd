@@ -12,6 +12,12 @@ spring:
     secret: ${JWT_SECRET}
     access-exp-ms: ${JWT_EXPIRATION:3600000} # 1시간
     refresh-exp-ms: ${JWT_REFRESH_EXPIRATION:1209600000} # 14일
+  ai:
+    google:
+      genai:
+        api-key: ${GOOGLE_AI_API_KEY}
+        embedding:
+          api-key: ${GOOGLE_AI_API_KEY}
 
 kakao:
   user-info-uri: https://kapi.kakao.com/v2/user/me
