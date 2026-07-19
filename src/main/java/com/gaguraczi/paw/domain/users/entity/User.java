@@ -59,6 +59,7 @@ public class User extends BaseEntity {
 
     @Builder.Default
     @Column(name = "subscribe")
+    @Enumerated(EnumType.STRING)
     private SubscribeType subscribe = SubscribeType.BASIC;
 
     @Builder.Default
