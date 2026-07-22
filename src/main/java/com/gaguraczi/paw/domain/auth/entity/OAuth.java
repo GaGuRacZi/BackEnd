@@ -16,6 +16,10 @@ import lombok.experimental.SuperBuilder;
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_oauth_provider_id_social_type",
                 columnNames = {"provider_id", "social_type"}
+        ),
+        indexes = @Index(
+                name = "idx_oauth_email_social_type",
+                columnList = "email, social_type"
         )
 )
 @Getter

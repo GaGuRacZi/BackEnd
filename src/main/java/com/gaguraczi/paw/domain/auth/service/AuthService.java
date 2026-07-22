@@ -24,18 +24,25 @@ import com.gaguraczi.paw.global.redis.LoginLinkChallengeStore;
 import com.gaguraczi.paw.global.redis.RefreshTokenRedisStore;
 import com.gaguraczi.paw.global.security.JwtTokenProvider;
 import com.gaguraczi.paw.global.security.SecurityUtils;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 @Transactional(readOnly = true)
 public class AuthService {
 
@@ -48,35 +55,42 @@ public class AuthService {
     private final KakaoApiClient kakaoApiClient;
     private final SecurityUtils securityUtils;
     private final EmailVerificationService emailVerificationService;
+    private final ObjectProvider<AuthService> self;
 
     public record AuthResult(Object result, BaseSuccessCode successCode) {
     }
 
     @Transactional
     public AuthResult signupLocal(LocalSignupReq req) {
-        emailVerificationService.requireVerified(req.getEmail());
+        String email = normalizeEmail(req.getEmail());
+        emailVerificationService.requireVerified(email);
 
-        if (oAuthRepository.existsByEmailAndProviderType(req.getEmail(), SocialType.LOCAL)) {
+        if (oAuthRepository.existsByEmailAndProviderType(email, SocialType.LOCAL)) {
             throw AuthException.of(AuthErrorCode.LOCAL_SIGNUP_409_1);
         }
 
-        Optional<User> existingUser = userRepository.findByEmail(req.getEmail());
+        Optional<User> existingUser = userRepository.findByEmail(email);
         if (existingUser.isPresent()) {
             User user = existingUser.get();
             if (oAuthRepository.existsByUserAndProviderType(user, SocialType.KAKAO)
                     && !oAuthRepository.existsByUserAndProviderType(user, SocialType.LOCAL)) {
-                return createKakaoConfirmChallenge(user, req.getEmail(), req.getPassword());
+                return createKakaoConfirmChallenge(user, email, req.getPassword());
             }
             throw AuthException.of(AuthErrorCode.LOCAL_SIGNUP_409_1);
         }
 
-        User user = userRepository.save(User.builder()
-                .email(req.getEmail().trim().toLowerCase())
-                .isNew(true)
-                .build());
+        User user;
+        try {
+            user = userRepository.saveAndFlush(User.builder()
+                    .email(email)
+                    .isNew(true)
+                    .build());
+        } catch (DataIntegrityViolationException e) {
+            throw AuthException.of(AuthErrorCode.LOCAL_SIGNUP_409_1);
+        }
 
-        linkLocalOAuth(user, req.getEmail().trim().toLowerCase(), passwordEncoder.encode(req.getPassword()));
-        emailVerificationService.consumeVerified(req.getEmail());
+        linkLocalOAuth(user, email, passwordEncoder.encode(req.getPassword()));
+        emailVerificationService.consumeVerified(email);
 
         LoginRes loginRes = issueTokens(user, SocialType.LOCAL.name());
         return new AuthResult(loginRes, AuthSuccessCode.LOCAL_SIGNUP_200_1);
@@ -94,14 +108,15 @@ public class AuthService {
 
     @Transactional
     public AuthResult loginLocal(LocalLoginReq req) {
-        Optional<OAuth> localOAuth = oAuthRepository.findByEmailAndProviderType(req.getEmail(), SocialType.LOCAL);
+        String email = normalizeEmail(req.getEmail());
+        Optional<OAuth> localOAuth = oAuthRepository.findByEmailAndProviderType(email, SocialType.LOCAL);
 
         if (localOAuth.isEmpty()) {
-            Optional<User> userOpt = userRepository.findByEmail(req.getEmail());
+            Optional<User> userOpt = userRepository.findByEmail(email);
             if (userOpt.isPresent()
                     && oAuthRepository.existsByUserAndProviderType(userOpt.get(), SocialType.KAKAO)
                     && !oAuthRepository.existsByUserAndProviderType(userOpt.get(), SocialType.LOCAL)) {
-                return createKakaoConfirmChallenge(userOpt.get(), req.getEmail(), req.getPassword());
+                return createKakaoConfirmChallenge(userOpt.get(), email, req.getPassword());
             }
             throw AuthException.of(AuthErrorCode.LOCAL_LOGIN_401_2);
         }
@@ -120,10 +135,14 @@ public class AuthService {
         return new AuthResult(loginRes, code);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public AuthResult loginKakao(KakaoLoginReq req) {
         KakaoApiClient.KakaoUserInfo kakaoUser = kakaoApiClient.getUserInfo(req.getAccessToken());
+        return self.getObject().completeLoginKakao(kakaoUser);
+    }
 
+    @Transactional
+    public AuthResult completeLoginKakao(KakaoApiClient.KakaoUserInfo kakaoUser) {
         Optional<OAuth> existingKakao =
                 oAuthRepository.findByProviderIdAndProviderType(kakaoUser.providerId(), SocialType.KAKAO);
         if (existingKakao.isPresent()) {
@@ -136,25 +155,26 @@ public class AuthService {
         }
 
         // 카카오 이메일이 기존 로컬 계정과 같으면 → 연동 창 (로컬 비밀번호 확인 후 KAKAO 연결)
-        if (kakaoUser.email() != null && !kakaoUser.email().isBlank()) {
-            Optional<User> existingUser = userRepository.findByEmail(kakaoUser.email());
+        String email = normalizeEmailOrNull(kakaoUser.email());
+        if (email != null) {
+            Optional<User> existingUser = userRepository.findByEmail(email);
             if (existingUser.isPresent()) {
                 User user = existingUser.get();
                 if (oAuthRepository.existsByUserAndProviderType(user, SocialType.KAKAO)) {
                     throw AuthException.of(AuthErrorCode.LOGIN_LINK_400_3);
                 }
                 if (oAuthRepository.existsByUserAndProviderType(user, SocialType.LOCAL)) {
-                    return createLocalConfirmChallenge(user, kakaoUser);
+                    return createLocalConfirmChallenge(user, kakaoUser.providerId(), email);
                 }
                 throw AuthException.of(AuthErrorCode.LOCAL_SIGNUP_409_1);
             }
         }
 
         User user = userRepository.save(User.builder()
-                .email(blankToNull(kakaoUser.email()))
+                .email(email)
                 .isNew(true)
                 .build());
-        linkKakaoOAuth(user, kakaoUser.providerId(), blankToNull(kakaoUser.email()));
+        linkKakaoOAuth(user, kakaoUser.providerId(), email);
 
         LoginRes loginRes = issueTokens(user, SocialType.KAKAO.name());
         return new AuthResult(loginRes, AuthSuccessCode.KAKAO_LOGIN_200_1);
@@ -178,20 +198,24 @@ public class AuthService {
     /**
      * 로그인된 사용자가 카카오 계정을 현재 User에 연동.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public AuthResult linkKakao(KakaoLoginReq req) {
+        KakaoApiClient.KakaoUserInfo kakaoUser = kakaoApiClient.getUserInfo(req.getAccessToken());
+        return self.getObject().completeLinkKakao(kakaoUser);
+    }
+
+    @Transactional
+    public AuthResult completeLinkKakao(KakaoApiClient.KakaoUserInfo kakaoUser) {
         User current = securityUtils.currentUser();
 
         if (oAuthRepository.existsByUserAndProviderType(current, SocialType.KAKAO)) {
             throw AuthException.of(AuthErrorCode.LOGIN_LINK_400_3);
         }
-
-        KakaoApiClient.KakaoUserInfo kakaoUser = kakaoApiClient.getUserInfo(req.getAccessToken());
         if (oAuthRepository.existsByProviderIdAndProviderType(kakaoUser.providerId(), SocialType.KAKAO)) {
             throw AuthException.of(AuthErrorCode.LOGIN_LINK_400);
         }
 
-        linkKakaoOAuth(current, kakaoUser.providerId(), blankToNull(kakaoUser.email()));
+        linkKakaoOAuth(current, kakaoUser.providerId(), normalizeEmailOrNull(kakaoUser.email()));
         LoginRes loginRes = issueTokens(current, SocialType.KAKAO.name());
         return new AuthResult(loginRes, AuthSuccessCode.LOGIN_LINK_200);
     }
@@ -199,7 +223,7 @@ public class AuthService {
     /**
      * 로컬 시도 후 연동 창에서 카카오로 확인 → LOCAL OAuth 추가
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public AuthResult confirmLinkWithKakao(LinkConfirmKakaoReq req) {
         LoginLinkChallengeStore.Pending pending = loginLinkChallengeStore.get(req.getLinkToken());
         if (pending.getType() != LinkChallengeType.NEED_KAKAO_CONFIRM) {
@@ -207,6 +231,15 @@ public class AuthService {
         }
 
         KakaoApiClient.KakaoUserInfo kakaoUser = kakaoApiClient.getUserInfo(req.getAccessToken());
+        return self.getObject().completeConfirmLinkWithKakao(req, pending, kakaoUser);
+    }
+
+    @Transactional
+    public AuthResult completeConfirmLinkWithKakao(
+            LinkConfirmKakaoReq req,
+            LoginLinkChallengeStore.Pending pending,
+            KakaoApiClient.KakaoUserInfo kakaoUser
+    ) {
         User user = userRepository.findById(UUID.fromString(pending.getUid()))
                 .orElseThrow(() -> AuthException.of(AuthErrorCode.LOGIN_LINK_400));
 
@@ -222,7 +255,7 @@ public class AuthService {
         }
 
         linkLocalOAuth(user, pending.getEmail(), pending.getPasswordHash());
-        loginLinkChallengeStore.delete(req.getLinkToken());
+        afterCommit(() -> loginLinkChallengeStore.delete(req.getLinkToken()));
 
         LoginRes loginRes = issueTokens(user, SocialType.LOCAL.name());
         return new AuthResult(loginRes, AuthSuccessCode.LOGIN_LINK_200);
@@ -271,7 +304,7 @@ public class AuthService {
         }
 
         linkKakaoOAuth(user, pending.getKakaoProviderId(), pending.getKakaoEmail());
-        loginLinkChallengeStore.delete(req.getLinkToken());
+        afterCommit(() -> loginLinkChallengeStore.delete(req.getLinkToken()));
 
         LoginRes loginRes = issueTokens(user, SocialType.KAKAO.name());
         return new AuthResult(loginRes, AuthSuccessCode.LOGIN_LINK_200);
@@ -309,14 +342,17 @@ public class AuthService {
 
         oAuthRepository.delete(sourceKakao);
         oAuthRepository.flush();
-        linkKakaoOAuth(target, pending.getKakaoProviderId(), blankToNull(pending.getEmail()));
+        linkKakaoOAuth(target, pending.getKakaoProviderId(), pending.getEmail());
 
         List<OAuth> remaining = oAuthRepository.findAllByUser(source);
         oAuthRepository.deleteAll(remaining);
-        refreshTokenRedisStore.deleteAll(source.getUid().toString());
+        String sourceUid = source.getUid().toString();
         userRepository.delete(source);
 
-        loginLinkChallengeStore.delete(req.getLinkToken());
+        afterCommit(() -> {
+            refreshTokenRedisStore.deleteAll(sourceUid);
+            loginLinkChallengeStore.delete(req.getLinkToken());
+        });
 
         LoginRes loginRes = issueTokens(target, SocialType.KAKAO.name());
         return new AuthResult(loginRes, AuthSuccessCode.LOGIN_LINK_200);
@@ -336,16 +372,28 @@ public class AuthService {
             throw AuthException.of(AuthErrorCode.REFRESH_INVALID);
         }
 
-        String stored = refreshTokenRedisStore.find(uid, provider)
-                .orElseThrow(() -> AuthException.of(AuthErrorCode.REFRESH_INVALID));
-        if (!stored.equals(refreshToken)) {
-            throw AuthException.of(AuthErrorCode.REFRESH_INVALID);
-        }
-
         User user = userRepository.findById(UUID.fromString(uid))
                 .orElseThrow(() -> AuthException.of(AuthErrorCode.REFRESH_INVALID));
 
-        LoginRes loginRes = issueTokens(user, provider);
+        String accessToken = jwtTokenProvider.createAccessToken(uid);
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(uid, provider);
+        boolean rotated = refreshTokenRedisStore.rotate(
+                uid,
+                provider,
+                refreshToken,
+                newRefreshToken,
+                Duration.ofMillis(jwtTokenProvider.getRefreshExpMs())
+        );
+        if (!rotated) {
+            throw AuthException.of(AuthErrorCode.REFRESH_INVALID);
+        }
+
+        LoginRes loginRes = LoginRes.builder()
+                .accessToken(accessToken)
+                .refreshToken(newRefreshToken)
+                .isNew(user.isNew())
+                .uid(user.getUid())
+                .build();
         return new AuthResult(loginRes, AuthSuccessCode.REFRESH_200);
     }
 
@@ -363,12 +411,9 @@ public class AuthService {
             throw AuthException.of(AuthErrorCode.LOGOUT_INVALID);
         }
 
-        String stored = refreshTokenRedisStore.find(uid, provider).orElse(null);
-        if (stored == null || !stored.equals(refreshToken)) {
+        if (!refreshTokenRedisStore.delete(uid, provider, refreshToken)) {
             throw AuthException.of(AuthErrorCode.LOGOUT_INVALID);
         }
-
-        refreshTokenRedisStore.delete(uid, provider);
     }
 
     private AuthResult createKakaoConfirmChallenge(User user, String email, String rawPassword) {
@@ -387,19 +432,19 @@ public class AuthService {
         return new AuthResult(challenge, AuthSuccessCode.LOGIN_LINK_201);
     }
 
-    private AuthResult createLocalConfirmChallenge(User user, KakaoApiClient.KakaoUserInfo kakaoUser) {
+    private AuthResult createLocalConfirmChallenge(User user, String kakaoProviderId, String email) {
         String linkToken = loginLinkChallengeStore.save(
                 LoginLinkChallengeStore.Pending.needLocalConfirm(
                         user.getUid().toString(),
-                        kakaoUser.email(),
-                        kakaoUser.providerId(),
-                        kakaoUser.email()
+                        email,
+                        kakaoProviderId,
+                        email
                 )
         );
         LoginLinkChallengeRes challenge = LoginLinkChallengeRes.builder()
                 .linkToken(linkToken)
                 .existingProvider(SocialType.LOCAL.name())
-                .email(kakaoUser.email())
+                .email(email)
                 .build();
         return new AuthResult(challenge, AuthSuccessCode.LOGIN_LINK_201);
     }
@@ -423,8 +468,15 @@ public class AuthService {
                 .build());
     }
 
-    private String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value;
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeEmailOrNull(String email) {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+        return normalizeEmail(email);
     }
 
     private LoginRes issueTokens(User user, String provider) {
@@ -445,5 +497,18 @@ public class AuthService {
                 .isNew(user.isNew())
                 .uid(user.getUid())
                 .build();
+    }
+
+    private void afterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+            return;
+        }
+        action.run();
     }
 }

@@ -5,8 +5,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.gaguraczi.paw.domain.auth.exception.AuthException;
 import com.gaguraczi.paw.domain.auth.exception.code.AuthErrorCode;
 import com.gaguraczi.paw.global.config.properties.KakaoProperties;
+import java.time.Duration;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -14,15 +16,26 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 @Component
-@RequiredArgsConstructor
 public class KakaoApiClient {
 
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);
+
     private final KakaoProperties kakaoProperties;
-    private final RestClient.Builder restClientBuilder;
+    private final RestClient restClient;
+
+    public KakaoApiClient(KakaoProperties kakaoProperties, RestClient.Builder restClientBuilder) {
+        this.kakaoProperties = kakaoProperties;
+        this.restClient = restClientBuilder
+                .requestFactory(ClientHttpRequestFactoryBuilder.detect()
+                        .build(HttpClientSettings.defaults()
+                                .withTimeouts(CONNECT_TIMEOUT, READ_TIMEOUT)))
+                .build();
+    }
 
     public KakaoUserInfo getUserInfo(String accessToken) {
         try {
-            KakaoUserResponse response = restClientBuilder.build()
+            KakaoUserResponse response = restClient
                     .get()
                     .uri(kakaoProperties.getUserInfoUri())
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)

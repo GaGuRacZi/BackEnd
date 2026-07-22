@@ -18,6 +18,7 @@ public class MailConfig {
         mailSender.setPort(smtp.getPort());
         mailSender.setUsername(smtp.getUsername());
         mailSender.setPassword(smtp.getPassword());
+        mailSender.setDefaultEncoding("UTF-8");
 
         Properties props = mailSender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");

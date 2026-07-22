@@ -6,15 +6,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.InputStream;
-import java.util.Locale;
-import java.util.Set;
 import java.util.UUID;
 
 
@@ -31,9 +28,18 @@ public class S3Utils {
 
 
 
-    // 파일 키 생성 (원본 파일명 그대로 사용)
+    // 파일 키 생성 (경로 구분자·특수문자 제거 후 UUID와 결합)
     private String generateFileKey(String fileName) {
-        return UUID.randomUUID() + "-" + fileName;
+        String baseName = fileName.replace('\\', '/');
+        int slash = baseName.lastIndexOf('/');
+        if (slash >= 0) {
+            baseName = baseName.substring(slash + 1);
+        }
+        String sanitized = baseName.replaceAll("[^a-zA-Z0-9._-]", "_");
+        if (sanitized.isBlank() || ".".equals(sanitized) || "..".equals(sanitized)) {
+            return UUID.randomUUID().toString();
+        }
+        return UUID.randomUUID() + "-" + sanitized;
     }
 
     private String getUrl(String key) {
@@ -74,17 +80,50 @@ public class S3Utils {
             throw new UtilException(FILE_EMPTY);
         }
 
-        String ext =
-                originalFilename.contains(".")
-                        ? originalFilename.substring(originalFilename.lastIndexOf('.'))
-                        : "";
+        String prefix = normalizeDirectoryPrefix(directoryPrefix);
 
-        String prefix =
-                directoryPrefix.endsWith("/")
-                        ? directoryPrefix
-                        : directoryPrefix + "/";
-        String key = prefix + UUID.randomUUID() + ext.toLowerCase();
+        String baseName = originalFilename.replace('\\', '/');
+        int slash = baseName.lastIndexOf('/');
+        if (slash >= 0) {
+            baseName = baseName.substring(slash + 1);
+        }
+
+        String ext = "";
+        int dot = baseName.lastIndexOf('.');
+        if (dot > 0 && dot < baseName.length() - 1) {
+            // 확장자만 소문자화하고 URL/키 안전 문자로 sanitize (# 등 제거)
+            ext = baseName.substring(dot).toLowerCase().replaceAll("[^a-z0-9._-]", "_");
+        }
+
+        String key = prefix + UUID.randomUUID() + ext;
         return uploadMultipartUsingKey(file, key);
+    }
+
+    /** null/blank·?, #, \\ 및 비정상 path segment를 거부한 뒤 trailing slash를 보장합니다. */
+    private String normalizeDirectoryPrefix(String directoryPrefix) {
+        if (directoryPrefix == null || directoryPrefix.isBlank()) {
+            throw new UtilException(TYPE_NOT_ALLOWED);
+        }
+        if (directoryPrefix.indexOf('?') >= 0
+                || directoryPrefix.indexOf('#') >= 0
+                || directoryPrefix.indexOf('\\') >= 0) {
+            throw new UtilException(TYPE_NOT_ALLOWED);
+        }
+
+        String trimmed = directoryPrefix.endsWith("/")
+                ? directoryPrefix.substring(0, directoryPrefix.length() - 1)
+                : directoryPrefix;
+        if (trimmed.isEmpty()) {
+            throw new UtilException(TYPE_NOT_ALLOWED);
+        }
+
+        for (String segment : trimmed.split("/", -1)) {
+            if (segment.isEmpty() || ".".equals(segment) || "..".equals(segment)) {
+                throw new UtilException(TYPE_NOT_ALLOWED);
+            }
+        }
+
+        return trimmed + "/";
     }
 
     private S3Dto uploadMultipartUsingKey(MultipartFile file, String key) {
@@ -101,8 +140,6 @@ public class S3Utils {
         try (InputStream is = file.getInputStream()) {
             s3Client.putObject(req, RequestBody.fromInputStream(is, file.getSize()));
             return new S3Dto(getUrl(key), key);
-        } catch (SdkClientException e) {
-            throw new UtilException(S3_UPLOAD_FAILED, e);
         } catch (Exception e) {
             throw new UtilException(S3_UPLOAD_FAILED, e);
         }
@@ -134,8 +171,6 @@ public class S3Utils {
         try {
             s3Client.putObject(req, RequestBody.fromBytes(bytes));
             return new S3Dto(getUrl(key), key);   // (url, key) 순서 통일
-        } catch (SdkClientException e) {
-            throw new UtilException(S3_UPLOAD_FAILED, e);
         } catch (Exception e) {
             throw new UtilException(S3_UPLOAD_FAILED, e);
         }
@@ -154,9 +189,6 @@ public class S3Utils {
                     .build();
             s3Client.deleteObject(req);
             log.info("Deleted file from S3: {}", key);
-        } catch (SdkClientException e) {
-            log.error("Error occurred while deleting file from S3: {}", key, e);
-            throw new UtilException(S3_DELETE_FAILED, e);
         } catch (Exception e) {
             throw new UtilException(S3_DELETE_FAILED, e);
         }
