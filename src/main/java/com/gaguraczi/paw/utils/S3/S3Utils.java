@@ -91,10 +91,11 @@ public class S3Utils {
         String ext = "";
         int dot = baseName.lastIndexOf('.');
         if (dot > 0 && dot < baseName.length() - 1) {
-            ext = baseName.substring(dot);
+            // 확장자만 소문자화하고 URL/키 안전 문자로 sanitize (# 등 제거)
+            ext = baseName.substring(dot).toLowerCase().replaceAll("[^a-z0-9._-]", "_");
         }
 
-        String key = prefix + UUID.randomUUID() + ext.toLowerCase();
+        String key = prefix + UUID.randomUUID() + ext;
         return uploadMultipartUsingKey(file, key);
     }
 
