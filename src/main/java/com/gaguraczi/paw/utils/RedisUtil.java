@@ -22,6 +22,22 @@ public class RedisUtil {
         redisTemplate.opsForValue().set(key, value, duration, TimeUnit.SECONDS);
     }
 
+    // 키가 없을 때만 저장 (SET NX EX) — 성공 시 true
+    public boolean setIfAbsent(String key, String value, long duration) {
+        Boolean result = redisTemplate.opsForValue()
+                .setIfAbsent(key, value, duration, TimeUnit.SECONDS);
+        return Boolean.TRUE.equals(result);
+    }
+
+    // 원자적 증가 — 최초 증가(값이 1)일 때만 TTL 설정
+    public long increment(String key, long duration) {
+        Long count = redisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1L) {
+            redisTemplate.expire(key, duration, TimeUnit.SECONDS);
+        }
+        return count == null ? 0L : count;
+    }
+
     // 데이터 조회
     public String getData(String key) {
         return redisTemplate.opsForValue().get(key);
@@ -41,7 +57,7 @@ public class RedisUtil {
 
         List<String> keysToDelete = redisTemplate.execute(connection -> {
             List<String> keys = new ArrayList<>();
-            try (Cursor<byte[]> cursor = connection.scan(options)) {
+            try (Cursor<byte[]> cursor = connection.keyCommands().scan(options)) {
                 cursor.forEachRemaining(
                         key -> keys.add(new String(key, StandardCharsets.UTF_8)));
             }

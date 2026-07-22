@@ -6,15 +6,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.InputStream;
-import java.util.Locale;
-import java.util.Set;
 import java.util.UUID;
 
 
@@ -31,9 +28,18 @@ public class S3Utils {
 
 
 
-    // 파일 키 생성 (원본 파일명 그대로 사용)
+    // 파일 키 생성 (경로 구분자·특수문자 제거 후 UUID와 결합)
     private String generateFileKey(String fileName) {
-        return UUID.randomUUID() + "-" + fileName;
+        String baseName = fileName.replace('\\', '/');
+        int slash = baseName.lastIndexOf('/');
+        if (slash >= 0) {
+            baseName = baseName.substring(slash + 1);
+        }
+        String sanitized = baseName.replaceAll("[^a-zA-Z0-9._-]", "_");
+        if (sanitized.isBlank() || ".".equals(sanitized) || "..".equals(sanitized)) {
+            return UUID.randomUUID().toString();
+        }
+        return UUID.randomUUID() + "-" + sanitized;
     }
 
     private String getUrl(String key) {
@@ -101,8 +107,6 @@ public class S3Utils {
         try (InputStream is = file.getInputStream()) {
             s3Client.putObject(req, RequestBody.fromInputStream(is, file.getSize()));
             return new S3Dto(getUrl(key), key);
-        } catch (SdkClientException e) {
-            throw new UtilException(S3_UPLOAD_FAILED, e);
         } catch (Exception e) {
             throw new UtilException(S3_UPLOAD_FAILED, e);
         }
@@ -134,8 +138,6 @@ public class S3Utils {
         try {
             s3Client.putObject(req, RequestBody.fromBytes(bytes));
             return new S3Dto(getUrl(key), key);   // (url, key) 순서 통일
-        } catch (SdkClientException e) {
-            throw new UtilException(S3_UPLOAD_FAILED, e);
         } catch (Exception e) {
             throw new UtilException(S3_UPLOAD_FAILED, e);
         }
@@ -154,9 +156,6 @@ public class S3Utils {
                     .build();
             s3Client.deleteObject(req);
             log.info("Deleted file from S3: {}", key);
-        } catch (SdkClientException e) {
-            log.error("Error occurred while deleting file from S3: {}", key, e);
-            throw new UtilException(S3_DELETE_FAILED, e);
         } catch (Exception e) {
             throw new UtilException(S3_DELETE_FAILED, e);
         }

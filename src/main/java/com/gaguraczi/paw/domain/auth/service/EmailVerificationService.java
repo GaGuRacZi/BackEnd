@@ -23,10 +23,12 @@ public class EmailVerificationService {
     private static final String CODE_KEY = "auth:email:code:";
     private static final String COOLDOWN_KEY = "auth:email:cooldown:";
     private static final String VERIFIED_KEY = "auth:email:verified:";
+    private static final String ATTEMPT_KEY = "auth:email:attempt:";
 
     private static final long CODE_TTL_SECONDS = 300L;
     private static final long COOLDOWN_TTL_SECONDS = 60L;
     private static final long VERIFIED_TTL_SECONDS = 1800L;
+    private static final long MAX_ATTEMPTS = 5L;
 
     private final JavaMailSender mailSender;
     private final SmtpProperties smtpProperties;
@@ -43,13 +45,12 @@ public class EmailVerificationService {
             throw AuthException.of(AuthErrorCode.LOCAL_SIGNUP_409_1);
         }
 
-        if (redisUtil.getData(COOLDOWN_KEY + normalized) != null) {
+        if (!redisUtil.setIfAbsent(COOLDOWN_KEY + normalized, "1", COOLDOWN_TTL_SECONDS)) {
             throw AuthException.of(AuthErrorCode.EMAIL_SEND_429);
         }
 
         String code = String.format("%06d", secureRandom.nextInt(1_000_000));
         redisUtil.setDataExpire(CODE_KEY + normalized, code, CODE_TTL_SECONDS);
-        redisUtil.setDataExpire(COOLDOWN_KEY + normalized, "1", COOLDOWN_TTL_SECONDS);
 
         try {
             SimpleMailMessage message = new SimpleMailMessage();
@@ -68,11 +69,18 @@ public class EmailVerificationService {
 
     public void verifyCode(String email, String code) {
         String normalized = normalize(email);
+        String attemptKey = ATTEMPT_KEY + normalized;
+        long attempts = redisUtil.increment(attemptKey, CODE_TTL_SECONDS);
+        if (attempts > MAX_ATTEMPTS) {
+            throw AuthException.of(AuthErrorCode.EMAIL_CODE_INVALID);
+        }
+
         String stored = redisUtil.getData(CODE_KEY + normalized);
         if (stored == null || !stored.equals(code)) {
             throw AuthException.of(AuthErrorCode.EMAIL_CODE_INVALID);
         }
 
+        redisUtil.deleteData(attemptKey);
         redisUtil.deleteData(CODE_KEY + normalized);
         redisUtil.setDataExpire(VERIFIED_KEY + normalized, "1", VERIFIED_TTL_SECONDS);
     }
