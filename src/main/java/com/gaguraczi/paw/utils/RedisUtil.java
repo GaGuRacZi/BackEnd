@@ -17,6 +17,8 @@ import java.util.concurrent.TimeUnit;
 public class RedisUtil {
 
     private static final DefaultRedisScript<Long> INCREMENT_WITH_TTL_SCRIPT = new DefaultRedisScript<>();
+    private static final DefaultRedisScript<Long> COMPARE_AND_SET_SCRIPT = new DefaultRedisScript<>();
+    private static final DefaultRedisScript<Long> COMPARE_AND_DELETE_SCRIPT = new DefaultRedisScript<>();
 
     static {
         INCREMENT_WITH_TTL_SCRIPT.setResultType(Long.class);
@@ -26,6 +28,23 @@ public class RedisUtil {
                     redis.call('EXPIRE', KEYS[1], ARGV[1])
                 end
                 return count
+                """);
+
+        COMPARE_AND_SET_SCRIPT.setResultType(Long.class);
+        COMPARE_AND_SET_SCRIPT.setScriptText("""
+                if redis.call('GET', KEYS[1]) == ARGV[1] then
+                    redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])
+                    return 1
+                end
+                return 0
+                """);
+
+        COMPARE_AND_DELETE_SCRIPT.setResultType(Long.class);
+        COMPARE_AND_DELETE_SCRIPT.setScriptText("""
+                if redis.call('GET', KEYS[1]) == ARGV[1] then
+                    return redis.call('DEL', KEYS[1])
+                end
+                return 0
                 """);
     }
 
@@ -60,6 +79,26 @@ public class RedisUtil {
     // 데이터 삭제
     public void deleteData(String key) {
         redisTemplate.delete(key);
+    }
+
+    // 현재 값이 expected와 같을 때만 newValue로 교체 (CAS SET EX) — 성공 시 true
+    public boolean compareAndSet(String key, String expected, String newValue, long durationSeconds) {
+        Long result = redisTemplate.execute(
+                COMPARE_AND_SET_SCRIPT,
+                List.of(key),
+                expected,
+                newValue,
+                String.valueOf(durationSeconds));
+        return result != null && result == 1L;
+    }
+
+    // 현재 값이 expected와 같을 때만 삭제 — 성공 시 true
+    public boolean compareAndDelete(String key, String expected) {
+        Long result = redisTemplate.execute(
+                COMPARE_AND_DELETE_SCRIPT,
+                List.of(key),
+                expected);
+        return result != null && result > 0L;
     }
 
     // 패턴에 맞는 키 일괄 삭제 (KEYS 대신 SCAN)

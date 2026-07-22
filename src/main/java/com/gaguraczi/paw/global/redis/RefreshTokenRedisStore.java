@@ -26,8 +26,24 @@ public class RefreshTokenRedisStore {
         return Optional.ofNullable(value).filter(v -> !v.isBlank());
     }
 
+    /**
+     * 저장된 토큰이 expected와 일치할 때만 newToken으로 교체.
+     * @return 교체 성공 여부
+     */
+    public boolean rotate(String uid, String provider, String expected, String newToken, Duration ttl) {
+        return redisUtil.compareAndSet(key(uid, provider), expected, newToken, ttl.toSeconds());
+    }
+
     public void delete(String uid, String provider) {
         redisUtil.deleteData(key(uid, provider));
+    }
+
+    /**
+     * 저장된 토큰이 expected와 일치할 때만 삭제.
+     * @return 삭제 성공 여부
+     */
+    public boolean delete(String uid, String provider, String expected) {
+        return redisUtil.compareAndDelete(key(uid, provider), expected);
     }
 
     // 특정 유저의 모든 소셜 토큰 삭제 (전체 로그아웃·회원탈퇴)
