@@ -77,7 +77,7 @@ public class AuthService {
 
         User user;
         try {
-            user = userRepository.save(User.builder()
+            user = userRepository.saveAndFlush(User.builder()
                     .email(req.getEmail().trim().toLowerCase())
                     .isNew(true)
                     .build());

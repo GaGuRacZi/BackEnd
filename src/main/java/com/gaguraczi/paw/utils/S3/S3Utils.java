@@ -80,17 +80,49 @@ public class S3Utils {
             throw new UtilException(FILE_EMPTY);
         }
 
-        String ext =
-                originalFilename.contains(".")
-                        ? originalFilename.substring(originalFilename.lastIndexOf('.'))
-                        : "";
+        String prefix = normalizeDirectoryPrefix(directoryPrefix);
 
-        String prefix =
-                directoryPrefix.endsWith("/")
-                        ? directoryPrefix
-                        : directoryPrefix + "/";
+        String baseName = originalFilename.replace('\\', '/');
+        int slash = baseName.lastIndexOf('/');
+        if (slash >= 0) {
+            baseName = baseName.substring(slash + 1);
+        }
+
+        String ext = "";
+        int dot = baseName.lastIndexOf('.');
+        if (dot > 0 && dot < baseName.length() - 1) {
+            ext = baseName.substring(dot);
+        }
+
         String key = prefix + UUID.randomUUID() + ext.toLowerCase();
         return uploadMultipartUsingKey(file, key);
+    }
+
+    /** null/blank·?, #, \\ 및 비정상 path segment를 거부한 뒤 trailing slash를 보장합니다. */
+    private String normalizeDirectoryPrefix(String directoryPrefix) {
+        if (directoryPrefix == null || directoryPrefix.isBlank()) {
+            throw new UtilException(TYPE_NOT_ALLOWED);
+        }
+        if (directoryPrefix.indexOf('?') >= 0
+                || directoryPrefix.indexOf('#') >= 0
+                || directoryPrefix.indexOf('\\') >= 0) {
+            throw new UtilException(TYPE_NOT_ALLOWED);
+        }
+
+        String trimmed = directoryPrefix.endsWith("/")
+                ? directoryPrefix.substring(0, directoryPrefix.length() - 1)
+                : directoryPrefix;
+        if (trimmed.isEmpty()) {
+            throw new UtilException(TYPE_NOT_ALLOWED);
+        }
+
+        for (String segment : trimmed.split("/", -1)) {
+            if (segment.isEmpty() || ".".equals(segment) || "..".equals(segment)) {
+                throw new UtilException(TYPE_NOT_ALLOWED);
+            }
+        }
+
+        return trimmed + "/";
     }
 
     private S3Dto uploadMultipartUsingKey(MultipartFile file, String key) {
