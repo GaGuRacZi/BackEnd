@@ -1,0 +1,13 @@
+.git
+.gitignore
+.github
+.gradle
+build
+.idea
+*.iml
+.env
+*.md
+.coderabbit.yaml
+compose.yaml
+compose.prod.yaml
+docker

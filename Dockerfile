@@ -21,7 +21,7 @@ USER spring
 
 COPY --from=build /app/build/libs/*.jar app.jar
 
-ENV SPRING_PROFILES_ACTIVE=docker
+ENV SPRING_PROFILES_ACTIVE=develop
 
 EXPOSE 8080
 
