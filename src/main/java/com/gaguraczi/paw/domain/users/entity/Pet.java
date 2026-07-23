@@ -25,7 +25,7 @@ public class Pet extends BaseEntity {
     @Column(name = "pet_id")
     private Long petId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "uid", nullable = false)
     private User user;
 
