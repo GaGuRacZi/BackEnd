@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
 @Getter
@@ -43,7 +43,7 @@ public class Pet extends BaseEntity {
     private String petName;
 
     @Column(name = "birth", nullable = false)
-    private LocalDateTime birth;
+    private LocalDate birth;
 
     @Column(name = "pet_weight", precision = 3, scale = 2, nullable = false)
     private BigDecimal petWeight;
@@ -57,7 +57,7 @@ public class Pet extends BaseEntity {
     private Boolean neutering = false;
 
     @Builder.Default
-    @Column(name = "is_main", nullable = false)
+    @Column(name = "is_main")
     private Boolean isMain = false;
 
     @Column(name = "breed", length = 255)
