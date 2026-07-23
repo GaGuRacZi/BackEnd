@@ -45,7 +45,7 @@ public class Pet extends BaseEntity {
     @Column(name = "birth", nullable = false)
     private LocalDate birth;
 
-    @Column(name = "pet_weight", precision = 3, scale = 2, nullable = false)
+    @Column(name = "pet_weight", precision = 5, scale = 2, nullable = false)
     private BigDecimal petWeight;
 
     @Enumerated(EnumType.STRING)
