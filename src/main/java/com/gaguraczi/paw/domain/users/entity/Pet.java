@@ -58,7 +58,7 @@ public class Pet extends BaseEntity {
 
     @Builder.Default
     @Column(name = "is_main")
-    private Boolean isMain = false;
+    private boolean isMain = false;
 
     @Column(name = "breed", length = 255)
     private String breed;
