@@ -8,9 +8,13 @@ spring:
       enabled: true
       max-file-size: 50MB
       max-request-size: 50MB
+  sql:
+    init:
+      # postgis/vector extensions are created at app startup via db/extensions.sql
+      # (runs before Hibernate DDL; idempotent with IF NOT EXISTS)
+      mode: always
+      schema-locations: classpath:db/extensions.sql
   jpa:
-    # postgis/vector extensions are installed at DB bootstrap by an admin account
-    # (local: compose POSTGRES_MULTIPLE_EXTENSIONS), not by the app role at startup
     defer-datasource-initialization: false
   jwt:
     secret: ${JWT_SECRET}
