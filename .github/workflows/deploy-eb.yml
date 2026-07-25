@@ -65,7 +65,8 @@ jobs:
       # Sensitive AWS_DB_*, VALKEY_*, JWT_* values are stored in Secrets Manager and
       # referenced via aws:elasticbeanstalk:application:environmentsecrets.
       # The EB instance profile is granted GetSecretValue on those secret ARNs.
-      - name: Sync env to Elastic Beanstalk
+      # Env sync + app version deploy share one update-environment to avoid double restart.
+      - name: Prepare env options
         env:
           EB_ENV_FILE: ${{ secrets.EB_ENV_FILE }}
         run: |
@@ -79,7 +80,6 @@ jobs:
           raw = os.environ["EB_ENV_FILE"]
           env_name = os.environ["EB_ENVIRONMENT_NAME"]
           app_name = os.environ["EB_APPLICATION_NAME"]
-          region = os.environ["AWS_REGION"]
 
           SENSITIVE_KEY_RE = re.compile(r"^(AWS_DB_|VALKEY_|JWT_)")
 
@@ -259,37 +259,20 @@ jobs:
                   f"to instance role {role_name}"
               )
 
-          options_path = "eb-options.json"
-          with open(options_path, "w", encoding="utf-8") as file:
+          with open("eb-options.json", "w", encoding="utf-8") as file:
               json.dump(options, file)
 
-          cmd = [
-              "aws",
-              "elasticbeanstalk",
-              "update-environment",
-              "--environment-name",
-              env_name,
-              "--option-settings",
-              f"file://{options_path}",
-          ]
           if options_to_remove:
-              remove_path = "eb-options-to-remove.json"
-              with open(remove_path, "w", encoding="utf-8") as file:
+              with open("eb-options-to-remove.json", "w", encoding="utf-8") as file:
                   json.dump(options_to_remove, file)
-              cmd.extend(["--options-to-remove", f"file://{remove_path}"])
 
           secret_count = len(secret_arns)
           plain_count = len(options) - secret_count
           print(
-              f"Updating {plain_count} plain env vars and {secret_count} secret refs on {env_name}"
+              f"Prepared {plain_count} plain env vars and {secret_count} secret refs "
+              f"for single update on {env_name}"
           )
-          subprocess.check_call(cmd)
           PY
-
-      - name: Wait for environment update
-        run: |
-          aws elasticbeanstalk wait environment-updated \
-            --environment-name "$EB_ENVIRONMENT_NAME"
 
       - name: Prepare Dockerrun.aws.json
         run: |
@@ -310,9 +293,18 @@ jobs:
             --version-label "$VERSION_LABEL" \
             --source-bundle "S3Bucket=${BUCKET},S3Key=${EB_APPLICATION_NAME}/${VERSION_LABEL}.zip"
 
-          aws elasticbeanstalk update-environment \
-            --environment-name "$EB_ENVIRONMENT_NAME" \
+          UPDATE_ARGS=(
+            aws elasticbeanstalk update-environment
+            --environment-name "$EB_ENVIRONMENT_NAME"
             --version-label "$VERSION_LABEL"
+            --option-settings "file://eb-options.json"
+          )
+          if [[ -f eb-options-to-remove.json ]]; then
+            UPDATE_ARGS+=(--options-to-remove "file://eb-options-to-remove.json")
+          fi
+
+          echo "Updating environment with app version ${VERSION_LABEL} and env options in one pass"
+          "${UPDATE_ARGS[@]}"
 
           aws elasticbeanstalk wait environment-updated \
             --environment-name "$EB_ENVIRONMENT_NAME"
