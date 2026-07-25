@@ -5,29 +5,60 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: gaguraczi/paw
+  EB_APPLICATION_NAME: paw
+  EB_ENVIRONMENT_NAME: Paw-env
+
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image metadata
+        id: meta
+        run: |
+          echo "IMAGE_TAG=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_URI=${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/arm64
+          tags: |
+            ${{ steps.meta.outputs.IMAGE_URI }}:${{ steps.meta.outputs.IMAGE_TAG }}
+            ${{ steps.meta.outputs.IMAGE_URI }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       # Required GitHub Secrets:
-      # - EB_ENV_FILE: full .env text (SPRING_PROFILES_ACTIVE=develop, AWS_DB_*, VALKEY_*, etc.)
-      # - EB_APPLICATION_NAME
-      # - EB_ENVIRONMENT_NAME
-      # - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
+      # - AWS_ROLE_ARN: IAM role for GitHub OIDC
+      # - EB_ENV_FILE: full env text (SPRING_PROFILES_ACTIVE, AWS_DB_*, VALKEY_*, JWT_*, etc.)
       - name: Sync env to Elastic Beanstalk
         env:
           EB_ENV_FILE: ${{ secrets.EB_ENV_FILE }}
-          EB_ENVIRONMENT_NAME: ${{ secrets.EB_ENVIRONMENT_NAME }}
         run: |
           set -euo pipefail
           python3 <<'PY'
@@ -86,29 +117,17 @@ jobs:
           PY
 
       - name: Wait for environment update
-        env:
-          EB_ENVIRONMENT_NAME: ${{ secrets.EB_ENVIRONMENT_NAME }}
         run: |
           aws elasticbeanstalk wait environment-updated \
             --environment-name "$EB_ENVIRONMENT_NAME"
 
-      - name: Generate deployment package
+      - name: Prepare Dockerrun.aws.json
         run: |
-          zip -r deploy.zip . \
-            -x '*.git*' \
-            -x '*build*' \
-            -x '*.gradle*' \
-            -x '.env' \
-            -x '.idea/*' \
-            -x '*.md' \
-            -x 'compose*.yaml' \
-            -x 'docker/*'
+          set -euo pipefail
+          sed -i "s/IMAGE_TAG/${{ steps.meta.outputs.IMAGE_TAG }}/g" Dockerrun.aws.json
+          zip deploy.zip Dockerrun.aws.json
 
       - name: Deploy to Elastic Beanstalk
-        env:
-          EB_APPLICATION_NAME: ${{ secrets.EB_APPLICATION_NAME }}
-          EB_ENVIRONMENT_NAME: ${{ secrets.EB_ENVIRONMENT_NAME }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           set -euo pipefail
           VERSION_LABEL="app-$(date +%Y%m%d%H%M%S)-${GITHUB_SHA::7}"

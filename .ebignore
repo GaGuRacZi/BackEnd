@@ -11,3 +11,11 @@ build
 compose.yaml
 compose.prod.yaml
 docker
+src
+gradle
+gradlew
+gradlew.bat
+build.gradle
+settings.gradle
+Dockerfile
+.dockerignore

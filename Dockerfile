@@ -4,9 +4,10 @@ WORKDIR /app
 
 COPY gradlew settings.gradle build.gradle ./
 COPY gradle ./gradle
-COPY src ./src
+RUN chmod +x gradlew && ./gradlew dependencies --no-daemon || true
 
-RUN chmod +x gradlew && ./gradlew bootJar -x test
+COPY src ./src
+RUN ./gradlew bootJar -x test --no-daemon
 
 FROM eclipse-temurin:21-jre-jammy
 
@@ -22,6 +23,7 @@ USER spring
 COPY --from=build /app/build/libs/*.jar app.jar
 
 ENV SPRING_PROFILES_ACTIVE=develop
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=70 -XX:+UseSerialGC"
 
 EXPOSE 8080
 

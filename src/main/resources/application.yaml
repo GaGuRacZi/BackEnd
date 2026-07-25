@@ -8,6 +8,13 @@ spring:
       enabled: true
       max-file-size: 50MB
       max-request-size: 50MB
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/extensions.sql
+  jpa:
+    # schema.sql(extensions) must run before Hibernate creates geometry columns
+    defer-datasource-initialization: false
   jwt:
     secret: ${JWT_SECRET}
     access-exp-ms: ${JWT_EXPIRATION:3600000} # 1시간
@@ -74,9 +81,6 @@ spring:
       host: ${LOCAL_REDIS_HOST}
       port: ${LOCAL_REDIS_PORT}
       password: ${LOCAL_REDIS_PASSWORD:}  # 비밀번호 없으면 빈 값
-  sql:
-    init:
-      mode: never
   jpa:
     hibernate:
       ddl-auto: update
@@ -105,9 +109,6 @@ spring:
         enabled: true
       timeout: 3s
       connect-timeout: 3s
-  sql:
-    init:
-      mode: never
   jpa:
     hibernate:
       ddl-auto: update
