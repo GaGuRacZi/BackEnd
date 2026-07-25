@@ -146,8 +146,9 @@ jobs:
               return created["ARN"]
 
           options = []
-          options_to_remove = []
           secret_arns = []
+          ENV_NS = "aws:elasticbeanstalk:application:environment"
+          SECRET_NS = "aws:elasticbeanstalk:application:environmentsecrets"
 
           for line_no, line in enumerate(raw.splitlines(), start=1):
               line = line.strip()
@@ -174,22 +175,15 @@ jobs:
                   secret_arns.append(arn)
                   options.append(
                       {
-                          "Namespace": "aws:elasticbeanstalk:application:environmentsecrets",
+                          "Namespace": SECRET_NS,
                           "OptionName": key,
                           "Value": arn,
-                      }
-                  )
-                  # Drop any leftover plaintext copy from prior deploys.
-                  options_to_remove.append(
-                      {
-                          "Namespace": "aws:elasticbeanstalk:application:environment",
-                          "OptionName": key,
                       }
                   )
               else:
                   options.append(
                       {
-                          "Namespace": "aws:elasticbeanstalk:application:environment",
+                          "Namespace": ENV_NS,
                           "OptionName": key,
                           "Value": value,
                       }
@@ -198,19 +192,36 @@ jobs:
           if not options:
               raise SystemExit("No environment variables found in EB_ENV_FILE")
 
+          desired = {(opt["Namespace"], opt["OptionName"]) for opt in options}
+
+          settings = aws_json(
+              [
+                  "elasticbeanstalk",
+                  "describe-configuration-settings",
+                  "--application-name",
+                  app_name,
+                  "--environment-name",
+                  env_name,
+              ]
+          )
+          option_settings = settings["ConfigurationSettings"][0]["OptionSettings"]
+
+          options_to_remove = []
+          seen_removals = set()
+          for setting in option_settings:
+              namespace = setting.get("Namespace")
+              name = setting.get("OptionName")
+              if namespace not in (ENV_NS, SECRET_NS) or not name:
+                  continue
+              key = (namespace, name)
+              if key in desired or key in seen_removals:
+                  continue
+              options_to_remove.append({"Namespace": namespace, "OptionName": name})
+              seen_removals.add(key)
+
           if secret_arns:
-              settings = aws_json(
-                  [
-                      "elasticbeanstalk",
-                      "describe-configuration-settings",
-                      "--application-name",
-                      app_name,
-                      "--environment-name",
-                      env_name,
-                  ]
-              )
               profile_name = None
-              for setting in settings["ConfigurationSettings"][0]["OptionSettings"]:
+              for setting in option_settings:
                   if (
                       setting.get("Namespace") == "aws:autoscaling:launchconfiguration"
                       and setting.get("OptionName") == "IamInstanceProfile"
@@ -270,7 +281,7 @@ jobs:
           plain_count = len(options) - secret_count
           print(
               f"Prepared {plain_count} plain env vars and {secret_count} secret refs "
-              f"for single update on {env_name}"
+              f"for single update on {env_name}; removing {len(options_to_remove)} stale options"
           )
           PY
 
