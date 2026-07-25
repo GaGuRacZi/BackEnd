@@ -1,0 +1,149 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "ko-KR"
+early_access: false
+
+# CodeRabbit tone_instructions 최대 250자
+tone_instructions: "Spring Boot MVC 관점으로 리뷰해주세요. 버그·보안·성능·트랜잭션·N+1·인증 누락을 우선 확인하고, 스타일보다 실질적 문제에 집중해주세요. 이유와 개선 방법을 함께 설명하고, 필요 시 Java 21 Record 예시를 제시해주세요."
+
+reviews:
+  profile: "chill"
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+
+  path_filters:
+    - "!gradle/**"
+    - "!.gradle/**"
+    - "!build/**"
+    - "!coverage/**"
+    - "!**/*.md"
+    - "!docs/**/*.json"
+    - "!src/main/generated/**"
+    - "!.idea/**"
+
+  path_instructions:
+    # ── 프로젝트 공통 아키텍처 (상세 가이드는 path_instructions 최대 20,000자) ──
+    - path: "src/main/java/com/gaguraczi/paw/**/*.java"
+      instructions: |
+        이 프로젝트는 도메인(기능) 단위 MVC 구조입니다.
+        - domain/{기능}/ : controller, service, repository, entity, dto, enums, exception
+        - global/ : ApiResponse, 예외 처리, 설정, 보안, 인프라
+        각 도메인 내부에서 Controller → Service → Repository 의존성 방향을 지켜주세요.
+        API 응답은 ApiResponse<T> 래퍼, 예외는 GeneralException + 도메인별 ErrorCode 패턴을 따릅니다.
+
+    # ── Domain: Controller ──
+    - path: "src/main/java/com/gaguraczi/paw/domain/**/controller/**/*Controller.java"
+      instructions: |
+        도메인별 REST Controller입니다.
+        - @RestController, @RequestMapping, Swagger(@Tag, @Operation) 어노테이션이 적절한지 확인해주세요.
+        - Request/Response DTO(Record 활용 권장)가 domain/{기능}/dto에 분리되어 있는지 확인해주세요.
+        - @Valid를 통한 파라미터 검증, ApiResponse<T> 래퍼로 응답을 반환하는지 검토해주세요.
+        - 비즈니스 로직이 Service로 위임되고, Repository/Entity를 직접 다루지 않는지 확인해주세요.
+
+    # ── Domain: DTO ──
+    - path: "src/main/java/com/gaguraczi/paw/domain/**/dto/**/*.java"
+      instructions: |
+        도메인별 요청/응답 DTO입니다.
+        - Record 사용 및 @Valid 제약 조건이 적절한지 확인해주세요.
+        - Entity가 API 응답으로 그대로 노출되지 않고 DTO로 변환되는지, 민감 정보가 노출되지 않는지 검토해주세요.
+
+    # ── Domain: Service ──
+    - path: "src/main/java/com/gaguraczi/paw/domain/**/service/**/*Service.java"
+      instructions: |
+        도메인별 Service 레이어입니다.
+        - @Transactional 경계 및 rollbackFor 설정이 올바른지 확인해주세요.
+        - 비즈니스 로직이 이 레이어에 응집되어 있는지, Controller/Repository 책임과 섞이지 않는지 검토해주세요.
+        - 예외 발생 시 GeneralException.of(도메인ErrorCode) 패턴을 사용하는지 확인해주세요.
+        - Spring Data JPA 사용 시 N+1 문제나 비효율적인 쿼리가 없는지 검토해주세요.
+
+    # ── Domain: Repository ──
+    - path: "src/main/java/com/gaguraczi/paw/domain/**/repository/**/*Repository.java"
+      instructions: |
+        도메인별 Repository(데이터 접근) 레이어입니다.
+        - 쿼리 메서드/@Query 작성이 적절한지, 인덱스를 활용하는 조건인지 확인해주세요.
+        - N+1 문제, 페치 조인/EntityGraph 사용의 적절성을 검토해주세요.
+        - 비즈니스 로직이 Repository에 섞이지 않았는지 확인해주세요.
+
+    # ── Domain: Entity ──
+    - path: "src/main/java/com/gaguraczi/paw/domain/**/entity/**/*.java"
+      instructions: |
+        도메인별 JPA Entity입니다.
+        - global.entity.BaseEntity를 상속하고 Auditing(createdAt, updatedAt)이 적용되는지 확인해주세요.
+        - 연관관계 매핑(~ToOne은 FetchType.LAZY), 불필요한 양방향 매핑, 식별자 생성 전략을 검토해주세요.
+        - 무분별한 @Setter 사용을 지양하고 엔티티의 객체지향적 무결성이 지켜지는지 확인해주세요.
+
+    # ── Domain: Enums ──
+    - path: "src/main/java/com/gaguraczi/paw/domain/**/enums/**/*.java"
+      instructions: |
+        도메인별 Enum입니다.
+        - @Enumerated(EnumType.STRING) 사용을 권장하며, DB 저장 값과 일치하는지 확인해주세요.
+        - 비즈니스 의미가 명확한 이름인지 검토해주세요.
+
+    # ── Domain: Exception / ErrorCode ──
+    - path: "src/main/java/com/gaguraczi/paw/domain/**/{exception,exeption}/**/*.java"
+      instructions: |
+        도메인별 예외 및 ErrorCode입니다.
+        - BaseErrorCode 인터페이스를 구현하고, HTTP 상태 코드·에러 코드·메시지가 일관된 형식인지 확인해주세요.
+        - GeneralException.of(도메인ErrorCode)로 사용되는지 검토해주세요.
+
+    # ── Global: Controller ──
+    - path: "src/main/java/com/gaguraczi/paw/global/controller/**/*Controller.java"
+      instructions: |
+        전역(헬스체크 등) Controller입니다.
+        - 도메인 비즈니스 로직이 포함되지 않았는지, 인프라/헬스체크 목적에 맞는지 확인해주세요.
+
+    # ── Global: API Response & Code ──
+    - path: "src/main/java/com/gaguraczi/paw/global/api/**/*.java"
+      instructions: |
+        공통 API 응답 래퍼 및 에러/성공 코드입니다.
+        - ApiResponse<T>의 isSuccess, code, message, result 구조가 일관되게 유지되는지 확인해주세요.
+        - BaseErrorCode/BaseSuccessCode 인터페이스 구현이 올바른지, HTTP 상태 코드 매핑이 적절한지 검토해주세요.
+        - GlobalSuccessHandler가 ApiResponse의 httpStatus를 실제 응답에 반영하는 흐름이 깨지지 않았는지 확인해주세요.
+
+    # ── Global: Exception ──
+    - path: "src/main/java/com/gaguraczi/paw/global/exception/**/*.java"
+      instructions: |
+        전역 예외 처리(@RestControllerAdvice)입니다.
+        - GeneralException, MethodArgumentNotValidException 등이 ApiResponse 형식으로 일관되게 반환되는지 확인해주세요.
+        - 스택 트레이스 등 내부 정보가 응답에 노출되지 않는지 검토해주세요.
+        - 도메인별 ErrorCode 분기 처리가 적절한지 확인해주세요.
+
+    # ── Global: Security ──
+    - path: "src/main/java/com/gaguraczi/paw/global/security/**/*.java"
+      instructions: |
+        JWT 인증 및 OAuth2 보안 관련 클래스입니다.
+        - 토큰 생성/검증 로직의 안전성, 만료 처리, Secret Key 관리가 적절한지 확인해주세요.
+        - JwtAuthenticationFilter의 인증 필터 체인 동작이 올바른지 검토해주세요.
+        - OAuth2 쿠키 저장소에 민감 정보가 안전하게 처리되는지 확인해주세요.
+
+    # ── Global: Config ──
+    - path: "src/main/java/com/gaguraczi/paw/global/config/**/*.java"
+      instructions: |
+        Spring 설정 클래스입니다.
+        - @Configuration, Bean 정의가 적절한지 확인해주세요.
+        - SecurityConfig의 인가 규칙(permitAll/authenticated)이 올바른지 검토해주세요.
+        - properties 클래스(@ConfigurationProperties)에 민감 정보가 하드코딩되지 않았는지 확인해주세요.
+
+    # ── Global: Entity / Persistence / Redis / Util ──
+    - path: "src/main/java/com/gaguraczi/paw/global/{entity,persistence,redis,util}/**/*.java"
+      instructions: |
+        전역 공통 인프라 클래스입니다.
+        - BaseEntity의 Auditing 설정, 커스텀 UserType(PGpoint 등), Redis 저장소, 유틸리티가
+          도메인 로직과 분리되어 있는지 확인해주세요.
+        - CookieUtils 등 유틸에서 보안 관련 설정(Secure, HttpOnly, SameSite)이 적절한지 검토해주세요.
+
+    # ── Database Migration ──
+    - path: "src/main/resources/db/migration/**"
+      instructions: |
+        데이터베이스 마이그레이션(Flyway/Liquibase) 스크립트입니다.
+        - 스키마 변경의 마이그레이션 안전성, 인덱스/외래키 설정을 확인해주세요.
+        - 기존 데이터 무결성 및 락(Lock) 경합에 미치는 영향을 검토해주세요.
+
+chat:
+  auto_reply: true

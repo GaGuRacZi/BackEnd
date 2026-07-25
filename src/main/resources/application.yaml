@@ -1,0 +1,117 @@
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  profiles:
+    active: local
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+  jpa:
+    # postgis/vector extensions are installed at DB bootstrap by an admin account
+    # (local: compose POSTGRES_MULTIPLE_EXTENSIONS), not by the app role at startup
+    defer-datasource-initialization: false
+  jwt:
+    secret: ${JWT_SECRET}
+    access-exp-ms: ${JWT_EXPIRATION:3600000} # 1시간
+    refresh-exp-ms: ${JWT_REFRESH_EXPIRATION:1209600000} # 14일
+  ai:
+    google:
+      genai:
+        api-key: ${GOOGLE_AI_API_KEY}
+        embedding:
+          api-key: ${GOOGLE_AI_API_KEY}
+
+kakao:
+  user-info-uri: https://kapi.kakao.com/v2/user/me
+
+smtp:
+  host: ${SMTP_HOST:smtp.gmail.com}
+  port: ${SMTP_PORT:587}
+  use-tls: ${SMTP_USE_TLS:true}
+  use-ssl: ${SMTP_USE_SSL:false}
+  skip-cert-verify: ${SMTP_SKIP_CERT_VERIFY:false}
+  timeout-seconds: ${SMTP_TIMEOUT_SECONDS:20}
+  username: ${SMTP_USERNAME:}
+  password: ${SMTP_PASSWORD:}
+  from-email: ${SMTP_FROM_EMAIL:}
+
+cloud:
+  aws:
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
+    region: ${AWS_REGION}
+    s3:
+      bucket: ${AWS_BUCKET}
+      cdn-url: ${AWS_CDN_URL:}
+      path:
+        location: user/
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+
+#Swagger
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+
+  swagger-ui:
+    path: /swagger-ui.html
+    display-request-duration: true
+    operations-sorter: method
+
+---
+# local profile
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${LOCAL_DB_URL}
+    username: ${LOCAL_DB_USERNAME}
+    password: ${LOCAL_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: ${LOCAL_REDIS_HOST}
+      port: ${LOCAL_REDIS_PORT}
+      password: ${LOCAL_REDIS_PASSWORD:}  # 비밀번호 없으면 빈 값
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        use_sql_comments: true
+        default_batch_fetch_size: 1000
+---
+
+# develop profile
+spring:
+  config:
+    activate:
+      on-profile: develop
+  datasource:
+    url: ${AWS_DB_URL}
+    username: ${AWS_DB_USERNAME}
+    password: ${AWS_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: ${VALKEY_HOST}
+      port: ${VALKEY_PORT}
+      ssl:
+        enabled: true
+      timeout: 3s
+      connect-timeout: 3s
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        use_sql_comments: true
+        default_batch_fetch_size: 1000
+

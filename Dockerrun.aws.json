@@ -1,0 +1,14 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "133197900929.dkr.ecr.ap-northeast-2.amazonaws.com/gaguraczi/paw:IMAGE_TAG",
+    "Update": "true"
+  },
+  "Ports": [
+    {
+      "ContainerPort": 8080,
+      "HostPort": 8080
+    }
+  ],
+  "Logging": "/var/log/nginx"
+}
