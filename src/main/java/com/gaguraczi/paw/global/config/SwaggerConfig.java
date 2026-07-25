@@ -16,7 +16,8 @@ import java.util.List;
 public class SwaggerConfig {
 
     /**
-     * Configures the OpenAPI definition for the Paw API, including metadata, JWT bearer security, and the local server.
+     * Configures the OpenAPI definition for the Paw API, including metadata, JWT bearer security,
+     * and local/prod servers.
      *
      * @return the configured OpenAPI definition
      */
@@ -38,20 +39,17 @@ public class SwaggerConfig {
 
         Server localServer = new Server()
                 .url("http://localhost:8080")
-                .description("IssueIssyu Local Server");
+                .description("PawLocal Server");
 
-
-        /* 배포 이후 수정할 것
-        Server httpServer = new Server()
-                .url("https://...")
+        Server prodServer = new Server()
+                .url("https://issueissyu-ai.cloud")
                 .description("Paw Prod Server");
-        */
 
         return new OpenAPI()
                 .info(apiInfo)
                 .addSecurityItem(securityRequirement)
                 .components(components)
-                .servers(List.of(localServer));
+                .servers(List.of(localServer, prodServer));
     }
 
     /**
