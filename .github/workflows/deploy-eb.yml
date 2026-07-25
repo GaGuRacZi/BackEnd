@@ -9,13 +9,14 @@ env:
   AWS_REGION: ap-northeast-2
   ECR_REPOSITORY: gaguraczi/paw
   EB_APPLICATION_NAME: paw
-  EB_ENVIRONMENT_NAME: Paw-env
+  # Repository/Org Actions Variable (not Secret)
+  EB_ENVIRONMENT_NAME: ${{ vars.EB_ENVIRONMENT_NAME }}
 
 jobs:
   deploy:
     runs-on: ubuntu-24.04-arm
     concurrency:
-      group: eb-deploy-${{ env.EB_ENVIRONMENT_NAME }}
+      group: eb-deploy-${{ vars.EB_ENVIRONMENT_NAME }}
       cancel-in-progress: false
     permissions:
       id-token: write
@@ -59,6 +60,8 @@ jobs:
       # Required GitHub Secrets:
       # - AWS_ROLE_ARN: IAM role for GitHub OIDC
       # - EB_ENV_FILE: full env text (SPRING_PROFILES_ACTIVE, AWS_DB_*, VALKEY_*, JWT_*, etc.)
+      # Required GitHub Variables:
+      # - EB_ENVIRONMENT_NAME: Elastic Beanstalk environment name (e.g. Paw-env)
       # Sensitive AWS_DB_*, VALKEY_*, JWT_* values are stored in Secrets Manager and
       # referenced via aws:elasticbeanstalk:application:environmentsecrets.
       # The EB instance profile is granted GetSecretValue on those secret ARNs.
@@ -80,43 +83,67 @@ jobs:
 
           SENSITIVE_KEY_RE = re.compile(r"^(AWS_DB_|VALKEY_|JWT_)")
 
-          def aws_json(args):
-              out = subprocess.check_output(["aws", *args, "--output", "json"], text=True)
+          def aws_json(args, stdin=None):
+              out = subprocess.check_output(
+                  ["aws", *args, "--output", "json"],
+                  input=stdin,
+                  text=True,
+              )
               return json.loads(out) if out.strip() else None
 
+          def describe_secret(secret_name):
+              result = subprocess.run(
+                  [
+                      "aws",
+                      "secretsmanager",
+                      "describe-secret",
+                      "--secret-id",
+                      secret_name,
+                      "--output",
+                      "json",
+                  ],
+                  capture_output=True,
+                  text=True,
+              )
+              if result.returncode == 0:
+                  return json.loads(result.stdout)
+              if "ResourceNotFoundException" in result.stderr:
+                  return None
+              raise subprocess.CalledProcessError(
+                  result.returncode,
+                  result.args,
+                  output=result.stdout,
+                  stderr=result.stderr,
+              )
+
           def upsert_secret(secret_name, value):
-              try:
-                  described = aws_json(
-                      [
-                          "secretsmanager",
-                          "describe-secret",
-                          "--secret-id",
-                          secret_name,
-                      ]
-                  )
-                  aws_json(
+              described = describe_secret(secret_name)
+              if described:
+                  updated = aws_json(
                       [
                           "secretsmanager",
                           "update-secret",
                           "--secret-id",
                           secret_name,
                           "--secret-string",
-                          value,
-                      ]
+                          "file:///dev/stdin",
+                      ],
+                      stdin=value,
                   )
-                  return described["ARN"]
-              except subprocess.CalledProcessError:
-                  created = aws_json(
-                      [
-                          "secretsmanager",
-                          "create-secret",
-                          "--name",
-                          secret_name,
-                          "--secret-string",
-                          value,
-                      ]
-                  )
-                  return created["ARN"]
+                  return updated["ARN"]
+
+              created = aws_json(
+                  [
+                      "secretsmanager",
+                      "create-secret",
+                      "--name",
+                      secret_name,
+                      "--secret-string",
+                      "file:///dev/stdin",
+                  ],
+                  stdin=value,
+              )
+              return created["ARN"]
 
           options = []
           options_to_remove = []

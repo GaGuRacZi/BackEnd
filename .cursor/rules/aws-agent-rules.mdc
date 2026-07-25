@@ -1,6 +1,6 @@
 # AWS Guidance
 
-- Prefer the AWS MCP Server for AWS interactions — it provides sandboxed
+- Prefer the AWS MCP Server for AWS interactions - it provides sandboxed
   execution, observability, and audit logging. If unavailable, use the
   AWS CLI directly.
 - Before starting a task, check whether a relevant AWS skill is available.
@@ -36,5 +36,4 @@
     values are injected as environment variables at instance bootstrap.
   - When native integration does not apply, least-privilege SDK or CLI
     retrieval by the runtime role (scoped `GetSecretValue` / decrypt) is
-    allowed. Prefer not to print or echo secret values into logs or agent
-    context.
+    allowed. MUST NOT print or echo secret values into logs or agent context.
