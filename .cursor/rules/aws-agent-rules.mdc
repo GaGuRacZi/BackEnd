@@ -19,8 +19,22 @@
 ## Secret Safety
 
 - MUST load the `aws-secrets-manager` skill first for any secret,
-  credential, API key, token, or password task. MUST NOT call
-  `secretsmanager get-secret-value` or `batch-get-secret-value`, and MUST
-  NOT hit the Secrets Manager Agent daemon directly. MUST use
-  `{{resolve:secretsmanager:secret-id:SecretString:json-key}}` with
-  `asm-exec` so the secret resolves at runtime without entering context.
+  credential, API key, token, or password task.
+- Context matters — do not apply one universal retrieval ban to every path:
+
+  **CloudFormation / template resolution**
+  - MUST NOT call `secretsmanager get-secret-value` or
+    `batch-get-secret-value`, and MUST NOT hit the Secrets Manager Agent
+    daemon directly.
+  - MUST use `{{resolve:secretsmanager:secret-id:SecretString:json-key}}`
+    with `asm-exec` so the secret resolves at runtime without entering
+    context.
+
+  **Elastic Beanstalk / other runtime execution**
+  - Prefer the approved EB native Secrets Manager integration
+    (`aws:elasticbeanstalk:application:environmentsecrets` ARN refs) so
+    values are injected as environment variables at instance bootstrap.
+  - When native integration does not apply, least-privilege SDK or CLI
+    retrieval by the runtime role (scoped `GetSecretValue` / decrypt) is
+    allowed. Prefer not to print or echo secret values into logs or agent
+    context.

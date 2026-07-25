@@ -8,12 +8,9 @@ spring:
       enabled: true
       max-file-size: 50MB
       max-request-size: 50MB
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:db/extensions.sql
   jpa:
-    # schema.sql(extensions) must run before Hibernate creates geometry columns
+    # postgis/vector extensions are installed at DB bootstrap by an admin account
+    # (local: compose POSTGRES_MULTIPLE_EXTENSIONS), not by the app role at startup
     defer-datasource-initialization: false
   jwt:
     secret: ${JWT_SECRET}
