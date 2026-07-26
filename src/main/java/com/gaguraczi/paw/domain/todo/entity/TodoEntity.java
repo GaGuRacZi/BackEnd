@@ -1,6 +1,5 @@
-package com.gaguraczi.paw.domain.Todo.entity;
+package com.gaguraczi.paw.domain.todo.entity;
 
-import com.gaguraczi.paw.domain.tag.entity.Tag;
 import com.gaguraczi.paw.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -15,7 +14,7 @@ import java.time.LocalDateTime;
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "todo")
-public class Todo extends BaseEntity {
+public class TodoEntity extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,5 +33,5 @@ public class Todo extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
 
     @JoinColumn(name = "tag_id", nullable = false)
-    private Tag tag;
+    private TagEntity tag;
 }
