@@ -38,10 +38,11 @@ public class User extends BaseEntity {
     private String intro;
 
     @JdbcTypeCode(SqlTypes.GEOMETRY)
-    @Column(name = "user_point",columnDefinition = "geometry(Point,4326)")
+    @Column(name = "user_point", columnDefinition = "geometry(Point,4326)")
     private Point userPoint;
 
-    @Column(name = "email",unique = true)
+    /** 계정 식별용. 유저 간 중복 불가 */
+    @Column(name = "email", unique = true)
     private String email;
 
     @Enumerated(EnumType.STRING)
@@ -49,7 +50,7 @@ public class User extends BaseEntity {
     @Column(name = "role")
     private RoleType role = RoleType.USER;
 
-    @Column(name ="push_token")
+    @Column(name = "push_token")
     private String pushToken;
 
     @Builder.Default
@@ -57,7 +58,22 @@ public class User extends BaseEntity {
     private Integer coin = 0;
 
     @Builder.Default
-    @Column(name="subscribe")
+    @Column(name = "subscribe")
+    @Enumerated(EnumType.STRING)
     private SubscribeType subscribe = SubscribeType.BASIC;
 
+    @Builder.Default
+    @Column(name = "is_new")
+    private boolean isNew = true;
+
+    public void completeOnboarding(String name, String nickname, String intro) {
+        this.name = name;
+        this.nickname = nickname;
+        this.intro = intro;
+        this.isNew = false;
+    }
+
+    public void updateEmail(String email) {
+        this.email = email;
+    }
 }

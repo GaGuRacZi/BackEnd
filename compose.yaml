@@ -1,14 +1,21 @@
 services:
   postgres:
-    image: postgis/postgis:16-3.4
+    # postgis/postgis:18-* is amd64-only; kartoza supports amd64 + arm64 (+ pgvector)
+    build:
+      context: ./docker/postgres
+    image: paw-postgis-pgvector:18-3.6
     environment:
       POSTGRES_DB: paw
+      POSTGRES_DBNAME: paw
       POSTGRES_USER: paw
-      POSTGRES_PASSWORD: paw
+      POSTGRES_PASS: paw
+      ALLOW_IP_RANGE: 0.0.0.0/0
+      POSTGRES_MULTIPLE_EXTENSIONS: postgis,vector
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # PG 18+: data dir is /var/lib/postgresql (not .../data)
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U paw -d paw"]
       interval: 5s

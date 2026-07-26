@@ -1,0 +1,321 @@
+name: Deploy to Elastic Beanstalk
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: gaguraczi/paw
+  EB_APPLICATION_NAME: paw
+  # Repository/Org Actions Variable (not Secret)
+  EB_ENVIRONMENT_NAME: ${{ vars.EB_ENVIRONMENT_NAME }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04-arm
+    concurrency:
+      group: eb-deploy-${{ vars.EB_ENVIRONMENT_NAME }}
+      cancel-in-progress: false
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image metadata
+        id: meta
+        run: |
+          echo "IMAGE_TAG=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_URI=${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/arm64
+          tags: |
+            ${{ steps.meta.outputs.IMAGE_URI }}:${{ steps.meta.outputs.IMAGE_TAG }}
+            ${{ steps.meta.outputs.IMAGE_URI }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Required GitHub Secrets:
+      # - AWS_ROLE_ARN: IAM role for GitHub OIDC
+      # - EB_ENV_FILE: full env text (SPRING_PROFILES_ACTIVE, AWS_DB_*, VALKEY_*, JWT_*, etc.)
+      # Required GitHub Variables:
+      # - EB_ENVIRONMENT_NAME: Elastic Beanstalk environment name (e.g. Paw-env)
+      # Sensitive AWS_DB_*, VALKEY_*, JWT_* values are stored in Secrets Manager and
+      # referenced via aws:elasticbeanstalk:application:environmentsecrets.
+      # The EB instance profile is granted GetSecretValue on those secret ARNs.
+      # Env sync + app version deploy share one update-environment to avoid double restart.
+      - name: Prepare env options
+        env:
+          EB_ENV_FILE: ${{ secrets.EB_ENV_FILE }}
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+
+          raw = os.environ["EB_ENV_FILE"]
+          env_name = os.environ["EB_ENVIRONMENT_NAME"]
+          app_name = os.environ["EB_APPLICATION_NAME"]
+
+          SENSITIVE_KEY_RE = re.compile(r"^(AWS_DB_|VALKEY_|JWT_)")
+
+          def aws_json(args, stdin=None):
+              out = subprocess.check_output(
+                  ["aws", *args, "--output", "json"],
+                  input=stdin,
+                  text=True,
+              )
+              return json.loads(out) if out.strip() else None
+
+          def describe_secret(secret_name):
+              result = subprocess.run(
+                  [
+                      "aws",
+                      "secretsmanager",
+                      "describe-secret",
+                      "--secret-id",
+                      secret_name,
+                      "--output",
+                      "json",
+                  ],
+                  capture_output=True,
+                  text=True,
+              )
+              if result.returncode == 0:
+                  return json.loads(result.stdout)
+              if "ResourceNotFoundException" in result.stderr:
+                  return None
+              raise subprocess.CalledProcessError(
+                  result.returncode,
+                  result.args,
+                  output=result.stdout,
+                  stderr=result.stderr,
+              )
+
+          def upsert_secret(secret_name, value):
+              described = describe_secret(secret_name)
+              if described:
+                  updated = aws_json(
+                      [
+                          "secretsmanager",
+                          "update-secret",
+                          "--secret-id",
+                          secret_name,
+                          "--secret-string",
+                          "file:///dev/stdin",
+                      ],
+                      stdin=value,
+                  )
+                  return updated["ARN"]
+
+              created = aws_json(
+                  [
+                      "secretsmanager",
+                      "create-secret",
+                      "--name",
+                      secret_name,
+                      "--secret-string",
+                      "file:///dev/stdin",
+                  ],
+                  stdin=value,
+              )
+              return created["ARN"]
+
+          options = []
+          secret_arns = []
+          ENV_NS = "aws:elasticbeanstalk:application:environment"
+          SECRET_NS = "aws:elasticbeanstalk:application:environmentsecrets"
+
+          for line_no, line in enumerate(raw.splitlines(), start=1):
+              line = line.strip()
+              if not line or line.startswith("#"):
+                  continue
+              if line.startswith("export "):
+                  line = line[len("export ") :].strip()
+              if "=" not in line:
+                  raise SystemExit(
+                      f"CI error: EB_ENV_FILE line {line_no} is non-empty and non-comment "
+                      f"but missing '=': {line}"
+                  )
+
+              key, value = line.split("=", 1)
+              key = key.strip()
+              value = value.strip().strip('"').strip("'")
+
+              if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+                  raise SystemExit(f"Invalid env key: {key}")
+
+              if SENSITIVE_KEY_RE.match(key):
+                  secret_name = f"paw/eb/{env_name}/{key}"
+                  arn = upsert_secret(secret_name, value)
+                  secret_arns.append(arn)
+                  options.append(
+                      {
+                          "Namespace": SECRET_NS,
+                          "OptionName": key,
+                          "Value": arn,
+                      }
+                  )
+              else:
+                  options.append(
+                      {
+                          "Namespace": ENV_NS,
+                          "OptionName": key,
+                          "Value": value,
+                      }
+                  )
+
+          if not options:
+              raise SystemExit("No environment variables found in EB_ENV_FILE")
+
+          desired = {(opt["Namespace"], opt["OptionName"]) for opt in options}
+
+          settings = aws_json(
+              [
+                  "elasticbeanstalk",
+                  "describe-configuration-settings",
+                  "--application-name",
+                  app_name,
+                  "--environment-name",
+                  env_name,
+              ]
+          )
+          option_settings = settings["ConfigurationSettings"][0]["OptionSettings"]
+
+          options_to_remove = []
+          seen_removals = set()
+          for setting in option_settings:
+              namespace = setting.get("Namespace")
+              name = setting.get("OptionName")
+              if namespace not in (ENV_NS, SECRET_NS) or not name:
+                  continue
+              key = (namespace, name)
+              if key in desired or key in seen_removals:
+                  continue
+              options_to_remove.append({"Namespace": namespace, "OptionName": name})
+              seen_removals.add(key)
+
+          if secret_arns:
+              profile_name = None
+              for setting in option_settings:
+                  if (
+                      setting.get("Namespace") == "aws:autoscaling:launchconfiguration"
+                      and setting.get("OptionName") == "IamInstanceProfile"
+                  ):
+                      profile_name = setting.get("Value")
+                      break
+              if not profile_name:
+                  raise SystemExit(
+                      "Could not resolve EB IamInstanceProfile to grant Secrets Manager access"
+                  )
+
+              profile = aws_json(
+                  ["iam", "get-instance-profile", "--instance-profile-name", profile_name]
+              )
+              roles = profile["InstanceProfile"]["Roles"]
+              if not roles:
+                  raise SystemExit(f"Instance profile {profile_name} has no role")
+              role_name = roles[0]["RoleName"]
+
+              policy_doc = {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                      {
+                          "Sid": "ReadEbEnvironmentSecrets",
+                          "Effect": "Allow",
+                          "Action": ["secretsmanager:GetSecretValue"],
+                          "Resource": secret_arns,
+                      }
+                  ],
+              }
+              subprocess.check_call(
+                  [
+                      "aws",
+                      "iam",
+                      "put-role-policy",
+                      "--role-name",
+                      role_name,
+                      "--policy-name",
+                      "PawEbEnvironmentSecretsAccess",
+                      "--policy-document",
+                      json.dumps(policy_doc),
+                  ]
+              )
+              print(
+                  f"Granted secretsmanager:GetSecretValue on {len(secret_arns)} secrets "
+                  f"to instance role {role_name}"
+              )
+
+          with open("eb-options.json", "w", encoding="utf-8") as file:
+              json.dump(options, file)
+
+          if options_to_remove:
+              with open("eb-options-to-remove.json", "w", encoding="utf-8") as file:
+                  json.dump(options_to_remove, file)
+
+          secret_count = len(secret_arns)
+          plain_count = len(options) - secret_count
+          print(
+              f"Prepared {plain_count} plain env vars and {secret_count} secret refs "
+              f"for single update on {env_name}; removing {len(options_to_remove)} stale options"
+          )
+          PY
+
+      - name: Prepare Dockerrun.aws.json
+        run: |
+          set -euo pipefail
+          sed -i "s/IMAGE_TAG/${{ steps.meta.outputs.IMAGE_TAG }}/g" Dockerrun.aws.json
+          zip deploy.zip Dockerrun.aws.json
+
+      - name: Deploy to Elastic Beanstalk
+        run: |
+          set -euo pipefail
+          VERSION_LABEL="app-$(date +%Y%m%d%H%M%S)-${GITHUB_SHA::7}"
+          BUCKET=$(aws elasticbeanstalk create-storage-location --query S3Bucket --output text)
+
+          aws s3 cp deploy.zip "s3://${BUCKET}/${EB_APPLICATION_NAME}/${VERSION_LABEL}.zip"
+
+          aws elasticbeanstalk create-application-version \
+            --application-name "$EB_APPLICATION_NAME" \
+            --version-label "$VERSION_LABEL" \
+            --source-bundle "S3Bucket=${BUCKET},S3Key=${EB_APPLICATION_NAME}/${VERSION_LABEL}.zip"
+
+          UPDATE_ARGS=(
+            aws elasticbeanstalk update-environment
+            --environment-name "$EB_ENVIRONMENT_NAME"
+            --version-label "$VERSION_LABEL"
+            --option-settings "file://eb-options.json"
+          )
+          if [[ -f eb-options-to-remove.json ]]; then
+            UPDATE_ARGS+=(--options-to-remove "file://eb-options-to-remove.json")
+          fi
+
+          echo "Updating environment with app version ${VERSION_LABEL} and env options in one pass"
+          "${UPDATE_ARGS[@]}"
+
+          aws elasticbeanstalk wait environment-updated \
+            --environment-name "$EB_ENVIRONMENT_NAME"

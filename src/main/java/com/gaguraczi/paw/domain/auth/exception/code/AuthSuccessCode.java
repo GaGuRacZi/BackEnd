@@ -13,6 +13,10 @@ public enum AuthSuccessCode implements BaseSuccessCode {
     NAVER_LOGIN_200_1(HttpStatus.OK, "NAVER_LOGIN_200_1", "처음으로 네이버 로그인에 성공했습니다."),
     NAVER_LOGIN_200_2(HttpStatus.OK, "NAVER_LOGIN_200_2", "로그인에 성공했습니다."),
 
+    // 카카오 로그인 성공 코드
+    KAKAO_LOGIN_200_1(HttpStatus.OK, "KAKAO_LOGIN_200_1", "처음으로 카카오 로그인에 성공했습니다."),
+    KAKAO_LOGIN_200_2(HttpStatus.OK, "KAKAO_LOGIN_200_2", "카카오 로그인에 성공했습니다."),
+
     // 로컬 회원가입 / 로그인 성공 코드
     LOCAL_SIGNUP_200_1(HttpStatus.OK, "LOCAL_SIGNUP_200_1", "회원가입에 성공했습니다."),
     LOCAL_LOGIN_200_1(HttpStatus.OK, "LOCAL_LOGIN_200_1", "처음으로 로컬 로그인에 성공했습니다."),
@@ -21,6 +25,10 @@ public enum AuthSuccessCode implements BaseSuccessCode {
     USERNAME_200(HttpStatus.OK, "USERNAME_200", "사용 가능한 아이디 입니다."),
     TERM_200(HttpStatus.OK, "TERM_200", "약관 동의에 성공했습니다."),
 
+    // 이메일 인증
+    EMAIL_SEND_200(HttpStatus.OK, "EMAIL_SEND_200", "인증번호가 전송되었습니다."),
+    EMAIL_VERIFY_200(HttpStatus.OK, "EMAIL_VERIFY_200", "이메일 인증에 성공했습니다."),
+
     // 전화번호 인증
     PHONE_SEND_200(HttpStatus.OK, "PHONE_SEND_200", "인증번호가 전송되었습니다."),
     PHONE_200(HttpStatus.OK, "PHONE_200", "전화번호 인증 성공"),
@@ -28,6 +36,8 @@ public enum AuthSuccessCode implements BaseSuccessCode {
 
     // 로그인 연동
     LOGIN_LINK_200(HttpStatus.OK, "LOGIN_LINK_200", "로그인 연동 완료"),
+    LOGIN_LINK_201(HttpStatus.OK, "LOGIN_LINK_201", "기존 계정과 연동이 필요합니다. 기존 로그인 수단으로 확인해주세요."),
+    ONBOARDING_EMAIL_200(HttpStatus.OK, "ONBOARDING_EMAIL_200", "이메일이 등록되었습니다."),
     ONBOAREDING_200(HttpStatus.OK, "ONBOAREDING_200", "온보딩 완료"),
 
     REFRESH_200(HttpStatus.OK, "REFRESH_200", "토큰 재발급에 성공했습니다."),
