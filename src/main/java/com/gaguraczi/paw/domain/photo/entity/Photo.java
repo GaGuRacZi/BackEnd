@@ -1,6 +1,7 @@
 package com.gaguraczi.paw.domain.photo.entity;
 
 import com.gaguraczi.paw.domain.community.entity.Community;
+import com.gaguraczi.paw.global.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -20,7 +21,7 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "photo")
-public class Photo {
+public class Photo extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

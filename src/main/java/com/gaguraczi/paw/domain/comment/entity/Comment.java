@@ -2,7 +2,9 @@ package com.gaguraczi.paw.domain.comment.entity;
 
 import com.gaguraczi.paw.domain.community.entity.Community;
 import com.gaguraczi.paw.domain.users.entity.User;
+import com.gaguraczi.paw.global.api.code.GeneralErrorCode;
 import com.gaguraczi.paw.global.entity.BaseEntity;
+import com.gaguraczi.paw.global.exception.GeneralException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -41,6 +43,9 @@ public class Comment extends BaseEntity {
     private String content;
 
     public void update(String content) {
+        if (content == null || content.isBlank()) {
+            throw GeneralException.of(GeneralErrorCode.BAD_REQUEST);
+        }
         this.content = content;
     }
 }

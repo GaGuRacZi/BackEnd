@@ -3,7 +3,9 @@ package com.gaguraczi.paw.domain.community.entity;
 import com.gaguraczi.paw.domain.category.entity.Category;
 import com.gaguraczi.paw.domain.community.enums.PostType;
 import com.gaguraczi.paw.domain.users.entity.User;
+import com.gaguraczi.paw.global.api.code.GeneralErrorCode;
 import com.gaguraczi.paw.global.entity.BaseEntity;
+import com.gaguraczi.paw.global.exception.GeneralException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -64,6 +66,11 @@ public class Community extends BaseEntity {
     }
 
     public void update(String title, String content, PostType postType) {
+        if (title == null || title.isBlank()
+                || content == null || content.isBlank()
+                || postType == null) {
+            throw GeneralException.of(GeneralErrorCode.BAD_REQUEST);
+        }
         this.title = title;
         this.content = content;
         this.postType = postType;

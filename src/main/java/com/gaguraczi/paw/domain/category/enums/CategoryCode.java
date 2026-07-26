@@ -1,7 +1,7 @@
 package com.gaguraczi.paw.domain.category.enums;
 
 public enum CategoryCode {
-    COMMUCATION,
+    COMMUNICATION,
     MARKET,
     REVIEW
 }
