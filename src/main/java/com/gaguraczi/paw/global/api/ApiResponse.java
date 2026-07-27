@@ -3,6 +3,7 @@ package com.gaguraczi.paw.global.api;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.gaguraczi.paw.domain.todo.dto.response.TagResponse;
 import com.gaguraczi.paw.global.api.code.BaseErrorCode;
 import com.gaguraczi.paw.global.api.code.BaseSuccessCode;
 import lombok.AccessLevel;
@@ -73,5 +74,8 @@ public class ApiResponse<T> { // API 응답
                 data,
                 code.getReason().getHttpStatus()
         );
+    }
+
+    public static ApiResponse<TagResponse> success(TagResponse response) {
     }
 }
