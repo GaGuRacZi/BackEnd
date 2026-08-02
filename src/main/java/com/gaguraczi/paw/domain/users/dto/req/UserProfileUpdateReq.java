@@ -1,6 +1,6 @@
-package com.gaguraczi.paw.domain.auth.dto.req;
+package com.gaguraczi.paw.domain.users.dto.req;
 
-import jakarta.validation.constraints.NotBlank;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -8,18 +8,19 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class OnboardingProfileReq {
+@Schema(description = "유저 프로필 수정 요청 (multipart data part JSON)")
+public class UserProfileUpdateReq {
 
-    @NotBlank(message = "이름은 필수입니다.")
     @Size(max = 10, message = "이름은 10자 이내이어야 합니다.")
+    @Schema(description = "보호자 이름", example = "홍길동")
     private String name;
 
-    @NotBlank(message = "닉네임은 필수입니다.")
     @Size(max = 15, message = "닉네임은 15자 이내이어야 합니다.")
     @Pattern(regexp = "^[a-zA-Z0-9가-힣]+$", message = "닉네임은 15자 이내의 영문, 숫자, 한글만 사용 가능합니다.")
+    @Schema(description = "닉네임", example = "길동이")
     private String nickname;
 
-    @NotBlank(message = "한줄소개는 필수입니다.")
-    @Size(max = 200, message = "한줄소개는 200자 이내이어야 합니다.")
+    @Size(max = 30, message = "한줄소개는 30자 이내이어야 합니다.")
+    @Schema(description = "한줄소개", example = "강아지와 산책하는 걸 좋아해요")
     private String intro;
 }

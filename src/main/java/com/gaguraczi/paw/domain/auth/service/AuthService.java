@@ -6,7 +6,7 @@ import com.gaguraczi.paw.domain.auth.dto.req.LinkConfirmKakaoReq;
 import com.gaguraczi.paw.domain.auth.dto.req.LinkConfirmLocalReq;
 import com.gaguraczi.paw.domain.auth.dto.req.LocalLoginReq;
 import com.gaguraczi.paw.domain.auth.dto.req.LocalSignupReq;
-import com.gaguraczi.paw.domain.auth.dto.req.OnboardingProfileReq;
+import com.gaguraczi.paw.domain.auth.dto.req.OnboardingCompleteReq;
 import com.gaguraczi.paw.domain.auth.dto.req.RefreshTokenReq;
 import com.gaguraczi.paw.domain.auth.dto.res.LoginLinkChallengeRes;
 import com.gaguraczi.paw.domain.auth.dto.res.LoginRes;
@@ -17,6 +17,11 @@ import com.gaguraczi.paw.domain.auth.exception.AuthException;
 import com.gaguraczi.paw.domain.auth.exception.code.AuthErrorCode;
 import com.gaguraczi.paw.domain.auth.exception.code.AuthSuccessCode;
 import com.gaguraczi.paw.domain.auth.repository.OAuthRepository;
+import com.gaguraczi.paw.domain.location.dto.res.LegalDistrictAddressRes;
+import com.gaguraczi.paw.domain.location.service.NaverMapService;
+import com.gaguraczi.paw.domain.region.entity.LegalRegion;
+import com.gaguraczi.paw.domain.region.service.LegalRegionService;
+import com.gaguraczi.paw.domain.terms.service.TermsService;
 import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.domain.users.repository.UserRepository;
 import com.gaguraczi.paw.global.api.code.BaseSuccessCode;
@@ -26,6 +31,10 @@ import com.gaguraczi.paw.global.security.JwtTokenProvider;
 import com.gaguraczi.paw.global.security.SecurityUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -55,6 +64,9 @@ public class AuthService {
     private final KakaoApiClient kakaoApiClient;
     private final SecurityUtils securityUtils;
     private final EmailVerificationService emailVerificationService;
+    private final LegalRegionService legalRegionService;
+    private final NaverMapService naverMapService;
+    private final TermsService termsService;
     private final ObjectProvider<AuthService> self;
 
     public record AuthResult(Object result, BaseSuccessCode successCode) {
@@ -181,17 +193,31 @@ public class AuthService {
     }
 
     /**
-     * 카카오 온보딩: 이름, 닉네임, 한줄소개 등록 후 isNew=false
+     * 온보딩 완료: 보호자/위치(좌표→시군구 자동)/약관 저장 후 isNew=false
      */
     @Transactional
-    public AuthResult completeKakaoOnboarding(OnboardingProfileReq req) {
+    public AuthResult completeOnboarding(OnboardingCompleteReq req) {
         User current = securityUtils.currentUser();
 
         if (!current.isNew()) {
             throw AuthException.of(AuthErrorCode.ONBOARDING_400);
         }
 
-        current.completeOnboarding(req.getName(), req.getNickname(), req.getIntro());
+        double latitude = req.getLocation().getLatitude();
+        double longitude = req.getLocation().getLongitude();
+
+        LegalDistrictAddressRes resolved = naverMapService.resolveLegalDistrictCodeAndAddress(longitude, latitude);
+        LegalRegion region = legalRegionService.requireActiveSigunguByLegalDistrictCode(resolved.legalDistrictCode());
+
+        GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+        Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
+        point.setSRID(4326);
+
+        String intro = req.getIntro() == null || req.getIntro().isBlank() ? null : req.getIntro().trim();
+        current.completeOnboarding(req.getName(), req.getNickname(), intro, point, region);
+
+        termsService.saveAgreements(current, req.getAgreements().toMap());
+
         return new AuthResult(null, AuthSuccessCode.ONBOAREDING_200);
     }
 
@@ -375,7 +401,7 @@ public class AuthService {
         User user = userRepository.findById(UUID.fromString(uid))
                 .orElseThrow(() -> AuthException.of(AuthErrorCode.REFRESH_INVALID));
 
-        String accessToken = jwtTokenProvider.createAccessToken(uid);
+        String accessToken = jwtTokenProvider.createAccessToken(uid, user.getRole().name());
         String newRefreshToken = jwtTokenProvider.createRefreshToken(uid, provider);
         boolean rotated = refreshTokenRedisStore.rotate(
                 uid,
@@ -481,7 +507,7 @@ public class AuthService {
 
     private LoginRes issueTokens(User user, String provider) {
         String uid = user.getUid().toString();
-        String accessToken = jwtTokenProvider.createAccessToken(uid);
+        String accessToken = jwtTokenProvider.createAccessToken(uid, user.getRole().name());
         String refreshToken = jwtTokenProvider.createRefreshToken(uid, provider);
 
         refreshTokenRedisStore.save(

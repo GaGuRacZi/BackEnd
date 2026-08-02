@@ -27,7 +27,10 @@ public enum AuthErrorCode implements BaseErrorCode {
     NICKNAME_409(HttpStatus.CONFLICT, "NICKNAME_409", "이미 사용 중인 닉네임입니다."),
     USERNAME_400(HttpStatus.BAD_REQUEST, "USERNAME_400", "아이디는 100자 이내이어야 합니다."),
     USERNAME_409(HttpStatus.CONFLICT, "USERNAME_409", "이미 사용 중인 아이디 입니다."),
-    TERM_400(HttpStatus.BAD_REQUEST, "TERM_400", "필수 약관(SERVICE, PRIVACY)에 모두 동의해야 합니다."),
+    TERM_400(
+            HttpStatus.BAD_REQUEST,
+            "TERM_400",
+            "약관 동의가 올바르지 않습니다. 허용 타입: AGE_OVER_14, TERMS_OF_SERVICE, PRIVACY, PROFILE_EXTRA, MARKETING_PUSH, LOCATION_SERVICE"),
 
     // 이메일 인증
     EMAIL_SEND_400(HttpStatus.BAD_REQUEST, "EMAIL_SEND_400", "인증번호 전송에 실패했습니다."),

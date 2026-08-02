@@ -1,5 +1,6 @@
 package com.gaguraczi.paw.domain.users.entity;
 
+import com.gaguraczi.paw.domain.region.entity.LegalRegion;
 import com.gaguraczi.paw.domain.users.enums.RoleType;
 import com.gaguraczi.paw.domain.users.enums.SubscribeType;
 import com.gaguraczi.paw.global.entity.BaseEntity;
@@ -37,9 +38,19 @@ public class User extends BaseEntity {
     @Column(name = "intro", columnDefinition = "TEXT")
     private String intro;
 
+    @Column(name = "profile_s3_key", length = 255, unique = true)
+    private String profileS3Key;
+
+    @Column(name = "profile_url", columnDefinition = "TEXT")
+    private String profileUrl;
+
     @JdbcTypeCode(SqlTypes.GEOMETRY)
     @Column(name = "user_point", columnDefinition = "geometry(Point,4326)")
     private Point userPoint;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "region_code")
+    private LegalRegion region;
 
     /** 계정 식별용. 유저 간 중복 불가 */
     @Column(name = "email", unique = true)
@@ -66,14 +77,44 @@ public class User extends BaseEntity {
     @Column(name = "is_new")
     private boolean isNew = true;
 
-    public void completeOnboarding(String name, String nickname, String intro) {
+    public void completeOnboarding(
+            String name,
+            String nickname,
+            String intro,
+            Point userPoint,
+            LegalRegion region
+    ) {
         this.name = name;
         this.nickname = nickname;
         this.intro = intro;
+        this.userPoint = userPoint;
+        this.region = region;
         this.isNew = false;
     }
 
     public void updateEmail(String email) {
         this.email = email;
+    }
+
+    public void updateProfile(String name, String nickname, String intro) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (nickname != null) {
+            this.nickname = nickname;
+        }
+        if (intro != null) {
+            this.intro = intro.isBlank() ? null : intro;
+        }
+    }
+
+    public void updateProfileImage(String profileS3Key, String profileUrl) {
+        this.profileS3Key = profileS3Key;
+        this.profileUrl = profileUrl;
+    }
+
+    public void updateLocation(Point userPoint, LegalRegion region) {
+        this.userPoint = userPoint;
+        this.region = region;
     }
 }

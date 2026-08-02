@@ -2,6 +2,7 @@ package com.gaguraczi.paw;
 
 import com.gaguraczi.paw.global.config.properties.JwtProperties;
 import com.gaguraczi.paw.global.config.properties.KakaoProperties;
+import com.gaguraczi.paw.global.config.properties.NaverMapProperties;
 import com.gaguraczi.paw.global.config.properties.SmtpProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -10,7 +11,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-@EnableConfigurationProperties({JwtProperties.class, KakaoProperties.class, SmtpProperties.class})
+@EnableConfigurationProperties({
+		JwtProperties.class,
+		KakaoProperties.class,
+		SmtpProperties.class,
+		NaverMapProperties.class
+})
 public class PawApplication {
 
 	/**

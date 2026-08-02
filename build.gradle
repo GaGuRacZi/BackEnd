@@ -97,3 +97,8 @@ dependencyManagement {
 tasks.named('jar') {
 	enabled = false
 }
+
+// classpath 리소스 변경도 DevTools 재시작 트리거에 포함
+tasks.named('bootRun') {
+	sourceResources sourceSets.main
+}
