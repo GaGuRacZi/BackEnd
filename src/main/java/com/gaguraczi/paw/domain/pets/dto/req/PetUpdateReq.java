@@ -18,11 +18,11 @@ public class PetUpdateReq {
     @Schema(description = "반려동물 종류", example = "DOG")
     private PetType petType;
 
-    @Schema(description = "품종 ID", example = "1")
+    @Schema(description = "품종 ID (GET /breeds 검색 결과의 breedId 권장)", example = "1")
     private Long breedId;
 
     @Size(max = 100, message = "품종명은 100자 이내이어야 합니다.")
-    @Schema(description = "품종명", example = "말티즈")
+    @Schema(description = "품종명 (breedId 없을 때 마스터 이름으로 매핑 시도)", example = "말티즈")
     private String breed;
 
     @Size(max = 50, message = "반려동물 이름은 50자 이내이어야 합니다.")

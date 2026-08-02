@@ -9,7 +9,8 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum BreedSuccessCode implements BaseSuccessCode {
 
-    BREED_SEARCH_200(HttpStatus.OK, "BREED_SEARCH_200", "품종 조회에 성공했습니다.");
+    BREED_SEARCH_200(HttpStatus.OK, "BREED_SEARCH_200", "품종 조회에 성공했습니다."),
+    BREED_SYNC_200(HttpStatus.OK, "BREED_SYNC_200", "품종 동기화에 성공했습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

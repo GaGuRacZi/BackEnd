@@ -15,8 +15,10 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
         name = "breed",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_breed_pet_type_name", columnNames = {"pet_type", "name"})
+        },
         indexes = {
-                @Index(name = "idx_breed_pet_type_name", columnList = "pet_type, name"),
                 @Index(name = "idx_breed_popular", columnList = "pet_type, is_popular")
         }
 )

@@ -23,7 +23,7 @@ public class BreedController {
 
     private final BreedService breedService;
 
-    @Operation(summary = "품종 검색/인기 조회 (데이터 적재 전이면 빈 목록)")
+    @Operation(summary = "품종 검색/인기 조회")
     @GetMapping
     public ApiResponse<List<BreedRes>> search(
             @RequestParam PetType petType,

@@ -35,13 +35,9 @@ public class PetService {
     public PetRes create(PetCreateReq req, MultipartFile image) {
         User user = securityUtils.currentUser();
 
-        Breed breed = null;
-        String breedName = req.getBreed();
-        if (req.getBreedId() != null) {
-            breed = breedService.requireBreed(req.getBreedId(), req.getPetType());
-            breedName = breed.getName();
-        }
-        if ((breedName == null || breedName.isBlank()) && breed == null) {
+        Breed breed = breedService.resolveBreed(req.getBreedId(), req.getBreed(), req.getPetType());
+        String breedName = breed != null ? breed.getName() : blankToNull(req.getBreed());
+        if (breed == null && breedName == null) {
             throw GeneralException.of(PetErrorCode.PET_BREED_REQUIRED);
         }
 
@@ -110,16 +106,11 @@ public class PetService {
 
         boolean breedTouched = req.getBreedId() != null || req.getBreed() != null;
         if (breedTouched) {
-            breed = null;
-            breedName = req.getBreed();
-            if (req.getBreedId() != null) {
-                breed = breedService.requireBreed(req.getBreedId(), petType);
-                breedName = breed.getName();
-            }
-            if ((breedName == null || breedName.isBlank()) && breed == null) {
+            breed = breedService.resolveBreed(req.getBreedId(), req.getBreed(), petType);
+            breedName = breed != null ? breed.getName() : blankToNull(req.getBreed());
+            if (breed == null && breedName == null) {
                 throw GeneralException.of(PetErrorCode.PET_BREED_REQUIRED);
             }
-            breedName = breedName == null ? null : breedName.trim();
         }
 
         pet.update(

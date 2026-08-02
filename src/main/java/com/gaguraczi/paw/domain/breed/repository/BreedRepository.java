@@ -13,6 +13,8 @@ public interface BreedRepository extends JpaRepository<Breed, Long> {
 
     Optional<Breed> findByBreedIdAndPetType(Long breedId, PetType petType);
 
+    Optional<Breed> findByPetTypeAndName(PetType petType, String name);
+
     List<Breed> findByPetTypeAndIsPopularTrueOrderByNameAsc(PetType petType);
 
     @Query("""

@@ -40,4 +40,18 @@ public class BreedService {
         }
         return breed;
     }
+
+    /**
+     * breedId 우선, 없으면 품종명으로 마스터 매핑.
+     * 마스터에 없으면 null을 반환하고 호출측에서 breedName만 저장할 수 있다.
+     */
+    public Breed resolveBreed(Long breedId, String breedName, PetType petType) {
+        if (breedId != null) {
+            return requireBreed(breedId, petType);
+        }
+        if (breedName == null || breedName.isBlank()) {
+            return null;
+        }
+        return breedRepository.findByPetTypeAndName(petType, breedName.trim()).orElse(null);
+    }
 }
