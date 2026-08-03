@@ -9,7 +9,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-public class TagEntity {
     @Entity
     @Getter
     @SuperBuilder
@@ -20,8 +19,9 @@ public class TagEntity {
                     name = "uid_name",
                     columnNames = {"uid", "tag_name"}
             )
+            //태그명 중복 피하려고
     )
-    public static class Tag extends BaseEntity {
+    public class TagEntity extends BaseEntity {
 
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,4 +39,4 @@ public class TagEntity {
         @JoinColumn(name = "uid", nullable = false)
         private User user;
     }
-}
+
