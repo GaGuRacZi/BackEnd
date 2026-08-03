@@ -36,8 +36,8 @@ public class NaverMapReverseGeocodeClient {
         try {
             NaverReverseGeocodeRes response = naverMapRestClient.get()
                     .uri(uriBuilder -> buildUri(uriBuilder, longitude, latitude))
-                    .header("x-ncp-apigw-api-key-id", naverMapProperties.getClientId())
-                    .header("x-ncp-apigw-api-key", naverMapProperties.getClientSecret())
+                    .header("x-ncp-apigw-api-key-id", naverMapProperties.clientId())
+                    .header("x-ncp-apigw-api-key", naverMapProperties.clientSecret())
                     .header("Accept", "application/json")
                     .retrieve()
                     .body(NaverReverseGeocodeRes.class);
@@ -54,7 +54,7 @@ public class NaverMapReverseGeocodeClient {
                     Objects.requireNonNullElse(response.results(), List.of())
             );
         } catch (RestClientException e) {
-            throw GeneralException.of(LocationErrorCode.LOCATION_REVERSE_GEOCODE_API_FAILED);
+            throw GeneralException.of(LocationErrorCode.LOCATION_REVERSE_GEOCODE_API_FAILED, e);
         }
     }
 
@@ -69,8 +69,8 @@ public class NaverMapReverseGeocodeClient {
     }
 
     private void validateApiKeys() {
-        if (naverMapProperties.getClientId() == null || naverMapProperties.getClientId().isBlank()
-                || naverMapProperties.getClientSecret() == null || naverMapProperties.getClientSecret().isBlank()) {
+        if (naverMapProperties.clientId() == null || naverMapProperties.clientId().isBlank()
+                || naverMapProperties.clientSecret() == null || naverMapProperties.clientSecret().isBlank()) {
             throw GeneralException.of(LocationErrorCode.LOCATION_API_KEY_MISSING);
         }
     }

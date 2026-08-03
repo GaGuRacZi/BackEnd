@@ -7,10 +7,14 @@ import com.gaguraczi.paw.domain.region.exception.code.RegionErrorCode;
 import com.gaguraczi.paw.domain.region.repository.LegalRegionRepository;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +22,7 @@ import java.util.List;
 public class LegalRegionService {
 
     private static final int DONG_PREVIEW_LIMIT = 5;
+    private static final int SEARCH_LIMIT = 50;
 
     private final LegalRegionRepository legalRegionRepository;
 
@@ -27,11 +32,23 @@ public class LegalRegionService {
         }
 
         String keyword = q.trim();
-        List<LegalRegion> regions = legalRegionRepository.searchActiveSigungu(keyword);
+        List<LegalRegion> regions = legalRegionRepository.searchActiveSigungu(
+                keyword, PageRequest.of(0, SEARCH_LIMIT));
+
+        List<String> parentCodes = regions.stream().map(LegalRegion::getCode).toList();
+        Map<String, List<LegalRegion>> dongsByParent = parentCodes.isEmpty()
+                ? Map.of()
+                : legalRegionRepository
+                .findByParentCodeInAndLevelAndAbolishedFalseOrderByNameAsc(parentCodes, RegionLevel.DONG)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        LegalRegion::getParentCode,
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
 
         return regions.stream()
-                .limit(50)
-                .map(this::toSearchRes)
+                .map(region -> toSearchRes(region, dongsByParent.getOrDefault(region.getCode(), List.of())))
                 .toList();
     }
 
@@ -50,7 +67,7 @@ public class LegalRegionService {
 
     /**
      * 법정동 10자리 코드에서 시군구(SIGUNGU) LegalRegion을 찾습니다.
-     * 예: 1111010100 → 1111000000, 없으면 상위 1110000000 폴백.
+     * 예: 4111110100 → 4111100000, 없으면 상위 4111000000 폴백.
      */
     public LegalRegion requireActiveSigunguByLegalDistrictCode(String legalDistrictCode) {
         if (legalDistrictCode == null || legalDistrictCode.length() < 5) {
@@ -71,21 +88,13 @@ public class LegalRegionService {
                 .orElseThrow(() -> GeneralException.of(RegionErrorCode.REGION_NOT_FOUND));
     }
 
-    private RegionSearchRes toSearchRes(LegalRegion region) {
-        List<LegalRegion> dongs = legalRegionRepository
-                .findTop20ByParentCodeAndLevelAndAbolishedFalseOrderByNameAsc(
-                        region.getCode(), RegionLevel.DONG);
-
+    private RegionSearchRes toSearchRes(LegalRegion region, List<LegalRegion> dongs) {
         List<String> preview = dongs.stream()
                 .limit(DONG_PREVIEW_LIMIT)
                 .map(d -> shortDongName(d.getName(), region.getName()))
                 .toList();
 
-        return RegionSearchRes.builder()
-                .code(region.getCode())
-                .name(region.getName())
-                .dongPreview(preview)
-                .build();
+        return RegionSearchRes.of(region.getCode(), region.getName(), preview);
     }
 
     private String shortDongName(String fullName, String parentName) {

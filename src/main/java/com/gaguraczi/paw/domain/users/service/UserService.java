@@ -6,7 +6,7 @@ import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.domain.users.exception.code.UserErrorCode;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import com.gaguraczi.paw.global.security.SecurityUtils;
-import com.gaguraczi.paw.utils.S3.S3Dto;
+import com.gaguraczi.paw.utils.ProfileImageValidator;
 import com.gaguraczi.paw.utils.S3.S3Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,28 +56,14 @@ public class UserService {
     }
 
     private void applyProfileImage(User user, MultipartFile image) {
-        if (image.isEmpty()) {
-            throw GeneralException.of(UserErrorCode.USER_PROFILE_IMAGE_EMPTY);
-        }
-        S3Dto uploaded = s3Utils.uploadMultipartUnderDirectory(image, "user");
+        ProfileImageValidator.validate(image);
         String previousKey = user.getProfileS3Key();
-        try {
-            user.updateProfileImage(uploaded.getKey(), uploaded.getUrl());
-        } catch (RuntimeException e) {
-            try {
-                s3Utils.deleteFile(uploaded.getKey());
-            } catch (Exception ex) {
-                log.warn("Failed to cleanup uploaded user profile: {}", uploaded.getKey(), ex);
-            }
-            throw e;
-        }
-        if (previousKey != null && !previousKey.isBlank()) {
-            try {
-                s3Utils.deleteFile(previousKey);
-            } catch (Exception ex) {
-                log.warn("Failed to delete previous user profile: {}", previousKey, ex);
-            }
-        }
+        s3Utils.replaceUnderDirectory(
+                image,
+                "user",
+                previousKey,
+                uploaded -> user.updateProfileImage(uploaded.getKey(), uploaded.getUrl())
+        );
     }
 
     private static String blankToNull(String value) {

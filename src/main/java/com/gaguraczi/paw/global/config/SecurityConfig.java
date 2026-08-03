@@ -68,7 +68,7 @@ public class SecurityConfig {
                                 "/auth/link/confirm/**"
                         ).permitAll()
                         .requestMatchers("/terms", "/terms/**").permitAll()
-                        .requestMatchers("/location/address", "/location/resolve").permitAll()
+                        .requestMatchers("/location/address", "/location/resolve").authenticated()
                         .requestMatchers("/regions/search").permitAll()
                         .requestMatchers(
                                 "/auth/onboarding",

@@ -39,8 +39,8 @@ public class NaverMapGeocodeClient {
                             .queryParam("page", 1)
                             .queryParam("count", 1)
                             .build())
-                    .header("x-ncp-apigw-api-key-id", naverMapProperties.getClientId())
-                    .header("x-ncp-apigw-api-key", naverMapProperties.getClientSecret())
+                    .header("x-ncp-apigw-api-key-id", naverMapProperties.clientId())
+                    .header("x-ncp-apigw-api-key", naverMapProperties.clientSecret())
                     .header("Accept", "application/json")
                     .retrieve()
                     .body(NaverGeocodeRes.class);
@@ -53,13 +53,13 @@ public class NaverMapGeocodeClient {
             }
             return response;
         } catch (RestClientException e) {
-            throw GeneralException.of(LocationErrorCode.LOCATION_GEOCODE_API_FAILED);
+            throw GeneralException.of(LocationErrorCode.LOCATION_GEOCODE_API_FAILED, e);
         }
     }
 
     private void validateApiKeys() {
-        if (naverMapProperties.getClientId() == null || naverMapProperties.getClientId().isBlank()
-                || naverMapProperties.getClientSecret() == null || naverMapProperties.getClientSecret().isBlank()) {
+        if (naverMapProperties.clientId() == null || naverMapProperties.clientId().isBlank()
+                || naverMapProperties.clientSecret() == null || naverMapProperties.clientSecret().isBlank()) {
             throw GeneralException.of(LocationErrorCode.LOCATION_API_KEY_MISSING);
         }
     }

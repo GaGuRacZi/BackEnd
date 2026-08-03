@@ -21,6 +21,7 @@ import com.gaguraczi.paw.domain.location.dto.res.LegalDistrictAddressRes;
 import com.gaguraczi.paw.domain.location.service.NaverMapService;
 import com.gaguraczi.paw.domain.region.entity.LegalRegion;
 import com.gaguraczi.paw.domain.region.service.LegalRegionService;
+import com.gaguraczi.paw.domain.terms.enums.TermsType;
 import com.gaguraczi.paw.domain.terms.service.TermsService;
 import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.domain.users.repository.UserRepository;
@@ -29,6 +30,7 @@ import com.gaguraczi.paw.global.redis.LoginLinkChallengeStore;
 import com.gaguraczi.paw.global.redis.RefreshTokenRedisStore;
 import com.gaguraczi.paw.global.security.JwtTokenProvider;
 import com.gaguraczi.paw.global.security.SecurityUtils;
+import com.gaguraczi.paw.utils.RedisUtil;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
@@ -47,6 +49,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -68,6 +71,10 @@ public class AuthService {
     private final NaverMapService naverMapService;
     private final TermsService termsService;
     private final ObjectProvider<AuthService> self;
+    private final RedisUtil redisUtil;
+
+    private static final String ONBOARDING_LOCK_PREFIX = "onboarding:";
+    private static final long ONBOARDING_LOCK_TTL_SECONDS = 60;
 
     public record AuthResult(Object result, BaseSuccessCode successCode) {
     }
@@ -193,31 +200,70 @@ public class AuthService {
     }
 
     /**
-     * 온보딩 완료: 보호자/위치(좌표→시군구 자동)/약관 저장 후 isNew=false
+     * 온보딩 완료: 보호자/위치(좌표→시군구 자동)/약관 저장 후 isNew=false.
+     * 외부 API는 트랜잭션 밖에서 호출하고, 저장만 completeOnboardingTx에서 처리합니다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public AuthResult completeOnboarding(OnboardingCompleteReq req) {
         User current = securityUtils.currentUser();
+        UUID uid = current.getUid();
+        String lockKey = ONBOARDING_LOCK_PREFIX + uid;
+
+        if (!redisUtil.setIfAbsent(lockKey, "1", ONBOARDING_LOCK_TTL_SECONDS)) {
+            throw AuthException.of(AuthErrorCode.ONBOARDING_400);
+        }
+
+        try {
+            if (!current.isNew()) {
+                throw AuthException.of(AuthErrorCode.ONBOARDING_400);
+            }
+
+            double latitude = req.location().latitude();
+            double longitude = req.location().longitude();
+
+            LegalDistrictAddressRes resolved =
+                    naverMapService.resolveLegalDistrictCodeAndAddress(longitude, latitude);
+            LegalRegion region =
+                    legalRegionService.requireActiveSigunguByLegalDistrictCode(resolved.legalDistrictCode());
+
+            GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+            Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
+            point.setSRID(4326);
+
+            String intro = req.intro() == null || req.intro().isBlank() ? null : req.intro().trim();
+            return self.getObject().completeOnboardingTx(
+                    uid,
+                    req.name(),
+                    req.nickname(),
+                    intro,
+                    point,
+                    region,
+                    req.agreements().toMap()
+            );
+        } finally {
+            redisUtil.deleteData(lockKey);
+        }
+    }
+
+    @Transactional
+    public AuthResult completeOnboardingTx(
+            UUID uid,
+            String name,
+            String nickname,
+            String intro,
+            Point point,
+            LegalRegion region,
+            Map<TermsType, Boolean> agreements
+    ) {
+        User current = userRepository.findByIdForUpdate(uid)
+                .orElseThrow(() -> AuthException.of(AuthErrorCode.ONBOARDING_400));
 
         if (!current.isNew()) {
             throw AuthException.of(AuthErrorCode.ONBOARDING_400);
         }
 
-        double latitude = req.getLocation().getLatitude();
-        double longitude = req.getLocation().getLongitude();
-
-        LegalDistrictAddressRes resolved = naverMapService.resolveLegalDistrictCodeAndAddress(longitude, latitude);
-        LegalRegion region = legalRegionService.requireActiveSigunguByLegalDistrictCode(resolved.legalDistrictCode());
-
-        GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
-        Point point = geometryFactory.createPoint(new Coordinate(longitude, latitude));
-        point.setSRID(4326);
-
-        String intro = req.getIntro() == null || req.getIntro().isBlank() ? null : req.getIntro().trim();
-        current.completeOnboarding(req.getName(), req.getNickname(), intro, point, region);
-
-        termsService.saveAgreements(current, req.getAgreements().toMap());
-
+        current.completeOnboarding(name, nickname, intro, point, region);
+        termsService.saveAgreements(current, agreements);
         return new AuthResult(null, AuthSuccessCode.ONBOAREDING_200);
     }
 

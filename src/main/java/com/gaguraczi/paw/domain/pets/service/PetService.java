@@ -35,8 +35,8 @@ public class PetService {
     public PetRes create(PetCreateReq req, MultipartFile image) {
         User user = securityUtils.currentUser();
 
-        Breed breed = breedService.resolveBreed(req.getBreedId(), req.getBreed(), req.getPetType());
-        String breedName = breed != null ? breed.getName() : blankToNull(req.getBreed());
+        Breed breed = breedService.resolveBreed(req.breedId(), req.breed(), req.petType());
+        String breedName = breed != null ? breed.getName() : blankToNull(req.breed());
         if (breed == null && breedName == null) {
             throw GeneralException.of(PetErrorCode.PET_BREED_REQUIRED);
         }
@@ -44,18 +44,18 @@ public class PetService {
         S3Dto uploaded = uploadProfileImage(image);
 
         try {
-            boolean isFirstPet = petRepository.findByUser(user).isEmpty();
+            boolean isFirstPet = !petRepository.existsByUser(user);
 
             Pet pet = Pet.builder()
                     .user(user)
-                    .petType(req.getPetType())
+                    .petType(req.petType())
                     .breed(breed)
                     .breedName(breedName == null ? null : breedName.trim())
-                    .petName(req.getPetName().trim())
-                    .birth(req.getBirth())
-                    .petWeight(req.getPetWeight())
-                    .gender(req.getGender())
-                    .neutering(req.getNeutering())
+                    .petName(req.petName().trim())
+                    .birth(req.birth())
+                    .petWeight(req.petWeight())
+                    .gender(req.gender())
+                    .neutering(req.neutering())
                     .profileS3Key(uploaded != null ? uploaded.getKey() : null)
                     .profileUrl(uploaded != null ? uploaded.getUrl() : null)
                     .isMain(isFirstPet)
@@ -63,7 +63,9 @@ public class PetService {
             petRepository.save(pet);
             return PetRes.from(pet);
         } catch (RuntimeException e) {
-            deleteQuietly(uploaded);
+            if (uploaded != null) {
+                s3Utils.deleteQuietly(uploaded.getKey());
+            }
             throw e;
         }
     }
@@ -85,43 +87,49 @@ public class PetService {
             if (image.isEmpty()) {
                 throw GeneralException.of(PetErrorCode.PET_IMAGE_EMPTY);
             }
-            S3Dto uploaded = s3Utils.uploadMultipartUnderDirectory(image, "pet");
             String previousKey = pet.getProfileS3Key();
-            try {
-                pet.updateProfileImage(uploaded.getKey(), uploaded.getUrl());
-            } catch (RuntimeException e) {
-                deleteQuietly(uploaded);
-                throw e;
-            }
-            deleteQuietly(previousKey);
+            s3Utils.replaceUnderDirectory(
+                    image,
+                    "pet",
+                    previousKey,
+                    uploaded -> pet.updateProfileImage(uploaded.getKey(), uploaded.getUrl())
+            );
         }
 
         return PetRes.from(pet);
     }
 
     private void applyUpdate(Pet pet, PetUpdateReq req) {
-        PetType petType = req.getPetType() != null ? req.getPetType() : pet.getPetType();
+        PetType petType = req.petType() != null ? req.petType() : pet.getPetType();
         Breed breed = pet.getBreed();
         String breedName = pet.getBreedName();
 
-        boolean breedTouched = req.getBreedId() != null || req.getBreed() != null;
+        boolean breedTouched = req.breedId() != null || req.breed() != null;
+        boolean petTypeChanged = req.petType() != null && req.petType() != pet.getPetType();
+        boolean hasExistingBreed = pet.getBreed() != null
+                || (pet.getBreedName() != null && !pet.getBreedName().isBlank());
+
+        if (petTypeChanged && hasExistingBreed && !breedTouched) {
+            throw GeneralException.of(PetErrorCode.PET_BREED_REQUIRED);
+        }
+
         if (breedTouched) {
-            breed = breedService.resolveBreed(req.getBreedId(), req.getBreed(), petType);
-            breedName = breed != null ? breed.getName() : blankToNull(req.getBreed());
+            breed = breedService.resolveBreed(req.breedId(), req.breed(), petType);
+            breedName = breed != null ? breed.getName() : blankToNull(req.breed());
             if (breed == null && breedName == null) {
                 throw GeneralException.of(PetErrorCode.PET_BREED_REQUIRED);
             }
         }
 
         pet.update(
-                req.getPetType(),
+                req.petType(),
                 breedTouched ? breed : null,
                 breedTouched ? breedName : null,
-                blankToNull(req.getPetName()),
-                req.getBirth(),
-                req.getPetWeight(),
-                req.getGender(),
-                req.getNeutering()
+                blankToNull(req.petName()),
+                req.birth(),
+                req.petWeight(),
+                req.gender(),
+                req.neutering()
         );
     }
 
@@ -133,24 +141,6 @@ public class PetService {
             throw GeneralException.of(PetErrorCode.PET_IMAGE_EMPTY);
         }
         return s3Utils.uploadMultipartUnderDirectory(image, "pet");
-    }
-
-    private void deleteQuietly(S3Dto uploaded) {
-        if (uploaded == null) {
-            return;
-        }
-        deleteQuietly(uploaded.getKey());
-    }
-
-    private void deleteQuietly(String key) {
-        if (key == null || key.isBlank()) {
-            return;
-        }
-        try {
-            s3Utils.deleteFile(key);
-        } catch (Exception ex) {
-            log.warn("Failed to cleanup S3 object: {}", key, ex);
-        }
     }
 
     private static String blankToNull(String value) {

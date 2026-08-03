@@ -8,6 +8,7 @@ import com.gaguraczi.paw.domain.location.exception.code.LocationErrorCode;
 import com.gaguraczi.paw.domain.region.entity.LegalRegion;
 import com.gaguraczi.paw.domain.region.service.LegalRegionService;
 import com.gaguraczi.paw.domain.users.entity.User;
+import com.gaguraczi.paw.domain.users.service.UserLocationWriteService;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import com.gaguraczi.paw.global.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -26,6 +28,7 @@ public class LocationService {
     private final NaverMapService naverMapService;
     private final LegalRegionService legalRegionService;
     private final SecurityUtils securityUtils;
+    private final UserLocationWriteService userLocationWriteService;
 
     public UserLocationRes getMyLocation() {
         User user = securityUtils.currentUser();
@@ -35,19 +38,22 @@ public class LocationService {
         return UserLocationRes.fromUser(user, user.getRegion().getName());
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public UserLocationRes certifyMyLocation(double latitude, double longitude) {
         validateLatLng(latitude, longitude);
         User user = securityUtils.currentUser();
 
-        LegalDistrictAddressRes resolved = naverMapService.resolveLegalDistrictCodeAndAddress(longitude, latitude);
-        LegalRegion region = legalRegionService.requireActiveSigunguByLegalDistrictCode(resolved.legalDistrictCode());
+        LegalDistrictAddressRes resolved =
+                naverMapService.resolveLegalDistrictCodeAndAddress(longitude, latitude);
+        LegalRegion region =
+                legalRegionService.requireActiveSigunguByLegalDistrictCode(resolved.legalDistrictCode());
         Point point = toPoint(longitude, latitude);
 
-        user.updateLocation(point, region);
+        userLocationWriteService.updateLocation(user.getUid(), point, region);
         return UserLocationRes.of(region, resolved.address(), latitude, longitude);
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public AddressRes getRoadAddress(double latitude, double longitude) {
         validateLatLng(latitude, longitude);
         String address = naverMapService.resolveRoadAddress(longitude, latitude);
@@ -56,8 +62,10 @@ public class LocationService {
 
     public CoordinateResolveRes resolve(double latitude, double longitude) {
         validateLatLng(latitude, longitude);
-        LegalDistrictAddressRes resolved = naverMapService.resolveLegalDistrictCodeAndAddress(longitude, latitude);
-        LegalRegion region = legalRegionService.requireActiveSigunguByLegalDistrictCode(resolved.legalDistrictCode());
+        LegalDistrictAddressRes resolved =
+                naverMapService.resolveLegalDistrictCodeAndAddress(longitude, latitude);
+        LegalRegion region =
+                legalRegionService.requireActiveSigunguByLegalDistrictCode(resolved.legalDistrictCode());
         return CoordinateResolveRes.builder()
                 .regionCode(region.getCode())
                 .regionName(region.getName())

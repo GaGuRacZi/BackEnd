@@ -11,5 +11,7 @@ public interface PetRepository extends JpaRepository<Pet, Long> {
 
     List<Pet> findByUser(User user);
 
+    boolean existsByUser(User user);
+
     Optional<Pet> findFirstByUserAndIsMainTrue(User user);
 }

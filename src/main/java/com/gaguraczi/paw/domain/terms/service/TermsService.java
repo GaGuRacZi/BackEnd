@@ -15,9 +15,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +54,12 @@ public class TermsService {
             resolved.putAll(agreements);
         }
 
+        Set<String> existingKeys = new HashSet<>();
+        for (UserAgreement existing : userAgreementRepository.findByUser(user)) {
+            existingKeys.add(existing.getTermsType().name() + ":" + existing.getTermsVersion());
+        }
+
+        List<UserAgreement> toSave = new ArrayList<>();
         for (Terms terms : allTerms) {
             boolean agreed = Boolean.TRUE.equals(resolved.get(terms.getType()));
             if (terms.isRequired() && !agreed) {
@@ -59,13 +68,20 @@ public class TermsService {
             if (!agreed) {
                 continue;
             }
-            userAgreementRepository.save(UserAgreement.builder()
+            String key = terms.getType().name() + ":" + terms.getVersion();
+            if (existingKeys.contains(key)) {
+                continue;
+            }
+            toSave.add(UserAgreement.builder()
                     .user(user)
                     .termsType(terms.getType())
                     .termsVersion(terms.getVersion())
                     .agreed(true)
                     .agreedAt(LocalDateTime.now())
                     .build());
+        }
+        if (!toSave.isEmpty()) {
+            userAgreementRepository.saveAll(toSave);
         }
     }
 }

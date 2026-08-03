@@ -55,7 +55,7 @@ public class LocationController {
 
     @Operation(
             summary = "좌표 → regionCode(시군구) + 주소",
-            description = "온보딩 시 regionCode를 서버에서 확정할 때 사용합니다. 인증 불필요."
+            description = "온보딩 시 regionCode를 서버에서 확정할 때 사용합니다. 인증 필요."
     )
     @GetMapping("/resolve")
     public ApiResponse<CoordinateResolveRes> resolve(

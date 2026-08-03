@@ -57,9 +57,7 @@ public class NaverMapService {
             return null;
         }
         String regionPrefix = buildRegionPrefix(item.region());
-        String number1 = land.number1() == null ? "" : land.number1();
-        String number2 = (land.number2() == null || land.number2().isBlank()) ? "" : "-" + land.number2();
-        String road = (land.name() + " " + number1 + number2).trim();
+        String road = (land.name() + " " + formatLandNumber(land)).trim();
         if (road.isBlank()) {
             return null;
         }
@@ -75,9 +73,7 @@ public class NaverMapService {
                         return null;
                     }
                     String regionPrefix = buildRegionPrefix(item.region());
-                    String number1 = land.number1() == null ? "" : land.number1();
-                    String number2 = (land.number2() == null || land.number2().isBlank()) ? "" : "-" + land.number2();
-                    String jibun = (number1 + number2).trim();
+                    String jibun = formatLandNumber(land).trim();
                     if (jibun.isBlank()) {
                         return null;
                     }
@@ -85,6 +81,12 @@ public class NaverMapService {
                 })
                 .filter(jibun -> jibun != null && !jibun.isBlank())
                 .findFirst();
+    }
+
+    private static String formatLandNumber(NaverReverseGeocodeRes.Land land) {
+        String number1 = land.number1() == null ? "" : land.number1();
+        String number2 = (land.number2() == null || land.number2().isBlank()) ? "" : "-" + land.number2();
+        return number1 + number2;
     }
 
     private Optional<String> resolveRegionAddress(NaverReverseGeocodeRes result) {
