@@ -12,7 +12,9 @@ spring:
     init:
       # postgis/vector extensions are created at app startup via db/extensions.sql
       # (runs before Hibernate DDL; idempotent with IF NOT EXISTS)
+      # ;; so PL/pgSQL DO $$ blocks are not split on inner semicolons
       mode: always
+      separator: ";;"
       schema-locations: classpath:db/extensions.sql,classpath:db/backfill-user-role.sql
   jpa:
     defer-datasource-initialization: false
