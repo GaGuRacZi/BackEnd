@@ -1,5 +1,6 @@
 package com.gaguraczi.paw.domain.users.entity;
 
+import com.gaguraczi.paw.domain.breed.entity.Breed;
 import com.gaguraczi.paw.domain.users.enums.Gender;
 import com.gaguraczi.paw.domain.users.enums.PetType;
 import com.gaguraczi.paw.global.entity.BaseEntity;
@@ -60,6 +61,54 @@ public class Pet extends BaseEntity {
     @Column(name = "is_main")
     private boolean isMain = false;
 
-    @Column(name = "breed", length = 255)
-    private String breed;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "breed_id")
+    private Breed breed;
+
+    /** 표시용 품종명 (마스터 미적재·기타 선택 시) */
+    @Column(name = "breed_name", length = 255)
+    private String breedName;
+
+    public void setMain(Boolean isMain) {
+        this.isMain = isMain;
+    }
+
+    public void updateProfileImage(String profileS3Key, String profileUrl) {
+        this.profileS3Key = profileS3Key;
+        this.profileUrl = profileUrl;
+    }
+
+    public void update(
+            PetType petType,
+            Breed breed,
+            String breedName,
+            String petName,
+            LocalDate birth,
+            BigDecimal petWeight,
+            Gender gender,
+            Boolean neutering
+    ) {
+        if (petType != null) {
+            this.petType = petType;
+        }
+        if (breed != null || breedName != null) {
+            this.breed = breed;
+            this.breedName = breedName;
+        }
+        if (petName != null && !petName.isBlank()) {
+            this.petName = petName.trim();
+        }
+        if (birth != null) {
+            this.birth = birth;
+        }
+        if (petWeight != null) {
+            this.petWeight = petWeight;
+        }
+        if (gender != null) {
+            this.gender = gender;
+        }
+        if (neutering != null) {
+            this.neutering = neutering;
+        }
+    }
 }

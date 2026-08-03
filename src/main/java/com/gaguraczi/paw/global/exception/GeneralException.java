@@ -2,15 +2,23 @@ package com.gaguraczi.paw.global.exception;
 
 import com.gaguraczi.paw.global.api.code.BaseErrorCode;
 import com.gaguraczi.paw.global.api.code.ReasonDTO;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 // 공통 예외 처리
 @Getter
-@AllArgsConstructor
 public class GeneralException extends RuntimeException {
 
   private final BaseErrorCode code;
+
+  public GeneralException(BaseErrorCode code) {
+    super(code.getMessage());
+    this.code = code;
+  }
+
+  public GeneralException(BaseErrorCode code, Throwable cause) {
+    super(code.getMessage(), cause);
+    this.code = code;
+  }
 
   /**
    * Creates an exception associated with the specified error code.
@@ -20,6 +28,17 @@ public class GeneralException extends RuntimeException {
    */
   public static GeneralException of(BaseErrorCode code) {
     return new GeneralException(code);
+  }
+
+  /**
+   * Creates an exception associated with the specified error code and cause.
+   *
+   * @param code the error code associated with the exception
+   * @param cause the underlying cause
+   * @return a new exception containing the specified error code and cause
+   */
+  public static GeneralException of(BaseErrorCode code, Throwable cause) {
+    return new GeneralException(code, cause);
   }
 
   /**
