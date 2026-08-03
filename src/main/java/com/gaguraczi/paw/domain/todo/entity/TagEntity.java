@@ -14,7 +14,13 @@ public class TagEntity {
     @Getter
     @SuperBuilder
     @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    @Table(name = "tag")
+    @Table(
+            name = "tag",
+            uniqueConstraints = @UniqueConstraint(
+                    name = "uid_name",
+                    columnNames = {"uid", "tag_name"}
+            )
+    )
     public static class Tag extends BaseEntity {
 
         @Id

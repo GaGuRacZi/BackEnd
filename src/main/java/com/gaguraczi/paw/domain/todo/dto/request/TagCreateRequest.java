@@ -5,9 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-    /**
-     * 태그 생성 요청 DTO
-     */
     public record TagCreateRequest(
 
             @NotBlank(message = "태그 이름은 필수입니다.")
