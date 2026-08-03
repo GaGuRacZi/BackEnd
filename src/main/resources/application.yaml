@@ -13,7 +13,7 @@ spring:
       # postgis/vector extensions are created at app startup via db/extensions.sql
       # (runs before Hibernate DDL; idempotent with IF NOT EXISTS)
       mode: always
-      schema-locations: classpath:db/extensions.sql
+      schema-locations: classpath:db/extensions.sql,classpath:db/backfill-user-role.sql
   jpa:
     defer-datasource-initialization: false
   jwt:

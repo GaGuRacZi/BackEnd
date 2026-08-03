@@ -30,7 +30,7 @@ public class PetSchemaInitializer implements ApplicationRunner {
             jdbcTemplate.execute(SQL);
             log.info("Ensured partial unique index uk_pet_one_main_per_user");
         } catch (Exception e) {
-            log.warn("Failed to create uk_pet_one_main_per_user (table may not exist yet): {}", e.getMessage());
+            log.error("Failed to create uk_pet_one_main_per_user (table may not exist yet)", e);
         }
     }
 }

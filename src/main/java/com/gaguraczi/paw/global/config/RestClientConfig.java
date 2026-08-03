@@ -15,11 +15,6 @@ public class RestClientConfig {
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);
 
     @Bean
-    public RestClient.Builder restClientBuilder() {
-        return RestClient.builder();
-    }
-
-    @Bean
     public RestClient naverMapRestClient(RestClient.Builder restClientBuilder) {
         return restClientBuilder.clone()
                 .requestFactory(ClientHttpRequestFactoryBuilder.detect()

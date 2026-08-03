@@ -58,7 +58,7 @@ public class User extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    @Column(name = "role")
+    @Column(name = "role", nullable = false)
     private RoleType role = RoleType.USER;
 
     @Column(name = "push_token")

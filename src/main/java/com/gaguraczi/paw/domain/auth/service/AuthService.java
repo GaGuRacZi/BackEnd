@@ -208,8 +208,9 @@ public class AuthService {
         User current = securityUtils.currentUser();
         UUID uid = current.getUid();
         String lockKey = ONBOARDING_LOCK_PREFIX + uid;
+        String lockToken = UUID.randomUUID().toString();
 
-        if (!redisUtil.setIfAbsent(lockKey, "1", ONBOARDING_LOCK_TTL_SECONDS)) {
+        if (!redisUtil.setIfAbsent(lockKey, lockToken, ONBOARDING_LOCK_TTL_SECONDS)) {
             throw AuthException.of(AuthErrorCode.ONBOARDING_400);
         }
 
@@ -241,7 +242,7 @@ public class AuthService {
                     req.agreements().toMap()
             );
         } finally {
-            redisUtil.deleteData(lockKey);
+            redisUtil.compareAndDelete(lockKey, lockToken);
         }
     }
 
