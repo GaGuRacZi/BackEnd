@@ -5,6 +5,8 @@ import com.gaguraczi.paw.utils.exception.UtilException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -13,6 +15,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.InputStream;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 
 import static com.gaguraczi.paw.utils.exception.UtilException.Reason.*;
@@ -191,6 +194,58 @@ public class S3Utils {
             log.info("Deleted file from S3: {}", key);
         } catch (Exception e) {
             throw new UtilException(S3_DELETE_FAILED, e);
+        }
+    }
+
+    /**
+     * Uploads a new profile image, applies the domain update, and schedules S3 cleanup:
+     * previous key is deleted after commit; uploaded key is deleted if the transaction rolls back.
+     * If the domain update fails immediately, the uploaded key is deleted synchronously.
+     */
+    public void replaceUnderDirectory(
+            MultipartFile file,
+            String directoryPrefix,
+            String previousKey,
+            Consumer<S3Dto> applyUploaded
+    ) {
+        S3Dto uploaded = uploadMultipartUnderDirectory(file, directoryPrefix);
+        try {
+            applyUploaded.accept(uploaded);
+        } catch (RuntimeException e) {
+            deleteQuietly(uploaded.getKey());
+            throw e;
+        }
+        scheduleReplaceCleanup(previousKey, uploaded.getKey());
+    }
+
+    private void scheduleReplaceCleanup(String previousKey, String uploadedKey) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deleteQuietly(previousKey);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deleteQuietly(previousKey);
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    deleteQuietly(uploadedKey);
+                }
+            }
+        });
+    }
+
+    public void deleteQuietly(String key) {
+        if (key == null || key.isBlank()) {
+            return;
+        }
+        try {
+            deleteFile(key);
+        } catch (Exception ex) {
+            log.warn("Failed to cleanup S3 object: {}", key, ex);
         }
     }
 }
