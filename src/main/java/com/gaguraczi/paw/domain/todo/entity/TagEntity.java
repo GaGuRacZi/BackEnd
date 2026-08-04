@@ -1,8 +1,8 @@
 package com.gaguraczi.paw.domain.todo.entity;
 
-import com.gaguraczi.paw.domain.todo.enums.TagColorEnum;
 import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.global.entity.BaseEntity;
+import com.gaguraczi.paw.domain.todo.enums.TagColor;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -11,7 +11,6 @@ import lombok.experimental.SuperBuilder;
 
     @Entity
     @Getter
-    @SuperBuilder
     @NoArgsConstructor(access = AccessLevel.PROTECTED)
     @Table(
             name = "tag",
@@ -33,7 +32,7 @@ import lombok.experimental.SuperBuilder;
 
         @Enumerated(EnumType.STRING)
         @Column(name = "tag_color", nullable = false)
-        private TagColorEnum.TagColor tagColor;
+        private TagColor tagColor;
 
         @ManyToOne(fetch = FetchType.LAZY)
         @JoinColumn(name = "uid", nullable = false)

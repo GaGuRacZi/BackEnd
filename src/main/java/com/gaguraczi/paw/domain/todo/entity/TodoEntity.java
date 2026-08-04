@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 
 @Entity
 @Getter
-@SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "todo")
 public class TodoEntity extends BaseEntity {
