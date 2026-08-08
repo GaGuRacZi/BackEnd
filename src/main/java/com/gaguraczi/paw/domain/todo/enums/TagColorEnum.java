@@ -1,6 +1,6 @@
 package com.gaguraczi.paw.domain.todo.enums;
 
-public enum TagColor {
+public enum TagColorEnum {
 
        SKYBLUE,
         PINK,
