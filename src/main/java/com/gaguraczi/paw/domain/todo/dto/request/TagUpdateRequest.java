@@ -1,6 +1,6 @@
 package com.gaguraczi.paw.domain.todo.dto.request;
 
-import com.google.firebase.remoteconfig.TagColor;
+import com.gaguraczi.paw.domain.todo.enums.TagColor;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 

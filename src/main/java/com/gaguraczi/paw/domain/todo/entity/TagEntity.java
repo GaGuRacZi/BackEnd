@@ -7,11 +7,12 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
+import lombok.Setter;
 
-    @Entity
+@Entity
     @Getter
     @NoArgsConstructor(access = AccessLevel.PROTECTED)
+    @Setter
     @Table(
             name = "tag",
             uniqueConstraints = @UniqueConstraint(
@@ -37,5 +38,14 @@ import lombok.experimental.SuperBuilder;
         @ManyToOne(fetch = FetchType.LAZY)
         @JoinColumn(name = "uid", nullable = false)
         private User user;
-    }
+
+        public static TagEntity create(User user, String tagName, TagColor tagColor) {
+            TagEntity tag = new TagEntity();
+            tag.user = user;
+            tag.tagName = tagName;
+            tag.tagColor = tagColor;
+            return tag;
+        }
+        }
+
 

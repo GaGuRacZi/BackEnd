@@ -1,14 +1,14 @@
 package com.gaguraczi.paw.domain.todo.dto.response;
 
 import com.gaguraczi.paw.domain.todo.entity.TagEntity;
-import com.gaguraczi.paw.domain.todo.enums.TagColorEnum;
+import com.gaguraczi.paw.domain.todo.enums.TagColor;
 
 public record TagResponse(
         Long tagId,
         String tagName,
-        TagColorEnum.TagColor tagColor
+        TagColor tagColor
 ) {
-    public static TagResponse from(TagEntity.Tag tag) {
+    public static TagResponse from(TagEntity tag) {
         return new TagResponse(
                 tag.getTagId(),
                 tag.getTagName(),
