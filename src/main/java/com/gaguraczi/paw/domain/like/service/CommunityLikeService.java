@@ -12,9 +12,10 @@ import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import com.gaguraczi.paw.global.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.EnumSet;
 import java.util.Optional;
@@ -39,26 +40,36 @@ public class CommunityLikeService {
             throw GeneralException.of(CommunityErrorCode.POST_TYPE_UNSUPPORTED_400);
         }
         User user = securityUtils.currentUser();
+        long currentLikeCount = communityCountRedisStore.getLikeCount(community);
 
         Optional<CommunityLike> existing =
                 communityLikeRepository.findByCommunity_PostIdAndUser_Uid(postId, user.getUid());
         if (existing.isPresent()) {
             communityLikeRepository.delete(existing.get());
-            long likeCount = communityCountRedisStore.decreaseLike(community);
-            return LikeToggleRes.of(false, likeCount);
+            long expected = Math.max(0L, currentLikeCount - 1L);
+            afterCommit(() -> communityCountRedisStore.decreaseLike(community));
+            return LikeToggleRes.of(false, expected);
         }
 
-        try {
-            communityLikeRepository.save(CommunityLike.builder()
-                    .community(community)
-                    .user(user)
-                    .build());
-            long likeCount = communityCountRedisStore.increaseLike(community);
-            return LikeToggleRes.of(true, likeCount);
-        } catch (DataIntegrityViolationException e) {
-            // concurrent insert won — treat as already liked
-            long likeCount = communityCountRedisStore.getLikeCount(community);
-            return LikeToggleRes.of(true, likeCount);
+        int inserted = communityLikeRepository.insertIgnore(postId, user.getUid());
+        if (inserted == 0) {
+            return LikeToggleRes.of(true, currentLikeCount);
         }
+        long expected = currentLikeCount + 1L;
+        afterCommit(() -> communityCountRedisStore.increaseLike(community));
+        return LikeToggleRes.of(true, expected);
+    }
+
+    private void afterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+            return;
+        }
+        action.run();
     }
 }

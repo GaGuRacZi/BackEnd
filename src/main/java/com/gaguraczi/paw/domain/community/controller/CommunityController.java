@@ -1,6 +1,8 @@
 package com.gaguraczi.paw.domain.community.controller;
 
+import com.gaguraczi.paw.domain.community.dto.req.CommunityCreateMultipart;
 import com.gaguraczi.paw.domain.community.dto.req.CommunityCreateReq;
+import com.gaguraczi.paw.domain.community.dto.req.CommunityUpdateMultipart;
 import com.gaguraczi.paw.domain.community.dto.req.CommunityUpdateReq;
 import com.gaguraczi.paw.domain.community.dto.res.CommunityDetailRes;
 import com.gaguraczi.paw.domain.community.dto.res.CommunityListItemRes;
@@ -19,7 +21,6 @@ import com.gaguraczi.paw.global.api.ApiResponse;
 import com.gaguraczi.paw.global.api.CursorPageRes;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Encoding;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -901,57 +902,5 @@ public class CommunityController {
                 CommunitySuccessCode.LIKE_TOGGLE_200,
                 communityLikeService.toggle(postId)
         );
-    }
-
-    @Schema(name = "CommunityCreateMultipart", description = "커뮤니티 게시글 작성 multipart")
-    public static class CommunityCreateMultipart {
-        @Schema(
-                description = "게시글 JSON (CommunityCreateReq)",
-                implementation = CommunityCreateReq.class,
-                requiredMode = Schema.RequiredMode.REQUIRED,
-                example = """
-                        {
-                          "postType": "COMMUNICATION",
-                          "tagCode": "HEALTH_CONSULT",
-                          "title": "산책 친구 구해요",
-                          "content": "주말에 같이 산책하실 분",
-                          "hashTags": ["산책"],
-                          "thumbnailIndex": 0
-                        }
-                        """
-        )
-        public CommunityCreateReq data;
-
-        @Schema(description = "이미지 0~5장", type = "array", maxLength = 5)
-        @ArraySchema(schema = @Schema(type = "string", format = "binary"))
-        public MultipartFile[] images;
-    }
-
-    @Schema(name = "CommunityUpdateMultipart", description = "커뮤니티 게시글 수정 multipart")
-    public static class CommunityUpdateMultipart {
-        @Schema(
-                description = "게시글 수정 JSON (CommunityUpdateReq)",
-                implementation = CommunityUpdateReq.class,
-                requiredMode = Schema.RequiredMode.REQUIRED,
-                example = """
-                        {
-                          "tagCode": "FOOD_SNACK",
-                          "title": "사료 나눔 (예약중)",
-                          "content": "개봉만 했습니다. 내일까지 가능해요.",
-                          "hashTags": ["나눔"],
-                          "keepPhotoUrls": ["https://cdn.example.com/community/10/a.jpg"],
-                          "thumbnailUrl": "https://cdn.example.com/community/10/a.jpg",
-                          "tradeType": "SHARE",
-                          "marketStatus": "RESERVED",
-                          "tradeMethod": "DIRECT",
-                          "regionCode": "1168010100"
-                        }
-                        """
-        )
-        public CommunityUpdateReq data;
-
-        @Schema(description = "신규 이미지", type = "array", maxLength = 5)
-        @ArraySchema(schema = @Schema(type = "string", format = "binary"))
-        public MultipartFile[] images;
     }
 }

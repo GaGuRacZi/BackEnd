@@ -67,6 +67,24 @@ public class AdminBreedController {
                                             """
                             )
                     )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "권한 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "FORBIDDEN",
+                                    value = """
+                                            {
+                                              "isSuccess": false,
+                                              "code": "JWT_403_2",
+                                              "message": "유효하지 않은 token입니다.",
+                                              "result": null
+                                            }
+                                            """
+                            )
+                    )
             )
     })
     @PreAuthorize("hasRole('ADMIN')")

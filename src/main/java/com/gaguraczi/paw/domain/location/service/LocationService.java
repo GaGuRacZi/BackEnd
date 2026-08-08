@@ -36,7 +36,11 @@ public class LocationService {
         if (user.getRegion() == null || user.getUserPoint() == null) {
             throw GeneralException.of(LocationErrorCode.LOCATION_USER_NOT_SET);
         }
-        return UserLocationRes.fromUser(user, user.getRegion().getName());
+        String address = user.getLocationAddress();
+        if (address == null || address.isBlank()) {
+            address = user.getRegion().getName();
+        }
+        return UserLocationRes.fromUser(user, address);
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -50,7 +54,7 @@ public class LocationService {
                 legalRegionService.requireActiveSigunguByLegalDistrictCode(resolved.legalDistrictCode());
         Point point = toPoint(longitude, latitude);
 
-        userLocationWriteService.updateLocation(user.getUid(), point, region);
+        userLocationWriteService.updateLocation(user.getUid(), point, region, resolved.address());
         return UserLocationRes.of(region, resolved.address(), latitude, longitude);
     }
 

@@ -81,7 +81,7 @@ public class AuthService {
 
     @Transactional
     public AuthResult signupLocal(LocalSignupReq req) {
-        String email = normalizeEmail(req.getEmail());
+        String email = normalizeEmail(req.email());
         emailVerificationService.requireVerified(email);
 
         if (oAuthRepository.existsByEmailAndProviderType(email, SocialType.LOCAL)) {
@@ -93,7 +93,7 @@ public class AuthService {
             User user = existingUser.get();
             if (oAuthRepository.existsByUserAndProviderType(user, SocialType.KAKAO)
                     && !oAuthRepository.existsByUserAndProviderType(user, SocialType.LOCAL)) {
-                return createKakaoConfirmChallenge(user, email, req.getPassword());
+                return createKakaoConfirmChallenge(user, email, req.password());
             }
             throw AuthException.of(AuthErrorCode.LOCAL_SIGNUP_409_1);
         }
@@ -108,7 +108,7 @@ public class AuthService {
             throw AuthException.of(AuthErrorCode.LOCAL_SIGNUP_409_1);
         }
 
-        linkLocalOAuth(user, email, passwordEncoder.encode(req.getPassword()));
+        linkLocalOAuth(user, email, passwordEncoder.encode(req.password()));
         emailVerificationService.consumeVerified(email);
 
         LoginRes loginRes = issueTokens(user, SocialType.LOCAL.name());
@@ -265,7 +265,7 @@ public class AuthService {
 
         current.completeOnboarding(name, nickname, intro, point, region);
         termsService.saveAgreements(current, agreements);
-        return new AuthResult(null, AuthSuccessCode.ONBOAREDING_200);
+        return new AuthResult(null, AuthSuccessCode.ONBOARDING_200);
     }
 
     /**

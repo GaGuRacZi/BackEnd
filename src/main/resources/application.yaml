@@ -15,7 +15,7 @@ spring:
       # ;; so PL/pgSQL DO $$ blocks are not split on inner semicolons
       mode: always
       separator: ";;"
-      schema-locations: classpath:db/extensions.sql,classpath:db/backfill-user-role.sql,classpath:db/seed-community-tags.sql,classpath:db/comment-cycle-guard.sql
+      schema-locations: classpath:db/extensions.sql,classpath:db/backfill-user-role.sql
   jpa:
     defer-datasource-initialization: false
   jwt:
@@ -72,6 +72,10 @@ springdoc:
     path: /swagger-ui.html
     display-request-duration: true
     operations-sorter: method
+
+paw:
+  swagger:
+    prod-server-url: ${PAW_SWAGGER_PROD_SERVER_URL:https://issueissyu-ai.cloud}
 
 ---
 # local profile
@@ -133,3 +137,16 @@ spring:
         use_sql_comments: true
         default_batch_fetch_size: 1000
 
+
+---
+# prod profile — swagger/docs disabled
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

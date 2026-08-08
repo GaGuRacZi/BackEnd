@@ -110,6 +110,24 @@ public class TermsController {
                     )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "지원하지 않는 TermsType",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "COMMON_400",
+                                    value = """
+                                            {
+                                              "isSuccess": false,
+                                              "code": "COMMON_400",
+                                              "message": "잘못된 요청입니다.",
+                                              "result": null
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
                     description = "TERMS_404",
                     content = @Content(

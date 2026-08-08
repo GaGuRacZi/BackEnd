@@ -574,9 +574,9 @@ public class AuthController {
                     content = @Content(
                             mediaType = "application/json",
                             examples = @ExampleObject(
-                                    name = "ONBOAREDING_200",
+                                    name = "ONBOARDING_200",
                                     value = """
-                                            {"isSuccess":true,"code":"ONBOAREDING_200","message":"온보딩 완료","result":null}
+                                            {"isSuccess":true,"code":"ONBOARDING_200","message":"온보딩 완료","result":null}
                                             """
                             )
                     )

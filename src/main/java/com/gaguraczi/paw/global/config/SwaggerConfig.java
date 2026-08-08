@@ -7,6 +7,7 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springdoc.core.models.GroupedOpenApi;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,11 +16,12 @@ import java.util.List;
 @Configuration
 public class SwaggerConfig {
 
+    @Value("${paw.swagger.prod-server-url}")
+    private String prodServerUrl;
+
     /**
      * Configures the OpenAPI definition for the Paw API, including metadata, JWT bearer security,
-     * and local/prod servers.
-     *
-     * @return the configured OpenAPI definition
+     * and local/prod servers. Local remains first so Try it out defaults to the local server.
      */
     @Bean
     public OpenAPI openAPI() {
@@ -50,10 +52,10 @@ public class SwaggerConfig {
 
         Server localServer = new Server()
                 .url("http://localhost:8080")
-                .description("PawLocal Server");
+                .description("Paw Local Server");
 
         Server prodServer = new Server()
-                .url("https://issueissyu-ai.cloud")
+                .url(prodServerUrl)
                 .description("Paw Prod Server");
 
         return new OpenAPI()

@@ -70,20 +70,33 @@ public class BreedController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "BREED_400",
+                    description = "COMMON_400 / BREED_400",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "petType 누락",
-                                    value = """
-                                            {
-                                              "isSuccess": false,
-                                              "code": "BREED_400",
-                                              "message": "반려동물 종류(petType)는 필수입니다.",
-                                              "result": null
-                                            }
-                                            """
-                            )
+                            examples = {
+                                    @ExampleObject(
+                                            name = "petType 누락",
+                                            value = """
+                                                    {
+                                                      "isSuccess": false,
+                                                      "code": "COMMON_400",
+                                                      "message": "잘못된 요청입니다.",
+                                                      "result": null
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "지원하지 않는 petType",
+                                            value = """
+                                                    {
+                                                      "isSuccess": false,
+                                                      "code": "COMMON_400",
+                                                      "message": "잘못된 요청입니다.",
+                                                      "result": null
+                                                    }
+                                                    """
+                                    )
+                            }
                     )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(

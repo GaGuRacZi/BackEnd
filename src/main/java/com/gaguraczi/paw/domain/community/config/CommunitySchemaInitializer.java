@@ -1,8 +1,5 @@
 package com.gaguraczi.paw.domain.community.config;
 
-import com.gaguraczi.paw.domain.community.entity.CommunityTag;
-import com.gaguraczi.paw.domain.community.enums.CommunityTagCode;
-import com.gaguraczi.paw.domain.community.repository.CommunityTagRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -12,13 +9,13 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StreamUtils;
 
 import java.nio.charset.StandardCharsets;
 
 /**
  * Seeds Figma community tags and installs comment cycle-guard after Hibernate DDL.
+ * Tag seeding runs in its own transaction; cycle-guard JDBC runs outside that boundary.
  */
 @Slf4j
 @Component
@@ -26,32 +23,13 @@ import java.nio.charset.StandardCharsets;
 @RequiredArgsConstructor
 public class CommunitySchemaInitializer implements ApplicationRunner {
 
-    private final CommunityTagRepository communityTagRepository;
+    private final CommunityTagSeeder communityTagSeeder;
     private final JdbcTemplate jdbcTemplate;
 
     @Override
-    @Transactional
     public void run(@NonNull ApplicationArguments args) {
-        seedTags();
+        communityTagSeeder.seedTags();
         applyCycleGuard();
-    }
-
-    private void seedTags() {
-        int inserted = 0;
-        for (CommunityTagCode code : CommunityTagCode.values()) {
-            if (communityTagRepository.existsByPostTypeAndTagCode(code.getPostType(), code.name())) {
-                continue;
-            }
-            communityTagRepository.save(CommunityTag.builder()
-                    .postType(code.getPostType())
-                    .tagName(code.getTagName())
-                    .tagCode(code.name())
-                    .sortOrder(code.getSortOrder())
-                    .isActive(true)
-                    .build());
-            inserted++;
-        }
-        log.info("Community tags seeded (inserted={})", inserted);
     }
 
     private void applyCycleGuard() {

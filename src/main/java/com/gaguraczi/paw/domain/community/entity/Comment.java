@@ -24,7 +24,7 @@ import java.util.Objects;
 @Table(
         name = "comment",
         indexes = {
-                @Index(name = "idx_comment_post_id", columnList = "post_id"),
+                @Index(name = "idx_comment_post_created_id", columnList = "post_id, created_at, comment_id"),
                 @Index(name = "idx_comment_parent_id", columnList = "parent_id"),
                 @Index(name = "idx_comment_uid_created", columnList = "uid, created_at")
         }

@@ -14,15 +14,20 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+
 @Tag(name = "location", description = "위치 인증/조회 (네이버 지도 + 법정동)")
 @RestController
 @RequestMapping("/location")
+@Validated
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public class LocationController {
 
@@ -217,9 +222,15 @@ public class LocationController {
     @PostMapping("/user/cert")
     public ApiResponse<UserLocationRes> certifyMyLocation(
             @Parameter(description = "위도", example = "37.5665", required = true)
-            @RequestParam double lat,
+            @RequestParam
+            @DecimalMin(value = "-90.0", message = "위도는 -90 이상이어야 합니다.")
+            @DecimalMax(value = "90.0", message = "위도는 90 이하여야 합니다.")
+            double lat,
             @Parameter(description = "경도", example = "126.9780", required = true)
-            @RequestParam double lng
+            @RequestParam
+            @DecimalMin(value = "-180.0", message = "경도는 -180 이상이어야 합니다.")
+            @DecimalMax(value = "180.0", message = "경도는 180 이하여야 합니다.")
+            double lng
     ) {
         return ApiResponse.onSuccess(
                 LocationSuccessCode.LOCATION_USER_CERT_200,
@@ -310,9 +321,15 @@ public class LocationController {
     @GetMapping("/address")
     public ApiResponse<AddressRes> getRoadAddress(
             @Parameter(description = "위도", example = "37.5665", required = true)
-            @RequestParam double lat,
+            @RequestParam
+            @DecimalMin(value = "-90.0", message = "위도는 -90 이상이어야 합니다.")
+            @DecimalMax(value = "90.0", message = "위도는 90 이하여야 합니다.")
+            double lat,
             @Parameter(description = "경도", example = "126.9780", required = true)
-            @RequestParam double lng
+            @RequestParam
+            @DecimalMin(value = "-180.0", message = "경도는 -180 이상이어야 합니다.")
+            @DecimalMax(value = "180.0", message = "경도는 180 이하여야 합니다.")
+            double lng
     ) {
         return ApiResponse.onSuccess(
                 LocationSuccessCode.LOCATION_ADDRESS_200,
@@ -420,9 +437,15 @@ public class LocationController {
     @GetMapping("/resolve")
     public ApiResponse<CoordinateResolveRes> resolve(
             @Parameter(description = "위도", example = "37.5665", required = true)
-            @RequestParam double lat,
+            @RequestParam
+            @DecimalMin(value = "-90.0", message = "위도는 -90 이상이어야 합니다.")
+            @DecimalMax(value = "90.0", message = "위도는 90 이하여야 합니다.")
+            double lat,
             @Parameter(description = "경도", example = "126.9780", required = true)
-            @RequestParam double lng
+            @RequestParam
+            @DecimalMin(value = "-180.0", message = "경도는 -180 이상이어야 합니다.")
+            @DecimalMax(value = "180.0", message = "경도는 180 이하여야 합니다.")
+            double lng
     ) {
         return ApiResponse.onSuccess(
                 LocationSuccessCode.LOCATION_RESOLVE_200,

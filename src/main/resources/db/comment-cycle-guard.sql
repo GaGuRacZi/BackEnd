@@ -1,7 +1,10 @@
 -- Prevent circular parent references on comment.self-join.
 -- Prefer CommunitySchemaInitializer (runs after Hibernate DDL).
 CREATE OR REPLACE FUNCTION prevent_comment_cycle()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
 DECLARE
   current_id BIGINT;
   walk_depth INT := 0;
@@ -23,24 +26,25 @@ BEGIN
     IF walk_depth > 100 THEN
       RAISE EXCEPTION 'comment parent chain too deep';
     END IF;
-    SELECT parent_id INTO current_id FROM comment WHERE comment_id = current_id;
+    SELECT parent_id INTO current_id FROM public.comment WHERE comment_id = current_id;
   END LOOP;
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;;
+$$;;
 
 DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.tables
-    WHERE table_schema = current_schema()
+    WHERE table_schema = 'public'
       AND table_name = 'comment'
   ) THEN
-    DROP TRIGGER IF EXISTS trg_prevent_comment_cycle ON comment;
+    DROP TRIGGER IF EXISTS trg_prevent_comment_cycle ON public.comment;
     CREATE TRIGGER trg_prevent_comment_cycle
-      BEFORE INSERT OR UPDATE OF parent_id ON comment
+      BEFORE INSERT OR UPDATE OF parent_id ON public.comment
       FOR EACH ROW
       EXECUTE PROCEDURE prevent_comment_cycle();
   END IF;
-END $$;;
+END
+$$;;

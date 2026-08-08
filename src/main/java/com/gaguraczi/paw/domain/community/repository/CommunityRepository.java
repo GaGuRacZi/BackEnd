@@ -7,6 +7,7 @@ import com.gaguraczi.paw.domain.community.enums.PostType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -137,4 +138,16 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
     @EntityGraph(attributePaths = {"communityTag", "user", "region", "photos"})
     @Query("SELECT c FROM Community c WHERE c.postId = :postId")
     Optional<Community> findDetailById(@Param("postId") Long postId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Community c SET c.commentCount = c.commentCount + 1 WHERE c.postId = :postId")
+    int increaseCommentCount(@Param("postId") Long postId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Community c
+            SET c.commentCount = CASE WHEN c.commentCount > 0 THEN c.commentCount - 1 ELSE 0 END
+            WHERE c.postId = :postId
+            """)
+    int decreaseCommentCount(@Param("postId") Long postId);
 }

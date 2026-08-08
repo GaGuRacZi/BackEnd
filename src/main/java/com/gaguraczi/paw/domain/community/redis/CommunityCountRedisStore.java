@@ -3,9 +3,12 @@ package com.gaguraczi.paw.domain.community.redis;
 import com.gaguraczi.paw.domain.community.entity.Community;
 import com.gaguraczi.paw.domain.community.repository.CommunityRepository;
 import com.gaguraczi.paw.utils.RedisUtil;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -34,7 +37,16 @@ public class CommunityCountRedisStore {
 
     private final RedisUtil redisUtil;
     private final CommunityRepository communityRepository;
-    private final TransactionTemplate transactionTemplate;
+    private final PlatformTransactionManager transactionManager;
+
+    private TransactionTemplate requiresNewTemplate;
+
+    @PostConstruct
+    void initRequiresNewTemplate() {
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.requiresNewTemplate = template;
+    }
 
     public long getViewCount(Community community) {
         return getOrWarm(VIEW_KEY + community.getPostId(), community.getViewCount());
@@ -64,7 +76,7 @@ public class CommunityCountRedisStore {
         long next = redisUtil.increment(VIEW_KEY + postId, COUNT_TTL_SECONDS);
         markDirty(postId);
         if (next - community.getViewCount() >= FLUSH_DELTA_THRESHOLD) {
-            transactionTemplate.executeWithoutResult(status -> doFlushPost(postId));
+            requiresNewTemplate.executeWithoutResult(status -> doFlushPost(postId));
         }
         return next;
     }
@@ -123,11 +135,22 @@ public class CommunityCountRedisStore {
                 return;
             }
             Community community = optional.get();
-            long view = parseOrDefault(redisUtil.getData(VIEW_KEY + postId), community.getViewCount());
-            long like = parseOrDefault(redisUtil.getData(LIKE_KEY + postId), community.getLikeCount());
+            String viewKey = VIEW_KEY + postId;
+            String likeKey = LIKE_KEY + postId;
+            String viewRaw = redisUtil.getData(viewKey);
+            String likeRaw = redisUtil.getData(likeKey);
+            long view = parseOrDefault(viewRaw, community.getViewCount());
+            long like = parseOrDefault(likeRaw, community.getLikeCount());
             community.syncCounts(view, like);
             communityRepository.save(community);
-            redisUtil.removeFromSet(DIRTY_SET, String.valueOf(postId));
+            redisUtil.removeFromSetIfCountersUnchanged(
+                    viewKey,
+                    likeKey,
+                    DIRTY_SET,
+                    String.valueOf(view),
+                    String.valueOf(like),
+                    String.valueOf(postId)
+            );
         } finally {
             redisUtil.compareAndDelete(lockKey, token);
         }

@@ -25,6 +25,8 @@ import com.gaguraczi.paw.utils.S3.S3Utils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
@@ -158,9 +160,11 @@ public class CommunityCommandService {
                 community.applyThumbnailIndex(req.thumbnailIndex());
             }
 
-            for (CommunityPhoto photo : removed) {
-                s3Utils.deleteQuietly(photo.getPhotoKey());
-            }
+            List<String> removedKeys = removed.stream()
+                    .map(CommunityPhoto::getPhotoKey)
+                    .filter(Objects::nonNull)
+                    .toList();
+            afterCommit(() -> removedKeys.forEach(s3Utils::deleteQuietly));
 
             UUID uid = securityUtils.currentUid();
             boolean liked = communityLikeRepository.findByCommunity_PostIdAndUser_Uid(postId, uid).isPresent();
@@ -187,8 +191,23 @@ public class CommunityCommandService {
                 .filter(Objects::nonNull)
                 .toList();
         communityRepository.delete(community);
-        communityCountRedisStore.deleteCounts(postId);
-        keys.forEach(s3Utils::deleteQuietly);
+        afterCommit(() -> {
+            communityCountRedisStore.deleteCounts(postId);
+            keys.forEach(s3Utils::deleteQuietly);
+        });
+    }
+
+    private void afterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+            return;
+        }
+        action.run();
     }
 
     private void assertAuthor(Community community) {

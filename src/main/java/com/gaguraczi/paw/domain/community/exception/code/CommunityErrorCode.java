@@ -27,6 +27,7 @@ public enum CommunityErrorCode implements BaseErrorCode {
     PHOTO_INVALID_400(HttpStatus.BAD_REQUEST, "COMMUNITY_400_10", "지원하지 않는 이미지 형식입니다. JPEG, PNG, GIF, WEBP, HEIC, HEIF만 업로드할 수 있습니다."),
     THUMBNAIL_INVALID_400(HttpStatus.BAD_REQUEST, "COMMUNITY_400_11", "썸네일로 지정할 사진을 찾을 수 없습니다."),
     COMMENT_CONTENT_400(HttpStatus.BAD_REQUEST, "COMMUNITY_400_12", "댓글 내용이 올바르지 않습니다."),
+    POST_CONTENT_400(HttpStatus.BAD_REQUEST, "COMMUNITY_400_13", "게시글 제목 또는 본문이 올바르지 않습니다."),
 
     FORBIDDEN_403(HttpStatus.FORBIDDEN, "COMMUNITY_403", "권한이 없습니다.");
 

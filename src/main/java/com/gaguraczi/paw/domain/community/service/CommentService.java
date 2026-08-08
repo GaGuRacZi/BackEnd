@@ -92,7 +92,7 @@ public class CommentService {
             comment.attachTo(parent);
         }
         commentRepository.save(comment);
-        community.increaseCommentCount();
+        communityRepository.increaseCommentCount(postId);
         return CommentRes.from(comment);
     }
 
@@ -117,7 +117,7 @@ public class CommentService {
             return;
         }
         comment.softDelete();
-        comment.getCommunity().decreaseCommentCount();
+        communityRepository.decreaseCommentCount(comment.getCommunity().getPostId());
     }
 
     private void assertAuthor(Comment comment) {

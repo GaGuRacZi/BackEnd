@@ -17,10 +17,12 @@ public record PetUpdateReq(
         Long breedId,
 
         @Size(max = 100, message = "품종명은 100자 이내이어야 합니다.")
+        @Pattern(regexp = ".*\\S.*", message = "품종명은 공백만 입력할 수 없습니다.")
         @Schema(description = "품종명 (breedId 없을 때 마스터 이름으로 매핑 시도)", example = "말티즈")
         String breed,
 
         @Size(max = 50, message = "반려동물 이름은 50자 이내이어야 합니다.")
+        @Pattern(regexp = ".*\\S.*", message = "반려동물 이름은 공백만 입력할 수 없습니다.")
         @Schema(description = "반려동물 이름 (최대 50자)", example = "초코")
         String petName,
 

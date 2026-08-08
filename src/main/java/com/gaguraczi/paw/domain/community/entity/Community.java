@@ -142,8 +142,11 @@ public class Community extends BaseEntity {
             MarketTradeMethod tradeMethod,
             LegalRegion region
     ) {
-        if (title == null || title.isBlank() || content == null || content.isBlank() || tag == null) {
-            throw GeneralException.of(CommunityErrorCode.POST_TYPE_UNSUPPORTED_400);
+        if (title == null || title.isBlank() || content == null || content.isBlank()) {
+            throw GeneralException.of(CommunityErrorCode.POST_CONTENT_400);
+        }
+        if (tag == null) {
+            throw GeneralException.of(CommunityErrorCode.TAG_NOT_FOUND_404);
         }
         this.communityTag = tag;
         this.title = title;

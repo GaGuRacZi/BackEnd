@@ -4,6 +4,7 @@ import com.gaguraczi.paw.domain.like.entity.CommunityLike;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -15,6 +16,14 @@ import java.util.UUID;
 public interface CommunityLikeRepository extends JpaRepository<CommunityLike, Long> {
 
     Optional<CommunityLike> findByCommunity_PostIdAndUser_Uid(Long postId, UUID uid);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            INSERT INTO community_like (post_id, uid, created_at, updated_at)
+            VALUES (:postId, :uid, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT (post_id, uid) DO NOTHING
+            """, nativeQuery = true)
+    int insertIgnore(@Param("postId") Long postId, @Param("uid") UUID uid);
 
     @EntityGraph(attributePaths = {"community", "community.communityTag", "community.user"})
     @Query("""

@@ -185,6 +185,12 @@ public class UserController {
                                                     """
                                     ),
                                     @ExampleObject(
+                                            name = "USER_PROFILE_400_1",
+                                            value = """
+                                                    {"isSuccess":false,"code":"USER_PROFILE_400_1","message":"비어 있는 이미지 파일은 업로드할 수 없습니다.","result":null}
+                                                    """
+                                    ),
+                                    @ExampleObject(
                                             name = "USER_PROFILE_400_2",
                                             value = """
                                                     {"isSuccess":false,"code":"USER_PROFILE_400_2","message":"프로필 이미지는 5MB 이하여야 합니다.","result":null}
