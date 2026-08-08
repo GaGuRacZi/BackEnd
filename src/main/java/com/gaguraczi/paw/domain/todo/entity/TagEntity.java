@@ -2,17 +2,15 @@ package com.gaguraczi.paw.domain.todo.entity;
 
 import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.global.entity.BaseEntity;
-import com.gaguraczi.paw.domain.todo.enums.TagColor;
+import com.gaguraczi.paw.domain.todo.enums.TagColorEnum;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
     @Getter
     @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    @Setter
     @Table(
             name = "tag",
             uniqueConstraints = @UniqueConstraint(
@@ -33,19 +31,24 @@ import lombok.Setter;
 
         @Enumerated(EnumType.STRING)
         @Column(name = "tag_color", nullable = false)
-        private TagColor tagColor;
+        private TagColorEnum tagColorEnum;
 
         @ManyToOne(fetch = FetchType.LAZY)
         @JoinColumn(name = "uid", nullable = false)
         private User user;
 
-        public static TagEntity create(User user, String tagName, TagColor tagColor) {
+        public static TagEntity create(User user, String tagName, TagColorEnum tagColorEnum) {
             TagEntity tag = new TagEntity();
             tag.user = user;
             tag.tagName = tagName;
-            tag.tagColor = tagColor;
+            tag.tagColorEnum = tagColorEnum;
             return tag;
         }
+
+        public void change(String tagName, TagColorEnum tagColorEnum) {
+            this.tagName = tagName;
+            this.tagColorEnum = tagColorEnum;
+    }
         }
 
 
