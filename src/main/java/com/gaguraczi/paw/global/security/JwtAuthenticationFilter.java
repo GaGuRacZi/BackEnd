@@ -64,11 +64,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             String uid = jwtTokenProvider.parseUid(token);
+            String role = jwtTokenProvider.parseRole(token);
+            String authority = "ROLE_" + (StringUtils.hasText(role) ? role : "USER");
 
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     uid,
                     null,
-                    List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                    List.of(new SimpleGrantedAuthority(authority))
             );
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);

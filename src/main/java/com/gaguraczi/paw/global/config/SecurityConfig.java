@@ -67,7 +67,15 @@ public class SecurityConfig {
                                 "/auth/logout",
                                 "/auth/link/confirm/**"
                         ).permitAll()
-                        .requestMatchers("/auth/onboarding", "/auth/onboarding/**", "/auth/link/kakao").authenticated()
+                        .requestMatchers("/terms", "/terms/**").permitAll()
+                        .requestMatchers("/location/address", "/location/resolve").authenticated()
+                        .requestMatchers("/regions/search").permitAll()
+                        .requestMatchers(
+                                "/auth/onboarding",
+                                "/auth/onboarding/**",
+                                "/auth/profile-image",
+                                "/auth/link/kakao"
+                        ).authenticated()
                         .requestMatchers("/dev/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html",
                                 "/v3/api-docs/**", "/swagger-resources/**").permitAll()

@@ -17,6 +17,7 @@ public class JwtTokenProvider {
 
     public static final String CLAIM_TOKEN_TYPE = "typ";
     public static final String CLAIM_PROVIDER   = "provider";
+    public static final String CLAIM_ROLE       = "role";
     public static final String TOKEN_TYPE_ACCESS = "ACCESS";
     public static final String TOKEN_TYPE_REFRESH = "REFRESH";
 
@@ -37,13 +38,14 @@ public class JwtTokenProvider {
     }
 
     /**
-     * Creates an access token for the specified user.
+     * Creates an access token for the specified user and role.
      *
-     * @param uid the user identifier
+     * @param uid  the user identifier
+     * @param role the user role (e.g. USER, ADMIN)
      * @return a signed access token
      */
-    public String createAccessToken(String uid) {
-        return buildToken(uid, null, TOKEN_TYPE_ACCESS, accessExpMs);
+    public String createAccessToken(String uid, String role) {
+        return buildToken(uid, null, role, TOKEN_TYPE_ACCESS, accessExpMs);
     }
 
     /**
@@ -54,19 +56,20 @@ public class JwtTokenProvider {
      * @return the generated refresh token
      */
     public String createRefreshToken(String uid, String provider) {
-        return buildToken(uid, provider, TOKEN_TYPE_REFRESH, refreshExpMs);
+        return buildToken(uid, provider, null, TOKEN_TYPE_REFRESH, refreshExpMs);
     }
 
     /**
-     * Builds a signed JWT with the specified subject, token type, provider, and lifetime.
+     * Builds a signed JWT with the specified subject, token type, provider, role, and lifetime.
      *
      * @param uid      the subject identifier
-     * @param provider  the authentication provider, or {@code null} if unavailable
+     * @param provider the authentication provider, or {@code null} if unavailable
+     * @param role     the user role, or {@code null} if unavailable (refresh tokens)
      * @param typ      the token type
      * @param ttlMs    the token lifetime in milliseconds
      * @return the compact signed JWT
      */
-    private String buildToken(String uid, String provider, String typ, long ttlMs) {
+    private String buildToken(String uid, String provider, String role, String typ, long ttlMs) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + ttlMs);
         var builder = Jwts.builder()
@@ -76,6 +79,9 @@ public class JwtTokenProvider {
                 .claim(CLAIM_TOKEN_TYPE, typ);
         if (provider != null) {
             builder.claim(CLAIM_PROVIDER, provider);
+        }
+        if (role != null) {
+            builder.claim(CLAIM_ROLE, role);
         }
         return builder.signWith(key).compact();
     }
@@ -141,6 +147,18 @@ public class JwtTokenProvider {
         Claims claims = parseClaims(token);
         Object provider = claims.get(CLAIM_PROVIDER);
         return provider != null ? provider.toString() : null;
+    }
+
+    /**
+     * Extracts the user role from a JWT.
+     *
+     * @param token the JWT containing the role claim
+     * @return the role value, or {@code null} if the claim is absent
+     */
+    public String parseRole(String token) {
+        Claims claims = parseClaims(token);
+        Object role = claims.get(CLAIM_ROLE);
+        return role != null ? role.toString() : null;
     }
 
     /**

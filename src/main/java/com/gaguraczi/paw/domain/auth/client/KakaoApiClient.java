@@ -26,7 +26,7 @@ public class KakaoApiClient {
 
     public KakaoApiClient(KakaoProperties kakaoProperties, RestClient.Builder restClientBuilder) {
         this.kakaoProperties = kakaoProperties;
-        this.restClient = restClientBuilder
+        this.restClient = restClientBuilder.clone()
                 .requestFactory(ClientHttpRequestFactoryBuilder.detect()
                         .build(HttpClientSettings.defaults()
                                 .withTimeouts(CONNECT_TIMEOUT, READ_TIMEOUT)))
