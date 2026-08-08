@@ -5,6 +5,9 @@ import com.gaguraczi.paw.domain.region.exception.code.RegionSuccessCode;
 import com.gaguraczi.paw.domain.region.service.LegalRegionSyncService;
 import com.gaguraczi.paw.global.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,7 +23,51 @@ public class AdminRegionController {
 
     private final LegalRegionSyncService legalRegionSyncService;
 
-    @Operation(summary = "법정동 코드 파일 upsert 동기화")
+    @Operation(
+            summary = "법정동 코드 파일 upsert 동기화",
+            description = "ADMIN 역할 필요. classpath 법정동 코드 파일을 upsert합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "REGION_SYNC_200",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "성공",
+                                    value = """
+                                            {
+                                              "isSuccess": true,
+                                              "code": "REGION_SYNC_200",
+                                              "message": "법정동 동기화에 성공했습니다.",
+                                              "result": {
+                                                "processed": 20500,
+                                                "totalAfter": 20500
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "JWT_401_1",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "토큰 만료",
+                                    value = """
+                                            {
+                                              "isSuccess": false,
+                                              "code": "JWT_401_1",
+                                              "message": "token 유효기간이 만료되었습니다.",
+                                              "result": null
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/sync")
     public ApiResponse<RegionSyncRes> sync() {

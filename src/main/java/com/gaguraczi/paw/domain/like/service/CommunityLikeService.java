@@ -1,56 +1,64 @@
 package com.gaguraczi.paw.domain.like.service;
 
+import com.gaguraczi.paw.domain.community.dto.res.LikeToggleRes;
 import com.gaguraczi.paw.domain.community.entity.Community;
+import com.gaguraczi.paw.domain.community.enums.PostType;
+import com.gaguraczi.paw.domain.community.exception.code.CommunityErrorCode;
+import com.gaguraczi.paw.domain.community.redis.CommunityCountRedisStore;
 import com.gaguraczi.paw.domain.community.repository.CommunityRepository;
-import com.gaguraczi.paw.domain.like.dto.response.LikeToggleResponse;
 import com.gaguraczi.paw.domain.like.entity.CommunityLike;
-import com.gaguraczi.paw.domain.like.exception.LikeException;
-import com.gaguraczi.paw.domain.like.exception.code.LikeErrorCode;
 import com.gaguraczi.paw.domain.like.repository.CommunityLikeRepository;
-import com.gaguraczi.paw.domain.users.repository.UserRepository;
+import com.gaguraczi.paw.domain.users.entity.User;
+import com.gaguraczi.paw.global.exception.GeneralException;
+import com.gaguraczi.paw.global.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.EnumSet;
 import java.util.Optional;
-import java.util.UUID;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class CommunityLikeService {
+
+    private static final Set<PostType> SUPPORTED = EnumSet.of(PostType.COMMUNICATION, PostType.MARKET);
 
     private final CommunityRepository communityRepository;
     private final CommunityLikeRepository communityLikeRepository;
-    private final UserRepository userRepository;
+    private final CommunityCountRedisStore communityCountRedisStore;
+    private final SecurityUtils securityUtils;
 
     @Transactional
-    public LikeToggleResponse toggleLike(Long postId, UUID uid) {
+    public LikeToggleRes toggle(Long postId) {
         Community community = communityRepository.findById(postId)
-                .orElseThrow(() -> LikeException.of(LikeErrorCode.COMMUNITY_NOT_FOUND));
+                .orElseThrow(() -> GeneralException.of(CommunityErrorCode.COMMUNITY_NOT_FOUND_404));
+        if (!SUPPORTED.contains(community.getPostType())) {
+            throw GeneralException.of(CommunityErrorCode.POST_TYPE_UNSUPPORTED_400);
+        }
+        User user = securityUtils.currentUser();
 
-        Optional<CommunityLike> existingLike =
-                communityLikeRepository.findByCommunity_PostIdAndUser_Uid(postId, uid);
-
-        if (existingLike.isPresent()) {
-            communityLikeRepository.delete(existingLike.get());
-            community.decreaseLikeCount();
-            return LikeToggleResponse.builder()
-                    .liked(false)
-                    .likeCount(community.getLikeCount())
-                    .build();
+        Optional<CommunityLike> existing =
+                communityLikeRepository.findByCommunity_PostIdAndUser_Uid(postId, user.getUid());
+        if (existing.isPresent()) {
+            communityLikeRepository.delete(existing.get());
+            long likeCount = communityCountRedisStore.decreaseLike(community);
+            return LikeToggleRes.of(false, likeCount);
         }
 
-        CommunityLike like = CommunityLike.builder()
-                .community(community)
-                .user(userRepository.getReferenceById(uid))
-                .build();
-        communityLikeRepository.save(like);
-        community.increaseLikeCount();
-
-        return LikeToggleResponse.builder()
-                .liked(true)
-                .likeCount(community.getLikeCount())
-                .build();
+        try {
+            communityLikeRepository.save(CommunityLike.builder()
+                    .community(community)
+                    .user(user)
+                    .build());
+            long likeCount = communityCountRedisStore.increaseLike(community);
+            return LikeToggleRes.of(true, likeCount);
+        } catch (DataIntegrityViolationException e) {
+            // concurrent insert won — treat as already liked
+            long likeCount = communityCountRedisStore.getLikeCount(community);
+            return LikeToggleRes.of(true, likeCount);
+        }
     }
 }

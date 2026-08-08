@@ -15,7 +15,7 @@ spring:
       # ;; so PL/pgSQL DO $$ blocks are not split on inner semicolons
       mode: always
       separator: ";;"
-      schema-locations: classpath:db/extensions.sql,classpath:db/backfill-user-role.sql
+      schema-locations: classpath:db/extensions.sql,classpath:db/backfill-user-role.sql,classpath:db/seed-community-tags.sql,classpath:db/comment-cycle-guard.sql
   jpa:
     defer-datasource-initialization: false
   jwt:

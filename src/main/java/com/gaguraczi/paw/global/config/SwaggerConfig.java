@@ -26,7 +26,18 @@ public class SwaggerConfig {
         Info apiInfo = new Info()
                 .version("v1.0.0")
                 .title("Paw API")
-                .description("Paw API Documentation");
+                .description("""
+                        Paw API Documentation
+                        
+                        ## 공통
+                        - 응답 래퍼: `{ isSuccess, code, message, result }`
+                        - 인증: Authorize에 `Bearer {accessToken}` (JWT)
+                        - 각 엔드포인트 Responses 탭에 성공/에러 코드·JSON 예시 포함
+                        
+                        ## 주요 태그
+                        - auth / users / pets / location / terms / breeds / regions
+                        - communities / comments
+                        """);
 
         String jwtSchemeName = "BearerToken";
         SecurityRequirement securityRequirement = new SecurityRequirement().addList(jwtSchemeName);

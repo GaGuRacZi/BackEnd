@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.gaguraczi.paw.global.api.code.BaseErrorCode;
 import com.gaguraczi.paw.global.api.code.BaseSuccessCode;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,12 +14,17 @@ import org.springframework.http.HttpStatus;
 @Getter
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
 @JsonPropertyOrder({"isSuccess", "code", "message", "result"})
+@Schema(description = "공통 API 응답 래퍼")
 public class ApiResponse<T> { // API 응답
 
+    @Schema(description = "성공 여부", example = "true")
     private final Boolean isSuccess; // 성공 여부
+    @Schema(description = "비즈니스 코드", example = "COMMUNITY_LIST_200")
     private final String code; // 응답 코드
+    @Schema(description = "메시지", example = "커뮤니티 목록 조회에 성공했습니다.")
     private final String message; // 메세지
     @JsonInclude(JsonInclude.Include.ALWAYS)
+    @Schema(description = "응답 데이터 (실패 시 보통 null)")
     private final T result; // 응답 데이터
 
     // HTTP 상태 코드는 바디에는 포함하지 않고, 성공 핸들러에서만 사용

@@ -71,6 +71,32 @@ public class RedisUtil {
         return count == null ? 0L : count;
     }
 
+    public long incrementBy(String key, long delta) {
+        Long count = redisTemplate.opsForValue().increment(key, delta);
+        return count == null ? 0L : count;
+    }
+
+    public List<String> multiGet(List<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return List.of();
+        }
+        List<String> values = redisTemplate.opsForValue().multiGet(keys);
+        return values == null ? List.of() : values;
+    }
+
+    public void addToSet(String key, String value) {
+        redisTemplate.opsForSet().add(key, value);
+    }
+
+    public java.util.Set<String> members(String key) {
+        java.util.Set<String> members = redisTemplate.opsForSet().members(key);
+        return members == null ? java.util.Set.of() : members;
+    }
+
+    public void removeFromSet(String key, String value) {
+        redisTemplate.opsForSet().remove(key, value);
+    }
+
     // 데이터 조회
     public String getData(String key) {
         return redisTemplate.opsForValue().get(key);
