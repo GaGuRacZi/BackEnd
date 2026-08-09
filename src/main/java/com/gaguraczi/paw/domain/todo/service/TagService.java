@@ -107,10 +107,24 @@ public class TagService {
     }
 
     @Transactional
-    public void deleteTag(Long tagId) {
+    public void deleteTag(Long tagId, boolean force) {
         UUID userId = securityUtils.currentUser().getUid();
+        TagEntity tag = getMyTagOrThrow(userId, tagId, TagErrorCode.TAG_DELETE_409_1);
 
-        TagEntity tag = getMyTagOrThrow(userId, tagId, TagErrorCode.TAG_DELETE_404_3);
-        tagRepository.delete(tag);
+        long usedCount = todoRepository.countByTag_TagId(tagId);
+        if (usedCount > 0) {
+            if (!force) {
+                throw new GeneralException(TagErrorCode.TAG_DELETE_409_1);
+            }
+            todoDateRepository.deleteAllByTagId(tagId);  // 자식 먼저
+            todoRepository.deleteAllByTagId(tagId);
+        }
+
+        try {
+            tagRepository.delete(tag);
+            tagRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new GeneralException(TagErrorCode.TAG_DELETE_409_1);
+        }
     }
 }
