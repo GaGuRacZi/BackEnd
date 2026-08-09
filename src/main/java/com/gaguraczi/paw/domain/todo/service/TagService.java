@@ -8,9 +8,9 @@ import com.gaguraczi.paw.domain.todo.enums.TagColorEnum;
 import com.gaguraczi.paw.domain.todo.exception.code.TagErrorCode;
 import com.gaguraczi.paw.domain.todo.repository.TagRepository;
 import com.gaguraczi.paw.domain.users.entity.User;
-import com.gaguraczi.paw.domain.users.repository.UserRepository;
 import com.gaguraczi.paw.global.api.code.BaseErrorCode;
 import com.gaguraczi.paw.global.exception.GeneralException;
+import com.gaguraczi.paw.global.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -25,17 +25,7 @@ import java.util.UUID;
 public class TagService {
 
     private final TagRepository tagRepository;
-    private final UserRepository userRepository;
-
-
-    private UUID toUserId(String uid) {
-        try {
-            return UUID.fromString(uid);
-        } catch (IllegalArgumentException e) {
-            throw new GeneralException(TagErrorCode.TAG_GET_404_2);
-        }
-    }
-
+    private final SecurityUtils securityUtils;
 
     private TagEntity getMyTagOrThrow(UUID userId, Long tagId, BaseErrorCode errorCode) {
         return tagRepository.findByTagIdAndUser_Uid(tagId, userId)
@@ -43,15 +33,14 @@ public class TagService {
     }
 
     @Transactional
-    public TagResponse createTag(String uid, TagCreateRequest request) {
-
-        UUID userId = toUserId(uid);
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new GeneralException(TagErrorCode.TAG_GET_404_2));
+    public TagResponse create(TagCreateRequest request) {
+        User user = securityUtils.currentUser();
+        UUID userId = user.getUid();
 
         String tagName = request.tagName().trim();
-
+        if (tagName.isEmpty()) {
+            throw new GeneralException(TagErrorCode.TAG_CREATE_400_1);
+        }
 
         if (tagRepository.existsByUser_UidAndTagName(userId, tagName)) {
             throw new GeneralException(TagErrorCode.TAG_CREATE_400_1);
@@ -68,21 +57,25 @@ public class TagService {
         return TagResponse.from(tag);
     }
 
-    public List<TagResponse> getTagsByUser(String uid) {
-        return tagRepository.findAllByUser_UidOrderByTagNameAsc(toUserId(uid)).stream()
+    public List<TagResponse> getMyTags() {
+        UUID userId = securityUtils.currentUser().getUid();
+
+        return tagRepository.findAllByUser_UidOrderByTagNameAsc(userId).stream()
                 .map(TagResponse::from)
                 .toList();
     }
 
-    public TagResponse getTag(String uid, Long tagId) {
-        TagEntity tag = getMyTagOrThrow(toUserId(uid), tagId, TagErrorCode.TAG_GET_404_2);
-        return TagResponse.from(tag);
+    public TagResponse getTag(Long tagId) {
+        UUID userId = securityUtils.currentUser().getUid();
+
+        return TagResponse.from(
+                getMyTagOrThrow(userId, tagId, TagErrorCode.TAG_GET_404_2)
+        );
     }
 
     @Transactional
-    public TagResponse updateTag(String uid, Long tagId, TagUpdateRequest request) {
-
-        UUID userId = toUserId(uid);
+    public TagResponse updateTag(Long tagId, TagUpdateRequest request) {
+        UUID userId = securityUtils.currentUser().getUid();
 
         if (request.isEmpty()) {
             throw new GeneralException(TagErrorCode.TAG_UPDATE_400_2);
@@ -113,4 +106,11 @@ public class TagService {
         return TagResponse.from(tag);
     }
 
+    @Transactional
+    public void deleteTag(Long tagId) {
+        UUID userId = securityUtils.currentUser().getUid();
+
+        TagEntity tag = getMyTagOrThrow(userId, tagId, TagErrorCode.TAG_DELETE_404_3);
+        tagRepository.delete(tag);
     }
+}
