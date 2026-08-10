@@ -25,12 +25,19 @@ public interface CommunityLikeRepository extends JpaRepository<CommunityLike, Lo
             """, nativeQuery = true)
     int insertIgnore(@Param("postId") Long postId, @Param("uid") UUID uid);
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM community_like
+            WHERE post_id = :postId AND uid = :uid
+            """, nativeQuery = true)
+    int deleteByPostIdAndUid(@Param("postId") Long postId, @Param("uid") UUID uid);
+
     @EntityGraph(attributePaths = {"community", "community.communityTag", "community.user"})
     @Query("""
             SELECT l FROM CommunityLike l
             WHERE l.user.uid = :uid
               AND (
-                    :cursorCreatedAt IS NULL
+                    :#{#cursorCreatedAt == null} = true
                     OR l.createdAt < :cursorCreatedAt
                     OR (l.createdAt = :cursorCreatedAt AND l.communityLikeId < :cursorLikeId)
                   )

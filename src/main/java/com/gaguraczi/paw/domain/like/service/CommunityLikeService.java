@@ -6,7 +6,6 @@ import com.gaguraczi.paw.domain.community.enums.PostType;
 import com.gaguraczi.paw.domain.community.exception.code.CommunityErrorCode;
 import com.gaguraczi.paw.domain.community.redis.CommunityCountRedisStore;
 import com.gaguraczi.paw.domain.community.repository.CommunityRepository;
-import com.gaguraczi.paw.domain.like.entity.CommunityLike;
 import com.gaguraczi.paw.domain.like.repository.CommunityLikeRepository;
 import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.global.exception.GeneralException;
@@ -18,7 +17,6 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.EnumSet;
-import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -42,13 +40,17 @@ public class CommunityLikeService {
         User user = securityUtils.currentUser();
         long currentLikeCount = communityCountRedisStore.getLikeCount(community);
 
-        Optional<CommunityLike> existing =
-                communityLikeRepository.findByCommunity_PostIdAndUser_Uid(postId, user.getUid());
-        if (existing.isPresent()) {
-            communityLikeRepository.delete(existing.get());
-            long expected = Math.max(0L, currentLikeCount - 1L);
-            afterCommit(() -> communityCountRedisStore.decreaseLike(community));
-            return LikeToggleRes.of(false, expected);
+        boolean exists = communityLikeRepository
+                .findByCommunity_PostIdAndUser_Uid(postId, user.getUid())
+                .isPresent();
+        if (exists) {
+            int deleted = communityLikeRepository.deleteByPostIdAndUid(postId, user.getUid());
+            if (deleted == 1) {
+                long expected = Math.max(0L, currentLikeCount - 1L);
+                afterCommit(() -> communityCountRedisStore.decreaseLike(community));
+                return LikeToggleRes.of(false, expected);
+            }
+            return LikeToggleRes.of(false, currentLikeCount);
         }
 
         int inserted = communityLikeRepository.insertIgnore(postId, user.getUid());

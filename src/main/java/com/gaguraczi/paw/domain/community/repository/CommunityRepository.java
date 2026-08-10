@@ -23,11 +23,11 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
     @Query("""
             SELECT c FROM Community c
             WHERE c.postType = :postType
-              AND (:tagCode IS NULL OR c.communityTag.tagCode = :tagCode)
-              AND (:marketStatus IS NULL OR c.marketStatus = :marketStatus)
-              AND (:tradeType IS NULL OR c.tradeType = :tradeType)
+              AND (:#{#tagCode == null} = true OR c.communityTag.tagCode = :tagCode)
+              AND (:#{#marketStatus == null} = true OR c.marketStatus = :marketStatus)
+              AND (:#{#tradeType == null} = true OR c.tradeType = :tradeType)
               AND (
-                    :cursorCreatedAt IS NULL
+                    :#{#cursorCreatedAt == null} = true
                     OR c.createdAt < :cursorCreatedAt
                     OR (c.createdAt = :cursorCreatedAt AND c.postId < :cursorPostId)
                   )
@@ -47,11 +47,11 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
     @Query("""
             SELECT c FROM Community c
             WHERE c.postType = :postType
-              AND (:tagCode IS NULL OR c.communityTag.tagCode = :tagCode)
-              AND (:marketStatus IS NULL OR c.marketStatus = :marketStatus)
-              AND (:tradeType IS NULL OR c.tradeType = :tradeType)
+              AND (:#{#tagCode == null} = true OR c.communityTag.tagCode = :tagCode)
+              AND (:#{#marketStatus == null} = true OR c.marketStatus = :marketStatus)
+              AND (:#{#tradeType == null} = true OR c.tradeType = :tradeType)
               AND (
-                    :cursorLikeCount IS NULL
+                    :#{#cursorLikeCount == null} = true
                     OR c.likeCount < :cursorLikeCount
                     OR (c.likeCount = :cursorLikeCount AND c.postId < :cursorPostId)
                   )
@@ -71,11 +71,11 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
     @Query("""
             SELECT c FROM Community c
             WHERE c.postType = :postType
-              AND (:tagCode IS NULL OR c.communityTag.tagCode = :tagCode)
-              AND (:marketStatus IS NULL OR c.marketStatus = :marketStatus)
-              AND (:tradeType IS NULL OR c.tradeType = :tradeType)
+              AND (:#{#tagCode == null} = true OR c.communityTag.tagCode = :tagCode)
+              AND (:#{#marketStatus == null} = true OR c.marketStatus = :marketStatus)
+              AND (:#{#tradeType == null} = true OR c.tradeType = :tradeType)
               AND (
-                    :cursorViewCount IS NULL
+                    :#{#cursorViewCount == null} = true
                     OR c.viewCount < :cursorViewCount
                     OR (c.viewCount = :cursorViewCount AND c.postId < :cursorPostId)
                   )
@@ -95,11 +95,11 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
     @Query("""
             SELECT c FROM Community c
             WHERE c.postType = :postType
-              AND (:tagCode IS NULL OR c.communityTag.tagCode = :tagCode)
-              AND (:marketStatus IS NULL OR c.marketStatus = :marketStatus)
-              AND (:tradeType IS NULL OR c.tradeType = :tradeType)
+              AND (:#{#tagCode == null} = true OR c.communityTag.tagCode = :tagCode)
+              AND (:#{#marketStatus == null} = true OR c.marketStatus = :marketStatus)
+              AND (:#{#tradeType == null} = true OR c.tradeType = :tradeType)
               AND (
-                    :cursorCommentCount IS NULL
+                    :#{#cursorCommentCount == null} = true
                     OR c.commentCount < :cursorCommentCount
                     OR (c.commentCount = :cursorCommentCount AND c.postId < :cursorPostId)
                   )
@@ -121,7 +121,7 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
             WHERE c.user.uid = :uid
               AND c.postType IN :postTypes
               AND (
-                    :cursorCreatedAt IS NULL
+                    :#{#cursorCreatedAt == null} = true
                     OR c.createdAt < :cursorCreatedAt
                     OR (c.createdAt = :cursorCreatedAt AND c.postId < :cursorPostId)
                   )

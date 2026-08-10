@@ -64,6 +64,7 @@ public class CommunityCommandService {
         List<MultipartFile> files = normalizeFiles(images);
         validatePhotoCount(files.size());
         List<S3Dto> uploaded = uploadAll(files);
+        scheduleUploadedCleanupOnRollback(uploaded);
 
         try {
             Community community = Community.builder()
@@ -110,7 +111,8 @@ public class CommunityCommandService {
 
         CommunityTag tag = loadActiveTag(req.tagCode(), community.getPostType());
         LegalRegion region = resolveRegion(community.getPostType(), req.regionCode());
-        if (community.getPostType() == PostType.MARKET && req.tradeType() == null) {
+        if (community.getPostType() == PostType.MARKET
+                && (req.tradeType() == null || req.tradeMethod() == null)) {
             throw GeneralException.of(CommunityErrorCode.MARKET_FIELD_REQUIRED_400);
         }
 
@@ -127,6 +129,8 @@ public class CommunityCommandService {
         }
 
         List<S3Dto> uploaded = uploadAll(files);
+        scheduleUploadedCleanupOnRollback(uploaded);
+
         try {
             community.updateContent(
                     tag,
@@ -208,6 +212,27 @@ public class CommunityCommandService {
             return;
         }
         action.run();
+    }
+
+    private void scheduleUploadedCleanupOnRollback(List<S3Dto> uploaded) {
+        if (uploaded == null || uploaded.isEmpty()) {
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        List<String> keys = uploaded.stream()
+                .map(S3Dto::getKey)
+                .filter(Objects::nonNull)
+                .toList();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    keys.forEach(s3Utils::deleteQuietly);
+                }
+            }
+        });
     }
 
     private void assertAuthor(Community community) {

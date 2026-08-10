@@ -17,8 +17,7 @@ public class CursorPageRes<T> {
     @Schema(description = "현재 페이지 아이템")
     private final List<T> content;
     @Schema(
-            description = "다음 페이지 커서 (없으면 null). API가 반환한 값을 다음 요청에 그대로 전달. 형식: Base64URL(LATEST|epochMillis|postId 또는 SORT|sortValue|postId)",
-            example = "TEFURVNUfDE3MjMxMDQwMDAwMDB8MTA"
+            description = "다음 페이지 커서 (없으면 null). API가 반환한 opaque 값을 다음 요청에 그대로 전달하세요. 클라이언트에서 해석하거나 변조하지 마세요."
     )
     private final String nextCursor;
     @Schema(description = "다음 페이지 존재 여부", example = "true")

@@ -17,6 +17,8 @@ BEGIN
     RAISE EXCEPTION 'comment cannot be its own parent';
   END IF;
 
+  PERFORM pg_advisory_xact_lock(NEW.post_id);
+
   current_id := NEW.parent_id;
   WHILE current_id IS NOT NULL LOOP
     IF NEW.comment_id IS NOT NULL AND current_id = NEW.comment_id THEN
@@ -44,7 +46,7 @@ BEGIN
     CREATE TRIGGER trg_prevent_comment_cycle
       BEFORE INSERT OR UPDATE OF parent_id ON public.comment
       FOR EACH ROW
-      EXECUTE PROCEDURE prevent_comment_cycle();
+      EXECUTE FUNCTION prevent_comment_cycle();
   END IF;
 END
 $$;;

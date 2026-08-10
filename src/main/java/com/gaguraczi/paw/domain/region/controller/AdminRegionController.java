@@ -72,17 +72,32 @@ public class AdminRegionController {
                     description = "권한 없음",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "FORBIDDEN",
-                                    value = """
-                                            {
-                                              "isSuccess": false,
-                                              "code": "JWT_403_2",
-                                              "message": "유효하지 않은 token입니다.",
-                                              "result": null
-                                            }
-                                            """
-                            )
+                            examples = {
+                                    @ExampleObject(
+                                            name = "JWT_403_2",
+                                            summary = "유효하지 않은 token",
+                                            value = """
+                                                    {
+                                                      "isSuccess": false,
+                                                      "code": "JWT_403_2",
+                                                      "message": "유효하지 않은 token입니다.",
+                                                      "result": null
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "JWT_403_3",
+                                            summary = "ADMIN 권한 없음",
+                                            value = """
+                                                    {
+                                                      "isSuccess": false,
+                                                      "code": "JWT_403_3",
+                                                      "message": "권한 정보가 없는 token입니다.",
+                                                      "result": null
+                                                    }
+                                                    """
+                                    )
+                            }
                     )
             )
     })

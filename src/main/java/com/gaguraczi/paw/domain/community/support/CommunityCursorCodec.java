@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
 import java.util.Base64;
 
 public final class CommunityCursorCodec {
@@ -24,8 +25,7 @@ public final class CommunityCursorCodec {
     }
 
     public static String encodeLatest(LocalDateTime createdAt, Long postId) {
-        long epochMillis = createdAt.toInstant(ZoneOffset.UTC).toEpochMilli();
-        return encodeRaw(CommunitySort.LATEST.name() + "|" + epochMillis + "|" + postId);
+        return encodeRaw(CommunitySort.LATEST.name() + "|" + createdAt + "|" + postId);
     }
 
     public static String encodeByCount(CommunitySort sort, long sortValue, Long postId) {
@@ -52,9 +52,7 @@ public final class CommunityCursorCodec {
             }
             Long postId = Long.parseLong(parts[2]);
             if (sort == CommunitySort.LATEST) {
-                LocalDateTime createdAt = LocalDateTime.ofInstant(
-                        Instant.ofEpochMilli(Long.parseLong(parts[1])),
-                        ZoneOffset.UTC);
+                LocalDateTime createdAt = parseCreatedAt(parts[1]);
                 return new Cursor(sort, createdAt, null, postId);
             }
             return new Cursor(sort, null, Long.parseLong(parts[1]), postId);
@@ -62,6 +60,14 @@ public final class CommunityCursorCodec {
             throw e;
         } catch (Exception e) {
             throw GeneralException.of(CommunityErrorCode.INVALID_CURSOR_400);
+        }
+    }
+
+    private static LocalDateTime parseCreatedAt(String value) {
+        try {
+            return LocalDateTime.parse(value);
+        } catch (DateTimeParseException ignored) {
+            return LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(value)), ZoneOffset.UTC);
         }
     }
 

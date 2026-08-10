@@ -1,5 +1,7 @@
 package com.gaguraczi.paw.domain.community.service;
 
+import com.gaguraczi.paw.domain.auth.exception.AuthException;
+import com.gaguraczi.paw.domain.auth.exception.code.AuthErrorCode;
 import com.gaguraczi.paw.domain.community.dto.res.CommunityDetailRes;
 import com.gaguraczi.paw.domain.community.dto.res.CommunityListItemRes;
 import com.gaguraczi.paw.domain.community.dto.res.CommunityTagRes;
@@ -103,7 +105,13 @@ public class CommunityService {
 
         String nextCursor = null;
         if (hasNext && !page.isEmpty()) {
-            nextCursor = encodeNextCursor(resolvedSort, page.getLast());
+            Community last = page.getLast();
+            nextCursor = encodeNextCursor(
+                    resolvedSort,
+                    last,
+                    viewCounts.getOrDefault(last.getPostId(), last.getViewCount()),
+                    likeCounts.getOrDefault(last.getPostId(), last.getLikeCount())
+            );
         }
         return CursorPageRes.of(content, nextCursor, hasNext, pageSize);
     }
@@ -119,8 +127,10 @@ public class CommunityService {
         UUID viewerUid = null;
         try {
             viewerUid = securityUtils.currentUid();
-        } catch (Exception ignored) {
-            // authenticated endpoints always have uid; keep null-safe
+        } catch (AuthException e) {
+            if (e.getCode() != AuthErrorCode.LOGIN_LINK_400) {
+                throw e;
+            }
         }
 
         long viewCount = communityCountRedisStore.increaseView(community, viewerUid);
@@ -181,11 +191,11 @@ public class CommunityService {
         };
     }
 
-    private String encodeNextCursor(CommunitySort sort, Community last) {
+    private String encodeNextCursor(CommunitySort sort, Community last, long effectiveViewCount, long effectiveLikeCount) {
         return switch (sort) {
             case LATEST -> CommunityCursorCodec.encodeLatest(last.getCreatedAt(), last.getPostId());
-            case LIKE -> CommunityCursorCodec.encodeByCount(sort, last.getLikeCount(), last.getPostId());
-            case VIEW -> CommunityCursorCodec.encodeByCount(sort, last.getViewCount(), last.getPostId());
+            case LIKE -> CommunityCursorCodec.encodeByCount(sort, effectiveLikeCount, last.getPostId());
+            case VIEW -> CommunityCursorCodec.encodeByCount(sort, effectiveViewCount, last.getPostId());
             case COMMENT -> CommunityCursorCodec.encodeByCount(sort, last.getCommentCount(), last.getPostId());
         };
     }

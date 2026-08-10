@@ -19,7 +19,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
             SELECT c FROM Comment c
             WHERE c.community.postId = :postId
               AND (
-                    :cursorCreatedAt IS NULL
+                    :#{#cursorCreatedAt == null} = true
                     OR c.createdAt < :cursorCreatedAt
                     OR (c.createdAt = :cursorCreatedAt AND c.commentId < :cursorCommentId)
                   )
@@ -41,7 +41,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
             WHERE c.user.uid = :uid
               AND c.isDel = false
               AND (
-                    :cursorCreatedAt IS NULL
+                    :#{#cursorCreatedAt == null} = true
                     OR c.createdAt < :cursorCreatedAt
                     OR (c.createdAt = :cursorCreatedAt AND c.commentId < :cursorCommentId)
                   )

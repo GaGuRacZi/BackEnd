@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 public class RedisUtil {
 
     private static final DefaultRedisScript<Long> INCREMENT_WITH_TTL_SCRIPT = new DefaultRedisScript<>();
+    private static final DefaultRedisScript<Long> DECREMENT_CLAMP_WITH_TTL_SCRIPT = new DefaultRedisScript<>();
     private static final DefaultRedisScript<Long> COMPARE_AND_SET_SCRIPT = new DefaultRedisScript<>();
     private static final DefaultRedisScript<Long> COMPARE_AND_DELETE_SCRIPT = new DefaultRedisScript<>();
     private static final DefaultRedisScript<Long> REMOVE_FROM_SET_IF_UNCHANGED_SCRIPT = new DefaultRedisScript<>();
@@ -26,6 +27,19 @@ public class RedisUtil {
         INCREMENT_WITH_TTL_SCRIPT.setScriptText("""
                 local count = redis.call('INCR', KEYS[1])
                 if count == 1 then
+                    redis.call('EXPIRE', KEYS[1], ARGV[1])
+                end
+                return count
+                """);
+
+        DECREMENT_CLAMP_WITH_TTL_SCRIPT.setResultType(Long.class);
+        DECREMENT_CLAMP_WITH_TTL_SCRIPT.setScriptText("""
+                local count = redis.call('INCRBY', KEYS[1], -1)
+                if count < 0 then
+                    redis.call('SET', KEYS[1], '0', 'EX', ARGV[1])
+                    return 0
+                end
+                if redis.call('TTL', KEYS[1]) < 0 then
                     redis.call('EXPIRE', KEYS[1], ARGV[1])
                 end
                 return count
@@ -85,6 +99,15 @@ public class RedisUtil {
 
     public long incrementBy(String key, long delta) {
         Long count = redisTemplate.opsForValue().increment(key, delta);
+        return count == null ? 0L : count;
+    }
+
+    /** Atomic decrement clamped at 0, refreshing TTL when needed. */
+    public long decrementClampToZero(String key, long durationSeconds) {
+        Long count = redisTemplate.execute(
+                DECREMENT_CLAMP_WITH_TTL_SCRIPT,
+                List.of(key),
+                String.valueOf(durationSeconds));
         return count == null ? 0L : count;
     }
 

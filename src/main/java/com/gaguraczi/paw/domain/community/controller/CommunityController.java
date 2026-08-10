@@ -816,7 +816,7 @@ public class CommunityController {
 
     @Operation(
             summary = "게시글 좋아요 토글",
-            description = "좋아요가 없으면 등록, 있으면 취소합니다. Body 없음. likeCount는 Redis 절대 카운트."
+            description = "좋아요가 없으면 등록, 있으면 취소합니다. Body 없음. likeCount는 커밋 전 카운트 기반의 낙관적 추정값이며 Redis 절대 카운트가 아닙니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(

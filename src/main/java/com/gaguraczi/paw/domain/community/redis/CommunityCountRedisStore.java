@@ -33,7 +33,6 @@ public class CommunityCountRedisStore {
     private static final long COUNT_TTL_SECONDS = 7L * 24 * 60 * 60;
     private static final long LOCK_TTL_SECONDS = 30L;
     private static final long DEDUP_TTL_SECONDS = 10L * 60;
-    private static final long FLUSH_DELTA_THRESHOLD = 50L;
 
     private final RedisUtil redisUtil;
     private final CommunityRepository communityRepository;
@@ -75,9 +74,6 @@ public class CommunityCountRedisStore {
         warmIfAbsent(VIEW_KEY + postId, community.getViewCount());
         long next = redisUtil.increment(VIEW_KEY + postId, COUNT_TTL_SECONDS);
         markDirty(postId);
-        if (next - community.getViewCount() >= FLUSH_DELTA_THRESHOLD) {
-            requiresNewTemplate.executeWithoutResult(status -> doFlushPost(postId));
-        }
         return next;
     }
 
@@ -90,11 +86,7 @@ public class CommunityCountRedisStore {
 
     public long decreaseLike(Community community) {
         warmIfAbsent(LIKE_KEY + community.getPostId(), community.getLikeCount());
-        long next = redisUtil.incrementBy(LIKE_KEY + community.getPostId(), -1L);
-        if (next < 0) {
-            redisUtil.setDataExpire(LIKE_KEY + community.getPostId(), "0", COUNT_TTL_SECONDS);
-            next = 0L;
-        }
+        long next = redisUtil.decrementClampToZero(LIKE_KEY + community.getPostId(), COUNT_TTL_SECONDS);
         markDirty(community.getPostId());
         return next;
     }
@@ -103,14 +95,15 @@ public class CommunityCountRedisStore {
         redisUtil.deleteData(VIEW_KEY + postId);
         redisUtil.deleteData(LIKE_KEY + postId);
         redisUtil.deleteData(LOCK_KEY + postId);
+        redisUtil.deleteByPattern(DEDUP_KEY + postId + ":*");
         redisUtil.removeFromSet(DIRTY_SET, String.valueOf(postId));
     }
 
-    @Transactional
     public void flushAllDirty() {
         for (String postIdRaw : redisUtil.members(DIRTY_SET)) {
             try {
-                doFlushPost(Long.parseLong(postIdRaw));
+                Long postId = Long.parseLong(postIdRaw);
+                requiresNewTemplate.executeWithoutResult(status -> doFlushPost(postId));
             } catch (NumberFormatException e) {
                 redisUtil.removeFromSet(DIRTY_SET, postIdRaw);
             }
