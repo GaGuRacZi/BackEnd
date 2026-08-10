@@ -3,6 +3,7 @@ package com.gaguraczi.paw.domain.todo.dto.request;
 import com.gaguraczi.paw.domain.todo.enums.WeekEnum;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -18,6 +19,7 @@ public record TodoCreateRequest(
         String subTodo,
 
         @NotNull(message = "태그 선택은 필수입니다.")
+        @Positive(message = "태그 ID는 양수여야합니다.")
         Long tagId,
 
         LocalTime todoTime,
