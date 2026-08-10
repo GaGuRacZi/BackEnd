@@ -73,6 +73,10 @@ springdoc:
     display-request-duration: true
     operations-sorter: method
 
+paw:
+  swagger:
+    prod-server-url: ${PAW_SWAGGER_PROD_SERVER_URL:https://issueissyu-ai.cloud}
+
 ---
 # local profile
 spring:
@@ -133,3 +137,16 @@ spring:
         use_sql_comments: true
         default_batch_fetch_size: 1000
 
+
+---
+# prod profile — swagger/docs disabled
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

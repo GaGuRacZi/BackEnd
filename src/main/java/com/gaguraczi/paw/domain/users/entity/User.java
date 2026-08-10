@@ -52,6 +52,10 @@ public class User extends BaseEntity {
     @JoinColumn(name = "region_code")
     private LegalRegion region;
 
+    /** 위치 인증 시 해석된 표시용 주소 (getMyLocation에서 재사용) */
+    @Column(name = "location_address", length = 500)
+    private String locationAddress;
+
     /** 계정 식별용. 유저 간 중복 불가 */
     @Column(name = "email", unique = true)
     private String email;
@@ -113,8 +117,11 @@ public class User extends BaseEntity {
         this.profileUrl = profileUrl;
     }
 
-    public void updateLocation(Point userPoint, LegalRegion region) {
+    public void updateLocation(Point userPoint, LegalRegion region, String locationAddress) {
         this.userPoint = userPoint;
         this.region = region;
+        if (locationAddress != null && !locationAddress.isBlank()) {
+            this.locationAddress = locationAddress;
+        }
     }
 }
