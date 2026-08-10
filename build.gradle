@@ -40,6 +40,9 @@ dependencies {
 	//validation
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
+	// image content-type detection (magic bytes; HEIC/HEIF 포함)
+	implementation 'org.apache.tika:tika-core:3.2.2'
+
 	//mail
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 
@@ -96,4 +99,9 @@ dependencyManagement {
 }
 tasks.named('jar') {
 	enabled = false
+}
+
+// classpath 리소스 변경도 DevTools 재시작 트리거에 포함
+tasks.named('bootRun') {
+	sourceResources sourceSets.main
 }
