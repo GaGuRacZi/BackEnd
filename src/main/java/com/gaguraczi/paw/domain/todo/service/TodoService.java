@@ -176,7 +176,7 @@ public class TodoService {
         }
 
         TodoDateEntity todoDate = todoDateRepository.findByTodo_TodoIdAndDate(todoId, date)
-                .orElseThrow(() -> new GeneralException(TodoErrorCode.TODO_DATE_GET_404_2));
+                .orElseThrow(() -> new GeneralException(TodoErrorCode.TODO_DELETE_404_4));
         todoDateRepository.delete(todoDate);
     }
 
