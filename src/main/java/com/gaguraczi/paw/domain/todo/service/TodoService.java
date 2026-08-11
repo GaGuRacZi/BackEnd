@@ -97,49 +97,52 @@ public class TodoService {
         if (routineEnabled) {
             routineTodoDateGenerator.generate(todo, startDate, endDate, startDate);
         } else {
-            try {
-                todoDateRepository.saveAndFlush(TodoDateEntity.create(todo, request.date()));
-            } catch (DataIntegrityViolationException e) {
-                throw new GeneralException(TodoErrorCode.TODO_CREATE_400_1);
-            }
+            saveSingleDate(todo, request.date());
         }
 
         return TodoDetailResponse.from(todo);
     }
-
 
     @Transactional
     public TodoDetailResponse updateTodo(UUID uid, Long todoId, TodoUpdateRequest request) {
         TodoEntity todo = getMyTodoOrThrow(uid, todoId);
         TagEntity tag = getMyTagOrThrow(uid, request.tagId());
 
-        boolean routineEnabled = todo.isRoutineEnabled();
-
-        // 루틴 <-> 비루틴 전환은 지원하지 않는다. 요청이 현재 상태와 다르면 조용히 무시하지 않고 명시적으로 거절한다.
-        if (request.routineEnabled() == null || request.routineEnabled() != routineEnabled) {
-            throw new GeneralException(TodoErrorCode.TODO_ROUTINE_TYPE_CHANGE_400_6);
-        }
+        boolean wasRoutine = todo.isRoutineEnabled();
+        boolean nowRoutine = (request.routineEnabled() != null) ? request.routineEnabled() : wasRoutine;
 
         LocalDate startDate = null;
         LocalDate endDate = null;
         WeekEnum week = null;
 
-        if (routineEnabled) {
-            startDate = (request.startDate() != null) ? request.startDate() : todo.getStartDate();
+        if (nowRoutine) {
+            startDate = (request.startDate() != null)
+                    ? request.startDate()
+                    : (wasRoutine ? todo.getStartDate() : LocalDate.now());
             endDate = request.endDate();
             week = request.week();
             validateRoutine(startDate, endDate, week);
+        } else if (request.date() == null) {
+            throw new GeneralException(TodoErrorCode.TODO_DATE_REQUIRED_400_2);
         }
 
         LocalTime todoTime = request.todoTime();
-        todo.update(tag, request.todo(), request.subTodo(), todoTime, startDate, endDate, week);
+        todo.update(tag, request.todo(), request.subTodo(), todoTime, nowRoutine, startDate, endDate, week);
+        todoRepository.flush();
 
-        if (routineEnabled) {
-            LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now();
+
+        if (nowRoutine && wasRoutine) {
             todoDateRepository.deleteAllByTodo_TodoIdAndDateGreaterThanEqualAndCompletedFalse(todoId, today);
             todoDateRepository.flush();
-            routineTodoDateGenerator.generate(todo, startDate, endDate, today);
-        } else if (request.date() != null) {
+            routineTodoDateGenerator.generate(todo, startDate, endDate, generateFrom(startDate, today));
+        } else if (nowRoutine) {
+            deleteAllDates(todoId);
+            routineTodoDateGenerator.generate(todo, startDate, endDate, generateFrom(startDate, today));
+        } else if (wasRoutine) {
+            deleteAllDates(todoId);
+            saveSingleDate(todo, request.date());
+        } else {
             TodoDateEntity todoDate = todoDateRepository.findAllByTodo_TodoIdOrderByDateAsc(todoId).stream()
                     .findFirst()
                     .orElseThrow(() -> new GeneralException(TodoErrorCode.TODO_DATE_GET_404_2));
@@ -154,6 +157,11 @@ public class TodoService {
     @Transactional
     public TodoListResponse updateComplete(UUID uid, Long todoId, LocalDate date, boolean completed) {
         getMyTodoOrThrow(uid, todoId);
+
+
+        if (date == null) {
+            throw new GeneralException(TodoErrorCode.TODO_DATE_REQUIRED_400_2);
+        }
 
         TodoDateEntity todoDate = todoDateRepository.findByTodo_TodoIdAndDate(todoId, date)
                 .orElseThrow(() -> new GeneralException(TodoErrorCode.TODO_DATE_GET_404_2));
@@ -173,6 +181,11 @@ public class TodoService {
         if (!todo.isRoutineEnabled() || deleteAll) {
             todoRepository.delete(todo);
             return;
+        }
+
+
+        if (date == null) {
+            throw new GeneralException(TodoErrorCode.TODO_DATE_REQUIRED_400_2);
         }
 
         TodoDateEntity todoDate = todoDateRepository.findByTodo_TodoIdAndDate(todoId, date)
@@ -200,6 +213,27 @@ public class TodoService {
         }
         if (startDate != null && startDate.isAfter(endDate)) {
             throw new GeneralException(TodoErrorCode.TODO_ROUTINE_RANGE_400_5);
+        }
+    }
+
+
+    private LocalDate generateFrom(LocalDate startDate, LocalDate today) {
+        return startDate.isAfter(today) ? startDate : today;
+    }
+
+    private void deleteAllDates(Long todoId) {
+        List<TodoDateEntity> existing = todoDateRepository.findAllByTodo_TodoIdOrderByDateAsc(todoId);
+        if (!existing.isEmpty()) {
+            todoDateRepository.deleteAll(existing);
+        }
+        todoDateRepository.flush();
+    }
+
+    private void saveSingleDate(TodoEntity todo, LocalDate date) {
+        try {
+            todoDateRepository.saveAndFlush(TodoDateEntity.create(todo, date));
+        } catch (DataIntegrityViolationException e) {
+            throw new GeneralException(TodoErrorCode.TODO_CREATE_400_1);
         }
     }
 }
