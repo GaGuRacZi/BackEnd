@@ -2,16 +2,20 @@ package com.gaguraczi.paw.domain.todo.service;
 
 import com.gaguraczi.paw.domain.todo.dto.response.TodoCalendarMonthResponse;
 import com.gaguraczi.paw.domain.todo.entity.TodoDateEntity;
+import com.gaguraczi.paw.domain.todo.exception.code.TodoErrorCode;
 import com.gaguraczi.paw.domain.todo.repository.TodoDateRepository;
+import com.gaguraczi.paw.global.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
@@ -24,8 +28,8 @@ public class TodoCalendarService {
     private final TodoDateRepository todoDateRepository;
 
 
-    public TodoCalendarMonthResponse getMonth(java.util.UUID uid, int year, int month) {
-        YearMonth yearMonth = YearMonth.of(year, month);
+    public TodoCalendarMonthResponse getMonth(UUID uid, int year, int month) {
+        YearMonth yearMonth = toYearMonth(year, month);
         LocalDate startDate = yearMonth.atDay(1);
         LocalDate endDate = yearMonth.atEndOfMonth();
 
@@ -53,5 +57,14 @@ public class TodoCalendarService {
         long monthCompleted = todoDates.stream().filter(TodoDateEntity::isCompleted).count();
 
         return TodoCalendarMonthResponse.of(year, month, monthTotal, monthCompleted, days);
+    }
+
+
+    private YearMonth toYearMonth(int year, int month) {
+        try {
+            return YearMonth.of(year, month);
+        } catch (DateTimeException e) {
+            throw GeneralException.of(TodoErrorCode.TODO_CALENDAR_PARAM_400_8, e);
+        }
     }
 }

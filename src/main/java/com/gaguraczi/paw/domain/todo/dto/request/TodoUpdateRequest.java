@@ -22,6 +22,9 @@ public record TodoUpdateRequest(
 
         LocalTime todoTime,
 
+        @NotNull(message = "루틴 여부는 필수입니다.")
+        Boolean routineEnabled,
+
 
         LocalDate date,
 

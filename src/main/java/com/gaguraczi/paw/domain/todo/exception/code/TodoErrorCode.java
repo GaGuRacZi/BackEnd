@@ -16,6 +16,7 @@ public enum TodoErrorCode implements BaseErrorCode {
     TODO_ROUTINE_RANGE_400_5(HttpStatus.BAD_REQUEST, "TODO_ROUTINE_RANGE_400_5", "루틴 시작일은 종료일보다 늦을 수 없습니다."),
     TODO_ROUTINE_TYPE_CHANGE_400_6(HttpStatus.BAD_REQUEST, "TODO_ROUTINE_TYPE_CHANGE_400_6", "루틴 여부는 변경할 수 없습니다."),
     TODO_UPDATE_400_7(HttpStatus.BAD_REQUEST, "TODO_UPDATE_400_7", "투두 수정에 실패했습니다."),
+    TODO_CALENDAR_PARAM_400_8(HttpStatus.BAD_REQUEST, "TODO_CALENDAR_PARAM_400_8", "조회 연/월이 올바르지 않습니다. 월은 1~12 사이여야 합니다."),
 
     TODO_GET_404_1(HttpStatus.NOT_FOUND, "TODO_GET_404_1", "투두를 찾을 수 없습니다."),
     TODO_DATE_GET_404_2(HttpStatus.NOT_FOUND, "TODO_DATE_GET_404_2", "해당 날짜의 투두를 찾을 수 없습니다."),

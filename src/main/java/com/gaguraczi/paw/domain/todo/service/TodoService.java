@@ -89,7 +89,7 @@ public class TodoService {
         );
 
         try {
-            todoRepository.save(todo);
+            todo = todoRepository.saveAndFlush(todo);
         } catch (DataIntegrityViolationException e) {
             throw new GeneralException(TodoErrorCode.TODO_CREATE_400_1);
         }
@@ -97,7 +97,11 @@ public class TodoService {
         if (routineEnabled) {
             routineTodoDateGenerator.generate(todo, startDate, endDate, startDate);
         } else {
-            todoDateRepository.save(TodoDateEntity.create(todo, request.date()));
+            try {
+                todoDateRepository.saveAndFlush(TodoDateEntity.create(todo, request.date()));
+            } catch (DataIntegrityViolationException e) {
+                throw new GeneralException(TodoErrorCode.TODO_CREATE_400_1);
+            }
         }
 
         return TodoDetailResponse.from(todo);
@@ -110,6 +114,11 @@ public class TodoService {
         TagEntity tag = getMyTagOrThrow(uid, request.tagId());
 
         boolean routineEnabled = todo.isRoutineEnabled();
+
+        // 루틴 <-> 비루틴 전환은 지원하지 않는다. 요청이 현재 상태와 다르면 조용히 무시하지 않고 명시적으로 거절한다.
+        if (request.routineEnabled() == null || request.routineEnabled() != routineEnabled) {
+            throw new GeneralException(TodoErrorCode.TODO_ROUTINE_TYPE_CHANGE_400_6);
+        }
 
         LocalDate startDate = null;
         LocalDate endDate = null;
