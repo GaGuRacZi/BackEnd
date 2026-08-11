@@ -33,6 +33,6 @@ public class TodoCalendarController {
     ) {
         UUID uid = securityUtils.currentUid();
         TodoCalendarMonthResponse response = todoCalendarService.getMonth(uid, year, month);
-        return ApiResponse.onSuccess(TodoSuccessCode.TODO_CALENDAR_200_5, response);
+        return ApiResponse.onSuccess(TodoSuccessCode.TODO_CALENDAR_200, response);
     }
 }
