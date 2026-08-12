@@ -4,6 +4,7 @@ import com.gaguraczi.paw.domain.auth.exception.AuthException;
 import com.gaguraczi.paw.domain.auth.exception.code.AuthErrorCode;
 import com.gaguraczi.paw.domain.auth.repository.OAuthRepository;
 import com.gaguraczi.paw.domain.auth.enums.SocialType;
+import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.domain.users.repository.UserRepository;
 import com.gaguraczi.paw.global.config.properties.SmtpProperties;
 import com.gaguraczi.paw.utils.RedisUtil;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.util.Locale;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -40,11 +42,7 @@ public class EmailVerificationService {
 
     public void sendCode(String email) {
         String normalized = normalize(email);
-
-        if (userRepository.existsByEmail(normalized)
-                || oAuthRepository.existsByEmailAndProviderType(normalized, SocialType.LOCAL)) {
-            throw AuthException.of(AuthErrorCode.LOCAL_SIGNUP_409_1);
-        }
+        assertEmailAvailableForLocalSignup(normalized);
 
         if (!redisUtil.setIfAbsent(COOLDOWN_KEY + normalized, "1", COOLDOWN_TTL_SECONDS)) {
             throw AuthException.of(AuthErrorCode.EMAIL_SEND_429);
@@ -95,6 +93,31 @@ public class EmailVerificationService {
 
     public void consumeVerified(String email) {
         redisUtil.deleteData(VERIFIED_KEY + normalize(email));
+    }
+
+    /**
+     * signupLocal과 동일 기준.
+     * - LOCAL 이미 있음 → 409
+     * - User 있고 KAKAO만(LOCAL 없음) → 연동 챌린지용으로 인증번호 허용
+     * - User 있고 그 외 → 409
+     * - User 없음 → 신규 가입용으로 허용
+     */
+    private void assertEmailAvailableForLocalSignup(String normalized) {
+        if (oAuthRepository.existsByEmailAndProviderType(normalized, SocialType.LOCAL)) {
+            throw AuthException.of(AuthErrorCode.LOCAL_SIGNUP_409_1);
+        }
+
+        Optional<User> existingUser = userRepository.findByEmail(normalized);
+        if (existingUser.isEmpty()) {
+            return;
+        }
+
+        User user = existingUser.get();
+        boolean kakaoOnly = oAuthRepository.existsByUserAndProviderType(user, SocialType.KAKAO)
+                && !oAuthRepository.existsByUserAndProviderType(user, SocialType.LOCAL);
+        if (!kakaoOnly) {
+            throw AuthException.of(AuthErrorCode.LOCAL_SIGNUP_409_1);
+        }
     }
 
     private String normalize(String email) {
