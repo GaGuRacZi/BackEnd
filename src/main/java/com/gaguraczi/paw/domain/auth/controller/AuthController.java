@@ -148,8 +148,10 @@ public class AuthController {
     @Operation(
             summary = "이메일 인증번호 전송",
             description = """
-                    로컬 가입용 6자리 인증번호를 메일로 전송합니다. JWT 불필요(permitAll).
+                    로컬 가입/카카오 계정 연동 진입용 6자리 인증번호를 메일로 전송합니다. JWT 불필요(permitAll).
                     Redis TTL 5분, 재전송 쿨다운 60초(EMAIL_SEND_429).
+                    KAKAO만 있는 이메일은 연동 챌린지(LOGIN_LINK_201) 진입을 위해 발송을 허용합니다.
+                    LOCAL이 이미 있거나 연동 불가 계정이면 LOCAL_SIGNUP_409_1.
                     """,
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     required = true,
@@ -208,6 +210,19 @@ public class AuthController {
                                     name = "EMAIL_SEND_429",
                                     value = """
                                             {"isSuccess":false,"code":"EMAIL_SEND_429","message":"인증번호 재전송은 잠시 후 다시 시도해 주세요.","result":null}
+                                            """
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "409",
+                    description = "이미 로컬 가입되었거나 연동 불가 계정",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "LOCAL_SIGNUP_409_1",
+                                    value = """
+                                            {"isSuccess":false,"code":"LOCAL_SIGNUP_409_1","message":"이미 존재하는 아이디입니다.","result":null}
                                             """
                             )
                     )
