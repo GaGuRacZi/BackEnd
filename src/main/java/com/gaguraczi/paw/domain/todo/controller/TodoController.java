@@ -38,7 +38,7 @@ public class TodoController {
     ) {
         UUID uid = securityUtils.currentUid();
         return ApiResponse.onSuccess(
-                TodoSuccessCode.TODO_LIST_200_1,
+                TodoSuccessCode.TODO_LIST_200,
                 todoService.getTodosByDate(uid, date, tagId)
         );
     }

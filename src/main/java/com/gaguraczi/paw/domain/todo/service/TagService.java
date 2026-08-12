@@ -4,9 +4,12 @@ import com.gaguraczi.paw.domain.todo.dto.request.TagCreateRequest;
 import com.gaguraczi.paw.domain.todo.dto.request.TagUpdateRequest;
 import com.gaguraczi.paw.domain.todo.dto.response.TagResponse;
 import com.gaguraczi.paw.domain.todo.entity.TagEntity;
+import com.gaguraczi.paw.domain.todo.entity.TodoEntity;
 import com.gaguraczi.paw.domain.todo.enums.TagColorEnum;
 import com.gaguraczi.paw.domain.todo.exception.code.TagErrorCode;
 import com.gaguraczi.paw.domain.todo.repository.TagRepository;
+import com.gaguraczi.paw.domain.todo.repository.TodoDateRepository;
+import com.gaguraczi.paw.domain.todo.repository.TodoRepository;
 import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.global.api.code.BaseErrorCode;
 import com.gaguraczi.paw.global.exception.GeneralException;
@@ -25,12 +28,16 @@ import java.util.UUID;
 public class TagService {
 
     private final TagRepository tagRepository;
+    private final TodoRepository todoRepository;
+    private final TodoDateRepository todoDateRepository;
     private final SecurityUtils securityUtils;
+
 
     private TagEntity getMyTagOrThrow(UUID userId, Long tagId, BaseErrorCode errorCode) {
         return tagRepository.findByTagIdAndUser_Uid(tagId, userId)
                 .orElseThrow(() -> new GeneralException(errorCode));
     }
+
 
     @Transactional
     public TagResponse create(TagCreateRequest request) {
@@ -57,6 +64,7 @@ public class TagService {
         return TagResponse.from(tag);
     }
 
+
     public List<TagResponse> getMyTags() {
         UUID userId = securityUtils.currentUser().getUid();
 
@@ -65,6 +73,7 @@ public class TagService {
                 .toList();
     }
 
+
     public TagResponse getTag(Long tagId) {
         UUID userId = securityUtils.currentUser().getUid();
 
@@ -72,6 +81,7 @@ public class TagService {
                 getMyTagOrThrow(userId, tagId, TagErrorCode.TAG_GET_404_2)
         );
     }
+
 
     @Transactional
     public TagResponse updateTag(Long tagId, TagUpdateRequest request) {
@@ -90,6 +100,10 @@ public class TagService {
                 ? tag.getTagColorEnum()
                 : request.tagColorEnum();
 
+        if (tagName.isEmpty()) {
+            throw new GeneralException(TagErrorCode.TAG_UPDATE_400_2);
+        }
+
         if (!tagName.equals(tag.getTagName())
                 && tagRepository.existsByUser_UidAndTagNameAndTagIdNot(userId, tagName, tagId)) {
             throw new GeneralException(TagErrorCode.TAG_UPDATE_400_2);
@@ -106,25 +120,28 @@ public class TagService {
         return TagResponse.from(tag);
     }
 
+
     @Transactional
     public void deleteTag(Long tagId, boolean force) {
         UUID userId = securityUtils.currentUser().getUid();
-        TagEntity tag = getMyTagOrThrow(userId, tagId, TagErrorCode.TAG_DELETE_409_1);
 
-        long usedCount = todoRepository.countByTag_TagId(tagId);
-        if (usedCount > 0) {
-            if (!force) {
-                throw new GeneralException(TagErrorCode.TAG_DELETE_409_1);
-            }
-            todoDateRepository.deleteAllByTagId(tagId);  // 자식 먼저
-            todoRepository.deleteAllByTagId(tagId);
-        }
+        TagEntity tag = getMyTagOrThrow(userId, tagId, TagErrorCode.TAG_DELETE_404_1);
 
-        try {
-            tagRepository.delete(tag);
-            tagRepository.flush();
-        } catch (DataIntegrityViolationException e) {
+        boolean inUse = todoRepository.existsByTag_TagId(tagId);
+
+        if (inUse && !force) {
             throw new GeneralException(TagErrorCode.TAG_DELETE_409_1);
         }
+
+        if (inUse) {
+            List<TodoEntity> todos = todoRepository.findAllByUser_UidAndTag_TagId(userId, tagId);
+
+            for (TodoEntity todo : todos) {
+                todoDateRepository.deleteAllByTodo_TodoId(todo.getTodoId());
+            }
+            todoRepository.deleteAll(todos);
+        }
+
+        tagRepository.delete(tag);
     }
 }
