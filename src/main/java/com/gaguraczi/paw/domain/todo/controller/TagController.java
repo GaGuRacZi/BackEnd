@@ -57,8 +57,14 @@ public class TagController {
     }
 
     @DeleteMapping("/{tagId}")
-    public ResponseEntity<Void> deleteTag(@PathVariable Long tagId) {
-        tagService.deleteTag(tagId);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<ApiResponse<Void>> deleteTag(
+            @PathVariable Long tagId,
+            @RequestParam(defaultValue = "false") boolean force
+    ) {
+        tagService.deleteTag(tagId, force);
+
+        return ResponseEntity.ok(
+                ApiResponse.<Void>onSuccess(TagSuccessCode.TAG_DELETE_200, null)
+        );
     }
 }
