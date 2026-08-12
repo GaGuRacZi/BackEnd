@@ -92,6 +92,7 @@ public class TodoEntity extends BaseEntity {
                        String todo,
                        String subTodo,
                        LocalTime todoTime,
+                       boolean routineEnabled,
                        LocalDate startDate,
                        LocalDate endDate,
                        WeekEnum week) {
@@ -99,6 +100,7 @@ public class TodoEntity extends BaseEntity {
         this.todo = todo;
         this.subTodo = subTodo;
         this.todoTime = todoTime;
+        this.routineEnabled = routineEnabled;
         this.startDate = startDate;
         this.endDate = endDate;
         this.week = week;
