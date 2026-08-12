@@ -62,6 +62,9 @@ public class TagController {
             @RequestParam(defaultValue = "false") boolean force
     ) {
         tagService.deleteTag(tagId, force);
-        return ResponseEntity.ok(ApiResponse.onSuccess(TagSuccessCode.TAG_DELETE_200, null));
+
+        return ResponseEntity.ok(
+                ApiResponse.<Void>onSuccess(TagSuccessCode.TAG_DELETE_200, null)
+        );
     }
 }
