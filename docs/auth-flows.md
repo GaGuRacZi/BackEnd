@@ -65,6 +65,8 @@
 ## 3. 로컬 회원가입 (이메일 인증 필요)
 
 1. `POST /auth/email/send` `{ "email" }` → 6자리 코드 메일 발송 (Redis TTL 5분, 재전송 쿨다운 60초)
+   - LOCAL 이미 있음 / 연동 불가 User → `LOCAL_SIGNUP_409_1`
+   - **KAKAO만 있는 User는 연동 진입을 위해 발송 허용** (이후 signup/local → `LOGIN_LINK_201`)
 2. `POST /auth/email/verify` `{ "email", "code" }` → 인증 완료 플래그 (TTL 30분)
 3. `POST /auth/signup/local` `{ "email", "password" }`
 
