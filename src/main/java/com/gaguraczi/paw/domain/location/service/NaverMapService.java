@@ -1,25 +1,23 @@
 package com.gaguraczi.paw.domain.location.service;
 
-import com.gaguraczi.paw.domain.location.client.NaverMapGeocodeClient;
 import com.gaguraczi.paw.domain.location.client.NaverMapReverseGeocodeClient;
 import com.gaguraczi.paw.domain.location.dto.res.LegalDistrictAddressRes;
-import com.gaguraczi.paw.domain.location.dto.res.NaverGeocodeRes;
 import com.gaguraczi.paw.domain.location.dto.res.NaverReverseGeocodeRes;
 import com.gaguraczi.paw.domain.location.exception.code.LocationErrorCode;
 import com.gaguraczi.paw.global.exception.GeneralException;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
-import org.locationtech.jts.geom.Point;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public class NaverMapService {
 
     private final NaverMapReverseGeocodeClient reverseGeocodeClient;
-    private final NaverMapGeocodeClient geocodeClient;
 
     public LegalDistrictAddressRes resolveLegalDistrictCodeAndAddress(double longitude, double latitude) {
         NaverReverseGeocodeRes result = reverseGeocodeClient.reverseGeocode(longitude, latitude);
@@ -32,12 +30,6 @@ public class NaverMapService {
     public String resolveRoadAddress(double longitude, double latitude) {
         NaverReverseGeocodeRes result = reverseGeocodeClient.reverseGeocode(longitude, latitude);
         return resolveDisplayAddress(result);
-    }
-
-    public Point geocodeToPoint(String address) {
-        NaverGeocodeRes result = geocodeClient.geocode(address);
-        return result.firstPoint()
-                .orElseThrow(() -> GeneralException.of(LocationErrorCode.LOCATION_ADDRESS_NOT_FOUND));
     }
 
     private String resolveDisplayAddress(NaverReverseGeocodeRes result) {
@@ -97,9 +89,9 @@ public class NaverMapService {
                     return 2;
                 }))
                 .map(NaverReverseGeocodeRes.ResultItem::region)
-                .filter(region -> region != null)
+                .filter(Objects::nonNull)
                 .map(this::buildRegionPrefix)
-                .filter(regionAddress -> regionAddress != null && !regionAddress.isBlank())
+                .filter(regionAddress -> !regionAddress.isBlank())
                 .findFirst();
     }
 

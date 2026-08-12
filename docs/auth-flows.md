@@ -144,7 +144,7 @@ Body: `{ "name", "nickname", "intro" }`
 ```
 isNew == false? → ONBOARDING_400
 그 외 → name, nickname, intro 저장 + isNew=false
-       → ONBOAREDING_200
+       → ONBOARDING_200
 ```
 
 `isNew=false`로 온보딩을 완료한다.
@@ -280,7 +280,7 @@ Body: `{ "refreshToken" }`
 | `LOCAL_SIGNUP_200_1` | 로컬 회원가입 성공 |
 | `LOCAL_LOGIN_200_1` / `200_2` | 로컬 로그인 (신규/기존) |
 | `KAKAO_LOGIN_200_1` / `200_2` | 카카오 로그인 (신규/기존) |
-| `ONBOAREDING_200` | 카카오 온보딩 완료 |
+| `ONBOARDING_200` | 카카오 온보딩 완료 |
 | `LOGIN_LINK_201` | 연동 창 필요 |
 | `LOGIN_LINK_200` | 연동 완료 |
 | `REFRESH_200` | 토큰 재발급 |

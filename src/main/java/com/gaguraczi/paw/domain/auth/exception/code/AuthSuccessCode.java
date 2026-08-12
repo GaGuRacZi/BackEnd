@@ -38,7 +38,7 @@ public enum AuthSuccessCode implements BaseSuccessCode {
     LOGIN_LINK_200(HttpStatus.OK, "LOGIN_LINK_200", "로그인 연동 완료"),
     LOGIN_LINK_201(HttpStatus.OK, "LOGIN_LINK_201", "기존 계정과 연동이 필요합니다. 기존 로그인 수단으로 확인해주세요."),
     ONBOARDING_EMAIL_200(HttpStatus.OK, "ONBOARDING_EMAIL_200", "이메일이 등록되었습니다."),
-    ONBOAREDING_200(HttpStatus.OK, "ONBOAREDING_200", "온보딩 완료"),
+    ONBOARDING_200(HttpStatus.OK, "ONBOARDING_200", "온보딩 완료"),
     PROFILE_IMAGE_200(HttpStatus.OK, "PROFILE_IMAGE_200", "유저 프로필 이미지 등록에 성공했습니다."),
 
     REFRESH_200(HttpStatus.OK, "REFRESH_200", "토큰 재발급에 성공했습니다."),
