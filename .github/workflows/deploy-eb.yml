@@ -161,7 +161,7 @@ jobs:
               if "=" not in line:
                   raise SystemExit(
                       f"CI error: EB_ENV_FILE line {line_no} is non-empty and non-comment "
-                      f"but missing '=': {line}"
+                      f"but missing '=' (line content omitted)"
                   )
 
               key, value = line.split("=", 1)
