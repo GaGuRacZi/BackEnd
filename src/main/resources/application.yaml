@@ -73,6 +73,21 @@ springdoc:
     display-request-duration: true
     operations-sorter: method
 
+# Firebase Admin SDK (FCM). Values come from .env locally or EB_ENV_FILE in deploy.
+# See docs/fcm-secrets.md for service-account → FCM_* mapping.
+fcm:
+  type: ${FCM_TYPE}
+  project-id: ${FCM_PROJECT_ID}
+  private-key-id: ${FCM_PRIVATE_KEY_ID}
+  private-key: ${FCM_PRIVATE_KEY}
+  client-email: ${FCM_CLIENT_EMAIL}
+  client-id: ${FCM_CLIENT_ID}
+  auth-uri: ${FCM_AUTH_URI:https://accounts.google.com/o/oauth2/auth}
+  token-uri: ${FCM_TOKEN_URI:https://oauth2.googleapis.com/token}
+  auth-provider-x509-cert-url: ${FCM_AUTH_PROVIDER_X509_CERT_URL:https://www.googleapis.com/oauth2/v1/certs}
+  client-x509-cert-url: ${FCM_CLIENT_X509_CERT_URL}
+  universe-domain: ${FCM_UNIVERSE_DOMAIN:googleapis.com}
+
 paw:
   swagger:
     prod-server-url: ${PAW_SWAGGER_PROD_SERVER_URL:https://issueissyu-ai.cloud}
