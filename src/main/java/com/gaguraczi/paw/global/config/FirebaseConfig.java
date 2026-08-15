@@ -1,4 +1,4 @@
-/*package com.gaguraczi.paw.global.config;
+package com.gaguraczi.paw.global.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -13,6 +13,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Initializes Firebase Admin SDK from {@code fcm.*} / {@code FCM_*} env.
+ * Credentials come from the Admin service account JSON, not {@code google-services.json}.
+ * Field mapping: {@code docs/fcm-secrets.md}.
+ */
 @Slf4j
 @Configuration
 public class FirebaseConfig {
@@ -68,7 +73,7 @@ public class FirebaseConfig {
             fcmProperties.put("type", type);
             fcmProperties.put("project_id", projectId);
             fcmProperties.put("private_key_id", privateKeyId);
-            fcmProperties.put("private_key", privateKey.replace("\\n", "\n"));
+            fcmProperties.put("private_key", normalizePrivateKey(privateKey));
             fcmProperties.put("client_email", clientEmail);
             fcmProperties.put("client_id", clientId);
             fcmProperties.put("auth_uri", authUri);
@@ -89,4 +94,20 @@ public class FirebaseConfig {
             log.error("Firebase initialization failed: {}", e.getMessage(), e);
         }
     }
-}*/
+
+    /**
+     * .env / properties 로딩 시 따옴표가 값에 포함되거나 {@code \n}이 이스케이프된 채로
+     * 남을 수 있어 PEM이 깨집니다. PKCS#8 파싱 전에 정규화합니다.
+     */
+    static String normalizePrivateKey(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String key = raw.trim();
+        if ((key.startsWith("\"") && key.endsWith("\""))
+                || (key.startsWith("'") && key.endsWith("'"))) {
+            key = key.substring(1, key.length() - 1).trim();
+        }
+        return key.replace("\\n", "\n").replace("\\r", "").replace("\r", "");
+    }
+}

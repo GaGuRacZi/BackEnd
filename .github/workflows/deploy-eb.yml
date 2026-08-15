@@ -59,12 +59,14 @@ jobs:
 
       # Required GitHub Secrets:
       # - AWS_ROLE_ARN: IAM role for GitHub OIDC
-      # - EB_ENV_FILE: full env text (SPRING_PROFILES_ACTIVE, AWS_DB_*, VALKEY_*, JWT_*, etc.)
+      # - EB_ENV_FILE: full env text (SPRING_PROFILES_ACTIVE, AWS_DB_*, VALKEY_*, JWT_*, FCM_*, etc.)
       # Required GitHub Variables:
       # - EB_ENVIRONMENT_NAME: Elastic Beanstalk environment name (e.g. Paw-env)
-      # Sensitive AWS_DB_*, VALKEY_*, JWT_* values are stored in Secrets Manager and
+      # Sensitive AWS_DB_*, VALKEY_*, JWT_*, FCM_* values are stored in Secrets Manager and
       # referenced via aws:elasticbeanstalk:application:environmentsecrets.
       # The EB instance profile is granted GetSecretValue on those secret ARNs.
+      # FCM_* comes from Firebase Admin service account JSON (not google-services.json).
+      # See docs/fcm-secrets.md for the field mapping.
       # Env sync + app version deploy share one update-environment to avoid double restart.
       - name: Prepare env options
         env:
@@ -81,7 +83,7 @@ jobs:
           env_name = os.environ["EB_ENVIRONMENT_NAME"]
           app_name = os.environ["EB_APPLICATION_NAME"]
 
-          SENSITIVE_KEY_RE = re.compile(r"^(AWS_DB_|VALKEY_|JWT_)")
+          SENSITIVE_KEY_RE = re.compile(r"^(AWS_DB_|VALKEY_|JWT_|FCM_)")
 
           def aws_json(args, stdin=None):
               out = subprocess.check_output(
