@@ -30,7 +30,11 @@ public class SecurityUtils {
     }
 
     public User currentUser() {
-        return userRepository.findById(currentUid())
+        User user = userRepository.findById(currentUid())
                 .orElseThrow(() -> AuthException.of(AuthErrorCode.LOGIN_LINK_400));
+        if (user.isDeleted()) {
+            throw AuthException.of(AuthErrorCode.LOGIN_LINK_400);
+        }
+        return user;
     }
 }

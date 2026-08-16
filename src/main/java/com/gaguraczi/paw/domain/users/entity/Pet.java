@@ -69,8 +69,16 @@ public class Pet extends BaseEntity {
     @Column(name = "breed_name", length = 255)
     private String breedName;
 
+    /** DOG는 DogBloodType, CAT은 CatBloodType의 name() 값 (petType에 따라 검증 후 저장) */
+    @Column(name = "blood_type", length = 30)
+    private String bloodType;
+
     public void setMain(Boolean isMain) {
         this.isMain = isMain;
+    }
+
+    public void updateBloodType(String bloodType) {
+        this.bloodType = bloodType;
     }
 
     public void updateProfileImage(String profileS3Key, String profileUrl) {
@@ -86,7 +94,9 @@ public class Pet extends BaseEntity {
             LocalDate birth,
             BigDecimal petWeight,
             Gender gender,
-            Boolean neutering
+            Boolean neutering,
+            String bloodType,
+            boolean bloodTypeTouched
     ) {
         if (petType != null) {
             this.petType = petType;
@@ -109,6 +119,9 @@ public class Pet extends BaseEntity {
         }
         if (neutering != null) {
             this.neutering = neutering;
+        }
+        if (bloodTypeTouched) {
+            this.bloodType = bloodType;
         }
     }
 }

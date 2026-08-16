@@ -105,3 +105,7 @@ tasks.named('jar') {
 tasks.named('bootRun') {
 	sourceResources sourceSets.main
 }
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
