@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 
@@ -24,7 +25,7 @@ public class RoutineTodoScheduler {
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Seoul")
     @Transactional
     public void generateRoutineTodoDates() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
         List<TodoEntity> routineTodos = todoRepository.findAllByRoutineEnabledTrue();
 
         for (TodoEntity todo : routineTodos) {
