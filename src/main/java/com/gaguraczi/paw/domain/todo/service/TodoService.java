@@ -210,10 +210,6 @@ public class TodoService {
     }
 
 
-    private LocalDate generateFrom(LocalDate startDate, LocalDate today) {
-        return startDate.isAfter(today) ? startDate : today;
-    }
-
 
     private void deleteStaleDates(Long todoId, LocalDate startDate, LocalDate endDate, WeekEnum week) {
         DayOfWeek dayOfWeek = week.toDayOfWeek();
