@@ -1,5 +1,7 @@
 package com.gaguraczi.paw;
 
+import com.gaguraczi.paw.domain.medication.config.MedicationProperties;
+import com.gaguraczi.paw.domain.rag.config.RagProperties;
 import com.gaguraczi.paw.global.config.properties.JwtProperties;
 import com.gaguraczi.paw.global.config.properties.KakaoProperties;
 import com.gaguraczi.paw.global.config.properties.NaverMapProperties;
@@ -15,7 +17,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 		JwtProperties.class,
 		KakaoProperties.class,
 		SmtpProperties.class,
-		NaverMapProperties.class
+		NaverMapProperties.class,
+		RagProperties.class,
+		MedicationProperties.class
 })
 public class PawApplication {
 
