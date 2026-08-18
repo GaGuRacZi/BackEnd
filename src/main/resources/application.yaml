@@ -3,6 +3,11 @@ spring:
     import: optional:file:.env[.properties]
   profiles:
     active: local
+    group:
+      rag-ingest:
+        - local
+      medication-ingest:
+        - local
   servlet:
     multipart:
       enabled: true
@@ -23,11 +28,14 @@ spring:
     access-exp-ms: ${JWT_EXPIRATION:3600000} # 1시간
     refresh-exp-ms: ${JWT_REFRESH_EXPIRATION:1209600000} # 14일
   ai:
-    google:
-      genai:
-        api-key: ${GOOGLE_AI_API_KEY}
-        embedding:
-          api-key: ${GOOGLE_AI_API_KEY}
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        # empty OPENAI_CHAT_MODEL= would become model="" → OpenAI 400. Omit the key to use the default.
+        model: ${OPENAI_CHAT_MODEL:gpt-5.6-luna}
+      embedding:
+        # empty OPENAI_EMBEDDING_MODEL= in .env sent model="" → OpenAI 400
+        model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
 
 kakao:
   user-info-uri: https://kapi.kakao.com/v2/user/me
@@ -91,6 +99,22 @@ fcm:
 paw:
   swagger:
     prod-server-url: ${PAW_SWAGGER_PROD_SERVER_URL:https://issueissyu-ai.cloud}
+  rag:
+    corpus-path: ${RAG_CORPUS_PATH:rag/data/59.반려견 성장 및 질병 관련 말뭉치 데이터}
+    chunk-size-chars: 1000
+    chunk-overlap-chars: 150
+    ingest-batch-size: 64
+    embedding-dimensions: 1536
+    search-top-k: 8
+    vector-store-id: ${OPENAI_VECTOR_STORE_ID:}
+    chat-model: ${OPENAI_CHAT_MODEL:gpt-5.6-luna}
+    reasoning-effort: ${OPENAI_RAG_REASONING_EFFORT:none}
+  medication:
+    ingest-batch-size: 8
+    embedding-dimensions: 1536
+    search-top-k: 10
+    chat-model: ${OPENAI_MEDICATION_CHAT_MODEL:${OPENAI_CHAT_MODEL:gpt-5.6-luna}}
+    reasoning-effort: ${OPENAI_MEDICATION_REASONING_EFFORT:none}
 
 ---
 # local profile
@@ -165,3 +189,31 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+---
+# rag-ingest — local CLI only. Activate with rag-ingest (group includes local).
+# Does not apply RAG DDL. Compose lifecycle is off so ingest does not wait for
+# elasticsearch or stop already-running postgres/redis on exit.
+spring:
+  config:
+    activate:
+      on-profile: rag-ingest
+  docker:
+    compose:
+      lifecycle-management: none
+  devtools:
+    restart:
+      enabled: false
+
+---
+# medication-ingest — local CLI only. Activate with medication-ingest (group includes local).
+spring:
+  config:
+    activate:
+      on-profile: medication-ingest
+  docker:
+    compose:
+      lifecycle-management: none
+  devtools:
+    restart:
+      enabled: false

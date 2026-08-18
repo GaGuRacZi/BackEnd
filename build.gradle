@@ -46,9 +46,10 @@ dependencies {
 	//mail
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 
-	//spring ai
-	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
-	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
+	//spring ai (OpenAI chat + embedding)
+	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+	runtimeOnly 'io.netty:netty-resolver-dns-native-macos::osx-aarch_64'
+	runtimeOnly 'io.netty:netty-resolver-dns-native-macos::osx-x86_64'
 
 
 
@@ -101,7 +102,12 @@ tasks.named('jar') {
 	enabled = false
 }
 
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
 // classpath 리소스 변경도 DevTools 재시작 트리거에 포함
 tasks.named('bootRun') {
 	sourceResources sourceSets.main
+	jvmArgs '-Djava.net.preferIPv4Stack=true'
 }
