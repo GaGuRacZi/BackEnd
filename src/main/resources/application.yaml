@@ -11,8 +11,8 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 50MB
-      max-request-size: 50MB
+      max-file-size: 100MB
+      max-request-size: 100MB
   sql:
     init:
       # postgis/vector extensions are created at app startup via db/extensions.sql
@@ -70,6 +70,10 @@ cloud:
 server:
   port: ${PORT:8080}
   forward-headers-strategy: framework
+  tomcat:
+    max-http-form-post-size: 100MB
+    max-swallow-size: 100MB
+    connection-timeout: 600s
 
 #Swagger
 springdoc:
@@ -115,6 +119,14 @@ paw:
     search-top-k: 10
     chat-model: ${OPENAI_MEDICATION_CHAT_MODEL:${OPENAI_CHAT_MODEL:gpt-5.6-luna}}
     reasoning-effort: ${OPENAI_MEDICATION_REASONING_EFFORT:none}
+  visit:
+    stt-model: ${OPENAI_VISIT_STT_MODEL:gpt-4o-transcribe-diarize}
+    chat-model: ${OPENAI_VISIT_CHAT_MODEL:${OPENAI_CHAT_MODEL:gpt-5.6-luna}}
+    reasoning-effort: ${OPENAI_VISIT_REASONING_EFFORT:none}
+    ai-summary-coin-cost: 1
+    ai-summary-include-sources: ${VISIT_AI_SUMMARY_INCLUDE_SOURCES:true}
+    max-audio-bytes: 104857600
+    max-audio-duration-sec: 3600
 
 ---
 # local profile

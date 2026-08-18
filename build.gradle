@@ -40,8 +40,9 @@ dependencies {
 	//validation
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-	// image content-type detection (magic bytes; HEIC/HEIF 포함)
+	// image/audio content-type detection (magic bytes; HEIC/HEIF 포함)
 	implementation 'org.apache.tika:tika-core:3.2.2'
+	implementation 'net.jthink:jaudiotagger:3.0.1'
 
 	//mail
 	implementation 'org.springframework.boot:spring-boot-starter-mail'

@@ -7,10 +7,10 @@ import lombok.Getter;
 
 @Getter
 @Builder
-@Schema(description = "약물 검색 결과")
+@Schema(description = "약물 검색 한 건. 진료 처방 CATALOG 추가 시 medicationId를 사용합니다.")
 public class MedicationSearchRes {
 
-    @Schema(description = "약물 ID", example = "1")
+    @Schema(description = "마스터 약물 ID. POST /visits/{visitId}/medications 의 medicationId.", example = "1")
     private final Long medicationId;
 
     @Schema(description = "한글 제품명", example = "카미녹스")

@@ -45,6 +45,82 @@ class OpenAiFileSearchResponseParserTest {
         assertThat(result.sources().getFirst().department()).isEqualTo("내과");
         assertThat(result.sources().getFirst().sourceType()).isEqualTo(RagSourceType.QA);
         assertThat(result.sources().getFirst().score()).isEqualTo(0.91);
+        assertThat(result.sources().getFirst().fileName()).isEqualTo("내과_QA_000.md");
+    }
+
+    @Test
+    void parsesSearchResultsFieldName() {
+        String json = """
+                {
+                  "output": [
+                    {
+                      "type": "file_search_call",
+                      "queries": ["치아 흡수성 병변"],
+                      "search_results": [
+                        {
+                          "file_id": "file-2",
+                          "filename": "치과_QA_001.md",
+                          "score": 0.88,
+                          "text": "source_id: DENT-1 | chunk: 0 | type: QA\\n과목: 치과 | 질환: 치아흡수\\n스케일링 후 관리"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "message",
+                      "content": [
+                        { "type": "output_text", "text": "치과 처치 안내예요." }
+                      ]
+                    }
+                  ]
+                }
+                """;
+
+        RagAskResult result = OpenAiFileSearchResponseParser.parse(jsonMapper.readTree(json));
+
+        assertThat(result.sources()).hasSize(1);
+        assertThat(result.sources().getFirst().sourceId()).isEqualTo("DENT-1");
+        assertThat(result.sources().getFirst().fileName()).isEqualTo("치과_QA_001.md");
+    }
+
+    @Test
+    void fallsBackToFileCitationsWhenResultsMissing() {
+        String json = """
+                {
+                  "output": [
+                    {
+                      "type": "file_search_call",
+                      "queries": ["스케일링"],
+                      "search_results": null
+                    },
+                    {
+                      "type": "message",
+                      "content": [
+                        {
+                          "type": "output_text",
+                          "text": "스케일링 후 관리가 중요해요.",
+                          "annotations": [
+                            {
+                              "type": "file_citation",
+                              "file_id": "file-9",
+                              "filename": "치과_CORPUS_000.md"
+                            },
+                            {
+                              "type": "file_citation",
+                              "file_id": "file-9",
+                              "filename": "치과_CORPUS_000.md"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """;
+
+        RagAskResult result = OpenAiFileSearchResponseParser.parse(jsonMapper.readTree(json));
+
+        assertThat(result.sources()).hasSize(1);
+        assertThat(result.sources().getFirst().fileName()).isEqualTo("치과_CORPUS_000.md");
     }
 
     @Test

@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.InputStream;
@@ -246,6 +247,21 @@ public class S3Utils {
             deleteFile(key);
         } catch (Exception ex) {
             log.warn("Failed to cleanup S3 object: {}", key, ex);
+        }
+    }
+
+    public byte[] downloadBytes(String key) {
+        if (key == null || key.isBlank()) {
+            throw new UtilException(FILE_EMPTY);
+        }
+        try {
+            GetObjectRequest req = GetObjectRequest.builder()
+                    .bucket(config.getBucket())
+                    .key(key)
+                    .build();
+            return s3Client.getObjectAsBytes(req).asByteArray();
+        } catch (Exception e) {
+            throw new UtilException(S3_DOWNLOAD_FAILED, e);
         }
     }
 }
