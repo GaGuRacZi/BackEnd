@@ -9,7 +9,6 @@ import com.gaguraczi.paw.domain.todo.entity.TodoDateEntity;
 import com.gaguraczi.paw.domain.todo.entity.TodoEntity;
 import com.gaguraczi.paw.domain.todo.enums.WeekEnum;
 import com.gaguraczi.paw.domain.todo.exception.code.TodoErrorCode;
-import com.gaguraczi.paw.domain.todo.generator.RoutineTodoDateGenerator;
 import com.gaguraczi.paw.domain.todo.repository.TagRepository;
 import com.gaguraczi.paw.domain.todo.repository.TodoDateRepository;
 import com.gaguraczi.paw.domain.todo.repository.TodoRepository;
@@ -37,7 +36,6 @@ public class TodoService {
     private final TodoDateRepository todoDateRepository;
     private final TagRepository tagRepository;
     private final UserRepository userRepository;
-    private final RoutineTodoDateGenerator routineTodoDateGenerator;
 
     private static final Comparator<TodoDateEntity> LIST_ORDER =
             Comparator.comparing(
@@ -95,12 +93,6 @@ public class TodoService {
             throw new GeneralException(TodoErrorCode.TODO_CREATE_400_1);
         }
 
-        if (routineEnabled) {
-            routineTodoDateGenerator.generate(todo, startDate, endDate, startDate);
-        } else {
-            saveSingleDate(todo, request.date());
-        }
-
         return TodoDetailResponse.from(todo);
     }
 
@@ -143,8 +135,6 @@ public class TodoService {
             todoDateRepository.flush();
 
             deleteStaleDates(todoId, startDate, endDate, week);
-
-            routineTodoDateGenerator.generate(todo, startDate, endDate, generateFrom(startDate, today));
         } else {
             TodoDateEntity todoDate = todoDateRepository.findAllByTodo_TodoIdOrderByDateAsc(todoId).stream()
                     .findFirst()
