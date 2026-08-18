@@ -24,7 +24,7 @@ public record TodoCreateRequest(
 
         LocalTime todoTime,
 
-        @NotNull boolean routineEnabled,
+        @NotNull Boolean routineEnabled,
 
 
         LocalDate date,
