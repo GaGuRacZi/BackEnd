@@ -6,6 +6,7 @@ import com.gaguraczi.paw.domain.rag.exception.code.RagErrorCode;
 import com.gaguraczi.paw.domain.rag.support.OpenAiFileSearchResponseParser;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.HttpClientSettings;
@@ -35,6 +36,7 @@ public class OpenAiVectorStoreClient {
 
     private final RestClient restClient;
 
+    @Autowired
     public OpenAiVectorStoreClient(
             RestClient.Builder restClientBuilder,
             @Value("${spring.ai.openai.api-key}") String apiKey
