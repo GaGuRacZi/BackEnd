@@ -61,8 +61,8 @@ public class MedicationController {
     })
     @GetMapping
     public ApiResponse<List<MedicationSearchRes>> search(
-            @Parameter(description = "약물명 또는 성분명", example = "카미녹스", required = true)
-            @RequestParam String q,
+            @Parameter(description = "약물명 또는 성분명", example = "카미녹스")
+            @RequestParam(required = false) String q,
             @Parameter(description = "최대 결과 수", example = "10")
             @RequestParam(required = false) Integer topK
     ) {

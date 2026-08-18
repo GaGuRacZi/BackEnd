@@ -46,6 +46,7 @@ public class MedicationIngestService {
             if (buffer.size() >= batchSize) {
                 FlushResult flush = flush(buffer);
                 processed += flush.processed();
+                skipped += flush.skipped();
                 failed += flush.failed();
                 buffer.clear();
                 if (processed > 0 && processed % 32 == 0) {
@@ -57,6 +58,7 @@ public class MedicationIngestService {
         if (!buffer.isEmpty()) {
             FlushResult flush = flush(buffer);
             processed += flush.processed();
+            skipped += flush.skipped();
             failed += flush.failed();
         }
         return new IngestResult(processed, skipped, failed, pending.size());
@@ -77,7 +79,7 @@ public class MedicationIngestService {
             prepared.add(new PreparedRow(row, copy, searchText));
         }
         if (prepared.isEmpty()) {
-            return new FlushResult(0, failed);
+            return new FlushResult(0, 0, failed);
         }
 
         List<float[]> embeddings;
@@ -92,21 +94,28 @@ public class MedicationIngestService {
         }
 
         int expectedDim = medicationProperties.getEmbeddingDimensions();
+        int processed = 0;
+        int skipped = 0;
         for (int i = 0; i < prepared.size(); i++) {
             float[] embedding = embeddings.get(i);
             if (embedding == null || embedding.length != expectedDim) {
                 throw GeneralException.of(MedicationErrorCode.MEDICATION_EMBEDDING_FAILED);
             }
             PreparedRow item = prepared.get(i);
-            medicationJdbcRepository.insert(
+            int affected = medicationJdbcRepository.insert(
                     item.row(),
                     item.copy().descriptionMd(),
                     item.copy().precautionMd(),
                     item.searchText(),
                     embedding
             );
+            if (affected == 0) {
+                skipped++;
+            } else {
+                processed++;
+            }
         }
-        return new FlushResult(prepared.size(), failed);
+        return new FlushResult(processed, skipped, failed);
     }
 
     private static String rootMessage(Throwable e) {
@@ -120,7 +129,7 @@ public class MedicationIngestService {
     public record IngestResult(int processed, int skipped, int failed, int pending) {
     }
 
-    private record FlushResult(int processed, int failed) {
+    private record FlushResult(int processed, int skipped, int failed) {
     }
 
     private record PreparedRow(MedicineStagingRow row, MedicationCopy copy, String searchText) {

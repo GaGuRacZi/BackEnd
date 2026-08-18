@@ -39,6 +39,7 @@ class MedicationSearchServiceTest {
     void setUp() {
         MedicationProperties properties = new MedicationProperties();
         properties.setSearchTopK(10);
+        properties.setEmbeddingDimensions(2);
         searchService = new MedicationSearchService(
                 embeddingModel, jdbcRepository, medicationRepository, properties);
     }
@@ -71,7 +72,7 @@ class MedicationSearchServiceTest {
 
     @Test
     void usesDefaultTopK() {
-        float[] vector = new float[]{0.1f};
+        float[] vector = new float[]{0.1f, 0.2f};
         when(embeddingModel.embed("관절")).thenReturn(vector);
         when(jdbcRepository.searchVector(vector, 10)).thenReturn(List.of());
         when(jdbcRepository.searchLexical("%관절%", 10)).thenReturn(List.of());
@@ -79,6 +80,39 @@ class MedicationSearchServiceTest {
         searchService.search("관절", null);
 
         verify(jdbcRepository).searchVector(vector, 10);
+    }
+
+    @Test
+    void capsTopKAtConfiguredMaximum() {
+        float[] vector = new float[]{0.1f, 0.2f};
+        when(embeddingModel.embed("관절")).thenReturn(vector);
+        when(jdbcRepository.searchVector(vector, 10)).thenReturn(List.of());
+        when(jdbcRepository.searchLexical("%관절%", 10)).thenReturn(List.of());
+
+        searchService.search("관절", 50);
+
+        verify(jdbcRepository).searchVector(vector, 10);
+        verify(jdbcRepository).searchLexical("%관절%", 10);
+    }
+
+    @Test
+    void rejectsNullEmbedding() {
+        when(embeddingModel.embed("카미녹스")).thenReturn(null);
+
+        assertThatThrownBy(() -> searchService.search("카미녹스", 5))
+                .isInstanceOf(GeneralException.class)
+                .extracting(ex -> ((GeneralException) ex).getCode())
+                .isEqualTo(MedicationErrorCode.MEDICATION_EMBEDDING_FAILED);
+    }
+
+    @Test
+    void rejectsWrongEmbeddingDimension() {
+        when(embeddingModel.embed("카미녹스")).thenReturn(new float[]{0.1f});
+
+        assertThatThrownBy(() -> searchService.search("카미녹스", 5))
+                .isInstanceOf(GeneralException.class)
+                .extracting(ex -> ((GeneralException) ex).getCode())
+                .isEqualTo(MedicationErrorCode.MEDICATION_EMBEDDING_FAILED);
     }
 
     @Test

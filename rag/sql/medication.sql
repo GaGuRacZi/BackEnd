@@ -26,5 +26,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS medication_item_seq_uidx
 CREATE INDEX IF NOT EXISTS medication_embedding_hnsw
   ON medication USING hnsw (embedding vector_cosine_ops);
 
-CREATE INDEX IF NOT EXISTS medication_name_ko_idx
-  ON medication (name_ko);
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+DROP INDEX IF EXISTS medication_name_ko_idx;
+
+CREATE INDEX IF NOT EXISTS medication_name_ko_trgm_idx
+  ON medication USING gin (name_ko gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS medication_name_en_trgm_idx
+  ON medication USING gin ((COALESCE(name_en, '')) gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS medication_ingredient_trgm_idx
+  ON medication USING gin ((COALESCE(ingredient, '')) gin_trgm_ops);

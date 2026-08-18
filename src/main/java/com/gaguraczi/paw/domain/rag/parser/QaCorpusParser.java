@@ -23,7 +23,7 @@ public class QaCorpusParser {
         JsonNode qa = root.path("qa");
         String input = text(qa.path("input"));
         String output = text(qa.path("output"));
-        if (input.isBlank() && output.isBlank()) {
+        if (input.isBlank() || output.isBlank()) {
             return Optional.empty();
         }
 
@@ -44,8 +44,8 @@ public class QaCorpusParser {
         }
 
         String content = header
-                + "[질문]\n" + input.trim()
-                + "\n[답변]\n" + output.trim();
+                + "[질문]\n" + input
+                + "\n[답변]\n" + output;
 
         return Optional.of(new RagChunk(
                 sourceId(file),

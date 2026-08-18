@@ -12,7 +12,10 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "rag", description = "반려견 지식 RAG 질의 API")
 @RestController
 @RequestMapping("/rag")
+@Validated
 @RequiredArgsConstructor
 public class RagController {
 
@@ -68,8 +72,10 @@ public class RagController {
     @GetMapping
     public ApiResponse<RagAskRes> ask(
             @Parameter(description = "질문", example = "앞다리를 절어요", required = true)
+            @NotBlank
             @RequestParam String q,
             @Parameter(description = "모델이 참고할 최대 검색 결과 수", example = "8")
+            @Max(RagSearchService.MAX_RESULTS)
             @RequestParam(required = false) Integer topK,
             @Parameter(description = "출처 유형", example = "QA")
             @RequestParam(required = false) RagSourceType sourceType,

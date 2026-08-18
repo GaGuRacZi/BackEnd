@@ -75,7 +75,7 @@ public class MedicationJdbcRepository {
         }
     }
 
-    public void insert(
+    public int insert(
             MedicineStagingRow row,
             String descriptionMd,
             String precautionMd,
@@ -83,7 +83,7 @@ public class MedicationJdbcRepository {
             float[] embedding
     ) {
         try {
-            jdbcTemplate.update(
+            return jdbcTemplate.update(
                     INSERT_SQL,
                     row.itemSeq(),
                     row.productName(),

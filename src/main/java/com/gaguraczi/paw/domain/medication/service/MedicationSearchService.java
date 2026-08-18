@@ -32,8 +32,13 @@ public class MedicationSearchService {
         if (trimmed.isEmpty()) {
             throw GeneralException.of(MedicationErrorCode.MEDICATION_QUERY_REQUIRED);
         }
-        int limit = topK == null || topK <= 0 ? medicationProperties.getSearchTopK() : topK;
+        int maxTopK = medicationProperties.getSearchTopK();
+        int limit = topK == null || topK <= 0 ? maxTopK : Math.min(topK, maxTopK);
         float[] embedding = embeddingModel.embed(trimmed);
+        int expectedDim = medicationProperties.getEmbeddingDimensions();
+        if (embedding == null || embedding.length != expectedDim) {
+            throw GeneralException.of(MedicationErrorCode.MEDICATION_EMBEDDING_FAILED);
+        }
         List<MedicationSearchHit> vectorHits = medicationJdbcRepository.searchVector(embedding, limit);
         List<MedicationSearchHit> lexicalHits =
                 medicationJdbcRepository.searchLexical(toLikePattern(trimmed), limit);

@@ -69,6 +69,25 @@ class CorpusParserTest {
     }
 
     @Test
+    void skipsQaWhenInputOrOutputBlank() throws Exception {
+        Path missingOutput = tempDir.resolve("qa-missing-output.json");
+        Files.writeString(missingOutput, """
+                {
+                  "qa": {"input": "앞다리를 절어요", "output": "  "}
+                }
+                """);
+        Path missingInput = tempDir.resolve("qa-missing-input.json");
+        Files.writeString(missingInput, """
+                {
+                  "qa": {"input": "", "output": "병원에서 진료받으세요."}
+                }
+                """);
+
+        assertThat(qaParser.parse(missingOutput)).isEmpty();
+        assertThat(qaParser.parse(missingInput)).isEmpty();
+    }
+
+    @Test
     void splitsCorpusBodyIntoChunks() throws Exception {
         Path file = tempDir.resolve("corpus-sample.json");
         Files.writeString(file, """

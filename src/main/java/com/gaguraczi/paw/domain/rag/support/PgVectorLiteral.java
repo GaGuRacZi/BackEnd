@@ -15,6 +15,9 @@ public final class PgVectorLiteral {
             if (i > 0) {
                 sb.append(',');
             }
+            if (!Float.isFinite(values[i])) {
+                throw new IllegalArgumentException("embedding values must be finite");
+            }
             sb.append(values[i]);
         }
         sb.append(']');

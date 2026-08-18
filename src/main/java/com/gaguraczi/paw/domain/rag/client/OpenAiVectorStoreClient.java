@@ -1,6 +1,5 @@
 package com.gaguraczi.paw.domain.rag.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.gaguraczi.paw.domain.rag.dto.RagAskResult;
 import com.gaguraczi.paw.domain.rag.exception.code.RagErrorCode;
 import com.gaguraczi.paw.domain.rag.support.OpenAiFileSearchResponseParser;
@@ -11,10 +10,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
+import tools.jackson.databind.JsonNode;
 
 import java.time.Duration;
 import java.util.LinkedHashMap;
@@ -32,7 +35,10 @@ public class OpenAiVectorStoreClient {
             """;
 
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
-    private static final Duration READ_TIMEOUT = Duration.ofSeconds(90);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(45);
+    private static final int MAX_ATTEMPTS = 3;
+    private static final long INITIAL_BACKOFF_MS = 200L;
+    private static final int BODY_EXCERPT_LIMIT = 500;
 
     private final RestClient restClient;
 
@@ -75,17 +81,62 @@ public class OpenAiVectorStoreClient {
         if (reasoningEffort != null && !reasoningEffort.isBlank()) {
             body.put("reasoning", Map.of("effort", reasoningEffort));
         }
+
+        RestClientResponseException lastResponse = null;
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                JsonNode response = restClient.post()
+                        .uri("/v1/responses")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .body(body)
+                        .retrieve()
+                        .body(JsonNode.class);
+                return OpenAiFileSearchResponseParser.parse(response);
+            } catch (RestClientResponseException e) {
+                lastResponse = e;
+                int status = e.getStatusCode().value();
+                log.error("OpenAI file_search failed status={} body={}", status, excerpt(e.getResponseBodyAsString()));
+                if (!isRetryable(e.getStatusCode()) || attempt == MAX_ATTEMPTS) {
+                    throw mapError(e);
+                }
+                backoff(attempt);
+            } catch (RestClientException e) {
+                log.error("OpenAI file_search ask failed: {}", e.getMessage());
+                throw GeneralException.of(RagErrorCode.RAG_SEARCH_FAILED, e);
+            }
+        }
+        throw mapError(lastResponse);
+    }
+
+    private static boolean isRetryable(HttpStatusCode status) {
+        return status.value() == HttpStatus.TOO_MANY_REQUESTS.value() || status.is5xxServerError();
+    }
+
+    private static GeneralException mapError(RestClientResponseException e) {
+        if (e.getStatusCode().value() == HttpStatus.TOO_MANY_REQUESTS.value()) {
+            return GeneralException.of(RagErrorCode.RAG_RATE_LIMITED, e);
+        }
+        if (e.getStatusCode().is5xxServerError()) {
+            return GeneralException.of(RagErrorCode.RAG_SEARCH_UNAVAILABLE, e);
+        }
+        return GeneralException.of(RagErrorCode.RAG_SEARCH_FAILED, e);
+    }
+
+    private static String excerpt(String body) {
+        if (body == null || body.isBlank()) {
+            return "";
+        }
+        String trimmed = body.strip();
+        return trimmed.length() <= BODY_EXCERPT_LIMIT ? trimmed : trimmed.substring(0, BODY_EXCERPT_LIMIT);
+    }
+
+    private static void backoff(int attempt) {
+        long delayMs = INITIAL_BACKOFF_MS * (1L << (attempt - 1));
         try {
-            JsonNode response = restClient.post()
-                    .uri("/v1/responses")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .accept(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(JsonNode.class);
-            return OpenAiFileSearchResponseParser.parse(response);
-        } catch (RestClientException e) {
-            log.error("OpenAI file_search ask failed: {}", e.getMessage());
+            Thread.sleep(delayMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw GeneralException.of(RagErrorCode.RAG_SEARCH_FAILED, e);
         }
     }

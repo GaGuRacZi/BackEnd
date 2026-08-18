@@ -34,7 +34,7 @@ spring:
         # empty OPENAI_CHAT_MODEL= would become model="" → OpenAI 400. Omit the key to use the default.
         model: ${OPENAI_CHAT_MODEL:gpt-5.6-luna}
       embedding:
-        # empty OPENAI_EMBEDDING_MODEL= in .env sent model="" → OpenAI 400
+        # Omit the key to use the default. A blank OPENAI_EMBEDDING_MODEL= is rejected at startup.
         model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
 
 kakao:

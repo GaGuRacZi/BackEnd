@@ -32,6 +32,9 @@ import java.util.stream.Stream;
 @Profile("rag-ingest")
 public class RagIngestService {
 
+    private static final String QA_PATH_MARKER = "TL_질의응답";
+    private static final String CORPUS_PATH_MARKER = "TS_말뭉치";
+
     private final RagProperties ragProperties;
     private final RagDocumentJdbcRepository ragDocumentJdbcRepository;
     private final EmbeddingModel embeddingModel;
@@ -84,13 +87,16 @@ public class RagIngestService {
                 for (RagChunk chunk : chunks) {
                     buffer.add(chunk);
                     if (buffer.size() >= batchSize) {
-                        FlushResult flush = flush(buffer);
-                        processed += flush.processed();
-                        skipped += flush.skipped();
-                        buffer.clear();
-                        if (processed > 0 && processed % 512 == 0) {
-                            log.info("RAG ingest progress processed={} skipped={} failed={}",
-                                    processed, skipped, failed);
+                        try {
+                            FlushResult flush = flush(buffer);
+                            processed += flush.processed();
+                            skipped += flush.skipped();
+                            if (processed > 0 && processed % 512 == 0) {
+                                log.info("RAG ingest progress processed={} skipped={} failed={}",
+                                        processed, skipped, failed);
+                            }
+                        } finally {
+                            buffer.clear();
                         }
                     }
                 }
@@ -105,9 +111,13 @@ public class RagIngestService {
             }
         }
         if (!buffer.isEmpty()) {
-            FlushResult flush = flush(buffer);
-            processed += flush.processed();
-            skipped += flush.skipped();
+            try {
+                FlushResult flush = flush(buffer);
+                processed += flush.processed();
+                skipped += flush.skipped();
+            } finally {
+                buffer.clear();
+            }
         }
 
         log.info("RAG ingest files accepted={}", filesAccepted);
@@ -115,14 +125,11 @@ public class RagIngestService {
     }
 
     private List<RagChunk> parseFile(Path file) throws IOException {
-        String path = file.toString();
-        if (path.contains("TL_질의응답")) {
-            return qaCorpusParser.parseToList(file);
-        }
-        if (path.contains("TS_말뭉치")) {
-            return sourceCorpusParser.parse(file);
-        }
-        return List.of();
+        return switch (classifyCorpusPath(file)) {
+            case QA -> qaCorpusParser.parseToList(file);
+            case CORPUS -> sourceCorpusParser.parse(file);
+            case NONE -> List.of();
+        };
     }
 
     private boolean matchesDepartment(RagChunk chunk) {
@@ -171,8 +178,8 @@ public class RagIngestService {
             if (embedding == null || embedding.length != expectedDim) {
                 throw GeneralException.of(RagErrorCode.RAG_EMBEDDING_FAILED);
             }
-            ragDocumentJdbcRepository.upsert(toEmbed.get(i), hashes.get(i), embedding);
         }
+        ragDocumentJdbcRepository.upsertAll(toEmbed, hashes, embeddings);
         return new FlushResult(toEmbed.size(), skipped);
     }
 
@@ -202,17 +209,26 @@ public class RagIngestService {
     }
 
     private boolean matchesSourceTypePath(Path path) {
-        String value = path.toString();
+        CorpusKind kind = classifyCorpusPath(path);
         RagSourceType filter = ragProperties.getSourceType();
-        boolean qa = value.contains("TL_질의응답");
-        boolean corpus = value.contains("TS_말뭉치");
         if (filter == RagSourceType.QA) {
-            return qa;
+            return kind == CorpusKind.QA;
         }
         if (filter == RagSourceType.CORPUS) {
-            return corpus;
+            return kind == CorpusKind.CORPUS;
         }
-        return qa || corpus;
+        return kind != CorpusKind.NONE;
+    }
+
+    private static CorpusKind classifyCorpusPath(Path path) {
+        String value = path.toString();
+        if (value.contains(QA_PATH_MARKER)) {
+            return CorpusKind.QA;
+        }
+        if (value.contains(CORPUS_PATH_MARKER)) {
+            return CorpusKind.CORPUS;
+        }
+        return CorpusKind.NONE;
     }
 
     private static String rootMessage(Throwable e) {
@@ -237,5 +253,11 @@ public class RagIngestService {
     }
 
     private record FlushResult(int processed, int skipped) {
+    }
+
+    private enum CorpusKind {
+        QA,
+        CORPUS,
+        NONE
     }
 }

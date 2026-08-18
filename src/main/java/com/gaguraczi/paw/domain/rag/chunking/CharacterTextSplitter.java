@@ -96,10 +96,8 @@ public final class CharacterTextSplitter {
             int extra = current.isEmpty() ? 0 : 1;
             if (!current.isEmpty() && current.length() + extra + piece.length() > chunkSize) {
                 flush(current, chunks);
-                String overlapText = tail(chunks.getLast(), overlap);
-                if (!overlapText.isEmpty()) {
-                    current.append(overlapText);
-                }
+                appendWithOverlap(current, chunks, piece);
+                continue;
             }
             if (!current.isEmpty()) {
                 current.append('\n');
@@ -108,6 +106,27 @@ public final class CharacterTextSplitter {
         }
         flush(current, chunks);
         return chunks;
+    }
+
+    private void appendWithOverlap(StringBuilder current, List<String> chunks, String piece) {
+        String overlapText = chunks.isEmpty() ? "" : tail(chunks.getLast(), overlap);
+        if (overlapText.isEmpty()) {
+            current.append(piece);
+            return;
+        }
+        int extra = 1;
+        if (overlapText.length() + extra + piece.length() <= chunkSize) {
+            current.append(overlapText).append('\n').append(piece);
+            return;
+        }
+        int capacity = chunkSize - overlapText.length() - extra;
+        if (capacity <= 0) {
+            current.append(piece);
+            return;
+        }
+        current.append(overlapText).append('\n').append(piece, 0, capacity);
+        flush(current, chunks);
+        current.append(piece.substring(capacity));
     }
 
     private static void flush(StringBuilder current, List<String> chunks) {

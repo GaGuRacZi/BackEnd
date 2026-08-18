@@ -39,6 +39,19 @@ class CharacterTextSplitterTest {
     }
 
     @Test
+    void consecutiveMaxSizePiecesDoNotExceedChunkSize() {
+        CharacterTextSplitter maxSplitter = new CharacterTextSplitter(10, 3);
+        String first = "a".repeat(10);
+        String second = "b".repeat(10);
+
+        List<String> chunks = maxSplitter.split(first + "\n\n" + second);
+
+        assertThat(chunks).isNotEmpty();
+        assertThat(chunks).allMatch(chunk -> chunk.length() <= 10);
+        assertThat(chunks.size()).isGreaterThanOrEqualTo(2);
+    }
+
+    @Test
     void rejectsInvalidOverlap() {
         assertThatThrownBy(() -> new CharacterTextSplitter(10, 10))
                 .isInstanceOf(IllegalArgumentException.class);

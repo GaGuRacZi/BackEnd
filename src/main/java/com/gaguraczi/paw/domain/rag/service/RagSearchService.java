@@ -7,13 +7,15 @@ import com.gaguraczi.paw.domain.rag.dto.RagSearchQuery;
 import com.gaguraczi.paw.domain.rag.exception.code.RagErrorCode;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RagSearchService {
 
-    private static final int MAX_RESULTS = 50;
+    public static final int MAX_RESULTS = 50;
 
     private final OpenAiVectorStoreClient openAiVectorStoreClient;
     private final RagProperties ragProperties;
@@ -24,6 +26,7 @@ public class RagSearchService {
         }
         String vectorStoreId = ragProperties.getVectorStoreId();
         if (vectorStoreId == null || vectorStoreId.isBlank()) {
+            log.warn("OpenAI vector store ID is missing. Set OPENAI_VECTOR_STORE_ID.");
             throw GeneralException.of(RagErrorCode.RAG_VECTOR_STORE_MISSING);
         }
         int topK = query.topK() == null || query.topK() <= 0

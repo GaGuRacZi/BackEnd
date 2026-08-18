@@ -1,6 +1,6 @@
 package com.gaguraczi.paw.domain.rag.support;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import com.gaguraczi.paw.domain.rag.dto.RagAskResult;
 import com.gaguraczi.paw.domain.rag.dto.RagSearchHit;
 
@@ -21,7 +21,7 @@ public final class OpenAiFileSearchResponseParser {
         JsonNode output = root.path("output");
         if (output.isArray()) {
             for (JsonNode item : output) {
-                String type = item.path("type").asText("");
+                String type = item.path("type").asString("");
                 if ("file_search_call".equals(type)) {
                     appendSources(sources, item.path("results"));
                 }
@@ -31,7 +31,7 @@ public final class OpenAiFileSearchResponseParser {
             }
         }
         if (answer.isEmpty()) {
-            String outputText = root.path("output_text").asText("");
+            String outputText = root.path("output_text").asString("");
             if (!outputText.isBlank()) {
                 answer.append(outputText);
             }
@@ -44,9 +44,9 @@ public final class OpenAiFileSearchResponseParser {
             return;
         }
         for (JsonNode part : content) {
-            String type = part.path("type").asText("");
+            String type = part.path("type").asString("");
             if ("output_text".equals(type) || "text".equals(type)) {
-                String text = part.path("text").asText("");
+                String text = part.path("text").asString("");
                 if (!text.isBlank()) {
                     if (!answer.isEmpty()) {
                         answer.append('\n');
@@ -72,7 +72,7 @@ public final class OpenAiFileSearchResponseParser {
     }
 
     private static String resultText(JsonNode result) {
-        String direct = result.path("text").asText("");
+        String direct = result.path("text").asString("");
         if (!direct.isBlank()) {
             return direct;
         }
@@ -82,7 +82,7 @@ public final class OpenAiFileSearchResponseParser {
         }
         StringBuilder builder = new StringBuilder();
         for (JsonNode part : content) {
-            String text = part.path("text").asText("");
+            String text = part.path("text").asString("");
             if (!text.isBlank()) {
                 if (!builder.isEmpty()) {
                     builder.append('\n');
@@ -94,7 +94,7 @@ public final class OpenAiFileSearchResponseParser {
     }
 
     private static String text(JsonNode node, String field) {
-        String value = node.path(field).asText("");
+        String value = node.path(field).asString("");
         return value.isBlank() ? null : value;
     }
 }

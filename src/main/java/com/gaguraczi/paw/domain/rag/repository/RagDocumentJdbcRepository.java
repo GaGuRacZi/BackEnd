@@ -5,15 +5,20 @@ import com.gaguraczi.paw.domain.rag.model.RagChunk;
 import com.gaguraczi.paw.domain.rag.support.PgVectorLiteral;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.BadSqlGrammarException;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class RagDocumentJdbcRepository {
@@ -67,20 +72,35 @@ public class RagDocumentJdbcRepository {
     }
 
     public void upsert(RagChunk chunk, String contentHash, float[] embedding) {
+        upsertAll(List.of(chunk), List.of(contentHash), List.of(embedding));
+    }
+
+    public void upsertAll(List<RagChunk> chunks, List<String> hashes, List<float[]> embeddings) {
+        if (chunks == null || chunks.isEmpty()) {
+            return;
+        }
         try {
-            jdbcTemplate.update(
-                    UPSERT_SQL,
-                    chunk.sourceId(),
-                    chunk.chunkIndex(),
-                    chunk.sourceType().name(),
-                    chunk.department(),
-                    chunk.lifeCycle(),
-                    chunk.disease(),
-                    chunk.title(),
-                    chunk.content(),
-                    contentHash,
-                    PgVectorLiteral.of(embedding)
-            );
+            jdbcTemplate.batchUpdate(UPSERT_SQL, new BatchPreparedStatementSetter() {
+                @Override
+                public void setValues(PreparedStatement ps, int i) throws SQLException {
+                    RagChunk chunk = chunks.get(i);
+                    ps.setString(1, chunk.sourceId());
+                    ps.setInt(2, chunk.chunkIndex());
+                    ps.setString(3, chunk.sourceType().name());
+                    ps.setString(4, chunk.department());
+                    ps.setString(5, chunk.lifeCycle());
+                    ps.setString(6, chunk.disease());
+                    ps.setString(7, chunk.title());
+                    ps.setString(8, chunk.content());
+                    ps.setString(9, hashes.get(i));
+                    ps.setString(10, PgVectorLiteral.of(embeddings.get(i)));
+                }
+
+                @Override
+                public int getBatchSize() {
+                    return chunks.size();
+                }
+            });
         } catch (DataAccessException e) {
             throw wrapTableMissing(e);
         }
@@ -88,19 +108,20 @@ public class RagDocumentJdbcRepository {
 
     private static RuntimeException wrapTableMissing(DataAccessException e) {
         if (isUndefinedTable(e)) {
+            log.warn("rag_document table is missing. Apply rag/sql/rag_document.sql or restore a dump.", e);
             return GeneralException.of(RagErrorCode.RAG_TABLE_MISSING, e);
         }
         return e;
     }
 
     private static boolean isUndefinedTable(DataAccessException e) {
-        Throwable cause = e.getMostSpecificCause();
-        if (cause instanceof SQLException sqlException && "42P01".equals(sqlException.getSQLState())) {
+        if (hasUndefinedTableState(e.getMostSpecificCause())) {
             return true;
         }
-        String message = cause != null ? cause.getMessage() : e.getMessage();
-        return message != null
-                && message.contains("rag_document")
-                && message.toLowerCase().contains("does not exist");
+        return e instanceof BadSqlGrammarException && hasUndefinedTableState(e.getCause());
+    }
+
+    private static boolean hasUndefinedTableState(Throwable cause) {
+        return cause instanceof SQLException sqlException && "42P01".equals(sqlException.getSQLState());
     }
 }

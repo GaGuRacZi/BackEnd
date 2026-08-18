@@ -8,13 +8,14 @@ import java.util.regex.Pattern;
 
 public final class OpenAiVectorStoreHitMapper {
 
-    private static final Pattern SOURCE_ID = Pattern.compile("source_id:\\s*([^|\\n]+)");
-    private static final Pattern CHUNK = Pattern.compile("chunk:\\s*(\\d+)");
-    private static final Pattern TYPE = Pattern.compile("type:\\s*(QA|CORPUS)");
-    private static final Pattern DEPARTMENT = Pattern.compile("과목:\\s*([^|\\n]+)");
-    private static final Pattern LIFE_CYCLE = Pattern.compile("생애주기:\\s*([^|\\n]+)");
-    private static final Pattern DISEASE = Pattern.compile("질환:\\s*([^|\\n]+)");
-    private static final Pattern TITLE = Pattern.compile("제목:\\s*([^|\\n]+)");
+    private static final String FIELD_START = "(?:^|\\|\\s*)";
+    private static final Pattern SOURCE_ID = Pattern.compile(FIELD_START + "source_id:\\s*([^|\\n]+)", Pattern.MULTILINE);
+    private static final Pattern CHUNK = Pattern.compile(FIELD_START + "chunk:\\s*(\\d+)", Pattern.MULTILINE);
+    private static final Pattern TYPE = Pattern.compile(FIELD_START + "type:\\s*(QA|CORPUS)", Pattern.MULTILINE);
+    private static final Pattern DEPARTMENT = Pattern.compile(FIELD_START + "과목:\\s*([^|\\n]+)", Pattern.MULTILINE);
+    private static final Pattern LIFE_CYCLE = Pattern.compile(FIELD_START + "생애주기:\\s*([^|\\n]+)", Pattern.MULTILINE);
+    private static final Pattern DISEASE = Pattern.compile(FIELD_START + "질환:\\s*([^|\\n]+)", Pattern.MULTILINE);
+    private static final Pattern TITLE = Pattern.compile(FIELD_START + "제목:\\s*([^|\\n]+)", Pattern.MULTILINE);
 
     private OpenAiVectorStoreHitMapper() {
     }

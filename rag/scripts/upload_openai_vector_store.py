@@ -165,6 +165,35 @@ def find_store(client: OpenAI, name: str):
         after = page.data[-1].id
 
 
+def list_store_file_ids(client: OpenAI, store_id: str) -> list[str]:
+    ids: list[str] = []
+    after = None
+    while True:
+        page = (
+            client.vector_stores.files.list(vector_store_id=store_id, limit=100, after=after)
+            if after
+            else client.vector_stores.files.list(vector_store_id=store_id, limit=100)
+        )
+        ids.extend(file.id for file in page.data)
+        if not page.has_more or not page.data:
+            return ids
+        after = page.data[-1].id
+
+
+def clear_store_files(client: OpenAI, store_id: str) -> int:
+    file_ids = list_store_file_ids(client, store_id)
+    for file_id in file_ids:
+        client.vector_stores.files.delete(vector_store_id=store_id, file_id=file_id)
+    return len(file_ids)
+
+
+def failed_file_count(file_counts) -> int:
+    failed = getattr(file_counts, "failed", None)
+    if failed is None and isinstance(file_counts, dict):
+        failed = file_counts.get("failed")
+    return int(failed or 0)
+
+
 def upload(client: OpenAI, files: list[Path], store_name: str) -> str:
     store = find_store(client, store_name)
     if store is None:
@@ -177,7 +206,8 @@ def upload(client: OpenAI, files: list[Path], store_name: str) -> str:
         )
         print(f"created vector store {store.id} name={store.name}")
     else:
-        print(f"reusing vector store {store.id} name={store.name}")
+        deleted = clear_store_files(client, store.id)
+        print(f"reusing vector store {store.id} name={store.name} cleared_files={deleted}")
 
     handles = [path.open("rb") for path in files]
     try:
@@ -201,15 +231,22 @@ def upload(client: OpenAI, files: list[Path], store_name: str) -> str:
         f"id={batch.id} status={batch.status} "
         f"counts={batch.file_counts.model_dump() if hasattr(batch.file_counts, 'model_dump') else batch.file_counts}"
     )
-    if batch.status != "completed":
-        raise SystemExit(f"vector store batch did not complete: {batch.status}")
+    if batch.status != "completed" or failed_file_count(batch.file_counts) != 0:
+        raise SystemExit(
+            f"vector store batch did not complete: status={batch.status} "
+            f"failed={failed_file_count(batch.file_counts)}"
+        )
 
     refreshed = client.vector_stores.retrieve(store.id)
     deadline = time.time() + 30 * 60
-    while refreshed.status == "in_progress" and time.time() < deadline:
+    while refreshed.status == "in_progress":
+        if time.time() >= deadline:
+            raise SystemExit(f"vector store status poll timed out: {refreshed.status}")
         time.sleep(5)
         refreshed = client.vector_stores.retrieve(store.id)
         print(f"store status={refreshed.status} files={refreshed.file_counts}")
+    if refreshed.status != "completed":
+        raise SystemExit(f"vector store did not complete: {refreshed.status}")
     print(
         f"ready id={refreshed.id} status={refreshed.status} "
         f"usage_bytes={refreshed.usage_bytes} files={refreshed.file_counts}"
