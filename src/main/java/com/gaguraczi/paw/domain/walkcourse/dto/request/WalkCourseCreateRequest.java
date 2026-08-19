@@ -3,11 +3,7 @@ package com.gaguraczi.paw.domain.walkcourse.dto.request;
 import com.gaguraczi.paw.domain.walkcourse.dto.Coordinate;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -44,6 +40,7 @@ public class WalkCourseCreateRequest {
     private String thumbnailUrl;
 
     @Valid
+    @NotEmpty(message = "경로는 필수입니다.")
     @Schema(description = "경로 좌표 목록 (순서대로 이으면 코스 선이 됨)")
     private List<Coordinate> path;
 }
