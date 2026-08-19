@@ -18,23 +18,15 @@ public record PetWeightSummaryRes(
         LocalDateTime lastRecordedAt,
 
         @Schema(description = "이번 달 증감(kg). 비교 대상이 없으면 null", example = "0.10")
-        BigDecimal monthChange,
-
-        @Schema(description = "급격한 변화 감지 여부", example = "false")
-        Boolean abnormal,
-
-        @Schema(description = "코멘트 카드 문구", example = "급격한 변화는 없어요")
-        String comment
+        BigDecimal monthChange
 ) {
 
     public static PetWeightSummaryRes of(
             Long petId,
             BigDecimal currentWeight,
             LocalDateTime lastRecordedAt,
-            BigDecimal monthChange,
-            Boolean abnormal,
-            String comment
+            BigDecimal monthChange
     ) {
-        return new PetWeightSummaryRes(petId, currentWeight, lastRecordedAt, monthChange, abnormal, comment);
+        return new PetWeightSummaryRes(petId, currentWeight, lastRecordedAt, monthChange);
     }
 }

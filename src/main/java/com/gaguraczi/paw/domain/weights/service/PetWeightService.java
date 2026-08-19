@@ -38,11 +38,6 @@ import java.util.Map;
 public class PetWeightService {
 
 
-    private static final BigDecimal ABNORMAL_CHANGE_RATE = new BigDecimal("0.10");
-    private static final String COMMENT_STABLE = "급격한 변화는 없어요";
-    private static final String COMMENT_ABNORMAL = "최근 체중이 급격하게 변했어요";
-    private static final String COMMENT_NO_RECORD = "아직 체중 기록이 없어요";
-
     private final PetWeightRepository petWeightRepository;
     private final PetRepository petRepository;
     private final SecurityUtils securityUtils;
@@ -159,22 +154,19 @@ public class PetWeightService {
     public PetWeightSummaryRes getSummary(Long petId) {
         Pet pet = loadOwnedPet(petId);
 
-        List<PetWeightEntity> recent = petWeightRepository.findTop2ByPetOrderByRecordedAtDescPetWeightIdDesc(pet);
-        if (recent.isEmpty()) {
-            return PetWeightSummaryRes.of(petId, pet.getPetWeight(), null, null, false, COMMENT_NO_RECORD);
-        }
+        PetWeightEntity latest = petWeightRepository
+                .findFirstByPetOrderByRecordedAtDescPetWeightIdDesc(pet)
+                .orElse(null);
 
-        PetWeightEntity latest = recent.get(0);
-        BigDecimal monthChange = calculateMonthChange(pet, latest);
-        boolean abnormal = recent.size() > 1 && isAbnormalChange(recent.get(1).getWeight(), latest.getWeight());
+        if (latest == null) {
+            return PetWeightSummaryRes.of(petId, pet.getPetWeight(), null, null);
+        }
 
         return PetWeightSummaryRes.of(
                 petId,
                 latest.getWeight(),
                 latest.getRecordedAt(),
-                monthChange,
-                abnormal,
-                abnormal ? COMMENT_ABNORMAL : COMMENT_STABLE
+                calculateMonthChange(pet, latest)
         );
     }
 
@@ -184,7 +176,7 @@ public class PetWeightService {
         LocalDateTime monthStart = YearMonth.now().atDay(1).atStartOfDay();
         if (latest.getRecordedAt().isBefore(monthStart)) {
             return null;
-              }
+        }
 
         BigDecimal baseline = petWeightRepository
                 .findFirstByPetAndRecordedAtLessThanOrderByRecordedAtDescPetWeightIdDesc(pet, monthStart)
@@ -201,15 +193,6 @@ public class PetWeightService {
         }
 
         return latest.getWeight().subtract(baseline).setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private boolean isAbnormalChange(BigDecimal previous, BigDecimal current) {
-        if (previous == null || current == null || previous.compareTo(BigDecimal.ZERO) == 0) {
-            return false;
-        }
-        BigDecimal rate = current.subtract(previous).abs()
-                .divide(previous, 4, RoundingMode.HALF_UP);
-        return rate.compareTo(ABNORMAL_CHANGE_RATE) >= 0;
     }
 
 

@@ -131,7 +131,7 @@ public class PetWeightController {
 
     @Operation(
             summary = "건강요약 - 체중 상단 카드",
-            description = "현재 체중, 이번 달 증감, 급격한 변화 코멘트를 반환합니다."
+            description = "현재 체중, 이번 달 증감을 반환합니다."
     )
     @ApiResponses(
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -151,8 +151,7 @@ public class PetWeightController {
                                                 "currentWeight": 4.20,
                                                 "lastRecordedAt": "2026-07-06T20:30:00",
                                                 "monthChange": 0.10,
-                                                "abnormal": false,
-                                                "comment": "급격한 변화는 없어요"
+                                                "abnormal": false
                                               }
                                             }
                                             """
