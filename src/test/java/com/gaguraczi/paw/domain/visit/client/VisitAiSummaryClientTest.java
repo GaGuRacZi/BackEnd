@@ -75,7 +75,7 @@ class VisitAiSummaryClientTest {
         ragProperties.setVectorStoreId("vs_test");
         ragProperties.setSearchTopK(8);
         RestClient restClient = builder.baseUrl("https://api.openai.com").build();
-        return new ClientFixture(new VisitAiSummaryClient(restClient, visitProperties, ragProperties), server);
+        return new ClientFixture(new VisitAiSummaryClient(remaining -> restClient, visitProperties, ragProperties), server);
     }
 
     private record ClientFixture(VisitAiSummaryClient client, MockRestServiceServer server) {

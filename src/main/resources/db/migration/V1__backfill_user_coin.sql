@@ -1,7 +1,6 @@
 -- Backfill NULL coin balances before Hibernate applies NOT NULL via ddl-auto=update.
 -- Existing unknown balances stay 0 (matches User.coinBalance / usedCoinBalance).
 -- New rows use DB defaults coin=10, used_coin=0.
--- Ends with ;; (spring.sql.init.separator).
 DO $$
 BEGIN
   IF EXISTS (
@@ -24,4 +23,4 @@ BEGIN
     ALTER TABLE users ALTER COLUMN used_coin SET DEFAULT 0;
     ALTER TABLE users ALTER COLUMN used_coin SET NOT NULL;
   END IF;
-END $$;;
+END $$;

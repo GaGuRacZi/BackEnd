@@ -10,7 +10,6 @@ import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
@@ -96,10 +95,6 @@ public class OpenAiSttClient {
             throw e;
         } catch (RestClientResponseException e) {
             log.error("OpenAI STT failed status={} body={}", e.getStatusCode().value(), excerpt(e.getResponseBodyAsString()));
-            if (e.getStatusCode().value() == HttpStatus.TOO_MANY_REQUESTS.value()
-                    || e.getStatusCode().is5xxServerError()) {
-                throw GeneralException.of(VisitErrorCode.VISIT_STT_FAILED, e);
-            }
             throw GeneralException.of(VisitErrorCode.VISIT_STT_FAILED, e);
         } catch (RestClientException e) {
             log.error("OpenAI STT request failed: {}", e.getMessage());

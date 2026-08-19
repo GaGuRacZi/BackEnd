@@ -10,23 +10,25 @@ import com.gaguraczi.paw.global.exception.GeneralException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
-import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.databind.JsonNode;
 
+import java.net.http.HttpClient;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -37,8 +39,7 @@ public class VisitAiSummaryClient {
     private static final int MAX_ATTEMPTS = 3;
     private static final long INITIAL_BACKOFF_MS = 200L;
 
-    private final RestClient.Builder restClientBuilder;
-    private final RestClient restClient;
+    private final TimedRestClient timedRestClient;
     private final VisitProperties visitProperties;
     private final RagProperties ragProperties;
 
@@ -51,15 +52,13 @@ public class VisitAiSummaryClient {
     ) {
         this.visitProperties = visitProperties;
         this.ragProperties = ragProperties;
-        this.restClientBuilder = restClientBuilder.clone()
+        this.timedRestClient = new SharedTimedRestClient(restClientBuilder.clone()
                 .baseUrl("https://api.openai.com")
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey);
-        this.restClient = null;
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey));
     }
 
-    VisitAiSummaryClient(RestClient restClient, VisitProperties visitProperties, RagProperties ragProperties) {
-        this.restClientBuilder = null;
-        this.restClient = restClient;
+    VisitAiSummaryClient(TimedRestClient timedRestClient, VisitProperties visitProperties, RagProperties ragProperties) {
+        this.timedRestClient = timedRestClient;
         this.visitProperties = visitProperties;
         this.ragProperties = ragProperties;
     }
@@ -109,8 +108,9 @@ public class VisitAiSummaryClient {
         RestClientResponseException lastResponse = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             ensureBudget(deadline);
+            RestClient client = clientFor(remaining(deadline));
             try {
-                JsonNode response = clientFor(remaining(deadline)).post()
+                JsonNode response = client.post()
                         .uri("/v1/responses")
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON)
@@ -138,6 +138,8 @@ public class VisitAiSummaryClient {
                 backoff(attempt, deadline);
             } catch (RestClientException e) {
                 throw GeneralException.of(VisitErrorCode.VISIT_AI_SUMMARY_FAILED, e);
+            } finally {
+                timedRestClient.release();
             }
         }
         throw GeneralException.of(VisitErrorCode.VISIT_AI_SUMMARY_FAILED, lastResponse);
@@ -156,18 +158,11 @@ public class VisitAiSummaryClient {
     }
 
     private RestClient clientFor(Duration remaining) {
-        if (restClientBuilder == null) {
-            return restClient;
-        }
         Duration readTimeout = remaining.compareTo(READ_TIMEOUT) < 0 ? remaining : READ_TIMEOUT;
         if (readTimeout.isZero() || readTimeout.isNegative()) {
             throw GeneralException.of(VisitErrorCode.VISIT_AI_SUMMARY_FAILED);
         }
-        return restClientBuilder.clone()
-                .requestFactory(ClientHttpRequestFactoryBuilder.detect()
-                        .build(HttpClientSettings.defaults()
-                                .withTimeouts(CONNECT_TIMEOUT, readTimeout)))
-                .build();
+        return timedRestClient.forRemaining(readTimeout);
     }
 
     private static Duration remaining(Instant deadline) {
@@ -214,6 +209,43 @@ public class VisitAiSummaryClient {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw GeneralException.of(VisitErrorCode.VISIT_AI_SUMMARY_FAILED, e);
+        }
+    }
+
+    @FunctionalInterface
+    interface TimedRestClient {
+        RestClient forRemaining(Duration remaining);
+
+        default void release() {
+        }
+    }
+
+    private static final class SharedTimedRestClient implements TimedRestClient {
+        private final RestClient restClient;
+        private final ThreadLocal<Duration> readTimeout = new ThreadLocal<>();
+
+        SharedTimedRestClient(RestClient.Builder baseBuilder) {
+            HttpClient httpClient = HttpClient.newBuilder()
+                    .connectTimeout(CONNECT_TIMEOUT)
+                    .build();
+            ClientHttpRequestFactory factory = (uri, method) -> {
+                Duration timeout = Optional.ofNullable(readTimeout.get()).orElse(READ_TIMEOUT);
+                JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+                requestFactory.setReadTimeout(timeout);
+                return requestFactory.createRequest(uri, method);
+            };
+            this.restClient = baseBuilder.requestFactory(factory).build();
+        }
+
+        @Override
+        public RestClient forRemaining(Duration remaining) {
+            readTimeout.set(remaining);
+            return restClient;
+        }
+
+        @Override
+        public void release() {
+            readTimeout.remove();
         }
     }
 }

@@ -11,7 +11,7 @@ public class VisitProperties {
 
     private String sttModel = "gpt-4o-transcribe-diarize";
     private String chatModel = "gpt-5.6-luna";
-    private String aiSummaryChatModel = "gpt-5.6-luna";
+    private String aiSummaryChatModel;
     private String reasoningEffort = "none";
     private int aiSummaryCoinCost = 1;
     private long maxAudioBytes = 104857600L;

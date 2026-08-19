@@ -20,7 +20,11 @@ spring:
       # ;; so PL/pgSQL DO $$ blocks are not split on inner semicolons
       mode: always
       separator: ";;"
-      schema-locations: classpath:db/extensions.sql,classpath:db/backfill-user-role.sql,classpath:db/backfill-user-coin.sql
+      schema-locations: classpath:db/extensions.sql,classpath:db/backfill-user-role.sql
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
   jpa:
     defer-datasource-initialization: false
   jwt:
@@ -122,7 +126,7 @@ paw:
   visit:
     stt-model: ${OPENAI_VISIT_STT_MODEL:gpt-4o-transcribe-diarize}
     chat-model: ${OPENAI_VISIT_CHAT_MODEL:${OPENAI_CHAT_MODEL:gpt-5.6-luna}}
-    ai-summary-chat-model: ${OPENAI_VISIT_AI_SUMMARY_CHAT_MODEL:${OPENAI_VISIT_CHAT_MODEL:${OPENAI_CHAT_MODEL:gpt-5.6-luna}}}
+    ai-summary-chat-model: ${OPENAI_VISIT_AI_SUMMARY_CHAT_MODEL:}
     reasoning-effort: ${OPENAI_VISIT_REASONING_EFFORT:none}
     ai-summary-coin-cost: 1
     ai-summary-include-sources: ${VISIT_AI_SUMMARY_INCLUDE_SOURCES:true}

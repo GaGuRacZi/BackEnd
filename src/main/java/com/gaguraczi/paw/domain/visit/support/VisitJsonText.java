@@ -7,6 +7,8 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.gaguraczi.paw.domain.visit.exception.code.VisitErrorCode;
 import com.gaguraczi.paw.global.exception.GeneralException;
 
+import java.io.CharArrayReader;
+
 public final class VisitJsonText {
 
     private static final JsonFactory JSON_FACTORY = new JsonFactory();
@@ -19,13 +21,13 @@ public final class VisitJsonText {
             throw GeneralException.of(VisitErrorCode.VISIT_SUMMARY_FAILED);
         }
         String text = stripCodeFences(raw);
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
+        char[] chars = text.toCharArray();
+        for (int i = 0; i < chars.length; i++) {
+            char c = chars[i];
             if (c != '{' && c != '[') {
                 continue;
             }
-            String candidate = text.substring(i);
-            try (JsonParser parser = JSON_FACTORY.createParser(candidate)) {
+            try (JsonParser parser = JSON_FACTORY.createParser(new CharArrayReader(chars, i, chars.length - i))) {
                 JsonToken token = parser.nextToken();
                 if (token != JsonToken.START_OBJECT && token != JsonToken.START_ARRAY) {
                     continue;
@@ -36,8 +38,8 @@ public final class VisitJsonText {
                 if (offset <= 0) {
                     continue;
                 }
-                int endIndex = Math.min(candidate.length(), (int) offset);
-                String extracted = candidate.substring(0, endIndex).trim();
+                int endIndex = Math.min(chars.length - i, (int) offset);
+                String extracted = text.substring(i, i + endIndex).trim();
                 if (!extracted.isEmpty()) {
                     return extracted;
                 }
