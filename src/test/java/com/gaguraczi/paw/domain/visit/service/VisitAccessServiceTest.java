@@ -75,9 +75,30 @@ class VisitAccessServiceTest {
     }
 
     @Test
-    void hidesOtherUsersVisitAsNotFound() {
+    void hidesMissingVisitAsNotFound() {
         UUID uid = UUID.randomUUID();
         when(visitRepository.findByVisitIdAndUser_Uid(7L, uid)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> visitAccessService.requireOwnedVisit(7L, uid))
+                .isInstanceOf(GeneralException.class)
+                .extracting(ex -> ((GeneralException) ex).getCode())
+                .isEqualTo(VisitErrorCode.VISIT_NOT_FOUND);
+    }
+
+    @Test
+    void hidesOwnershipMismatchVisitAsNotFound() {
+        UUID uid = UUID.randomUUID();
+        UUID otherUid = UUID.randomUUID();
+        User owner = User.builder().uid(otherUid).build();
+        User requester = User.builder().uid(uid).build();
+        Pet pet = pet(1L, owner, "아리");
+        Visit visit = Visit.builder()
+                .visitId(7L)
+                .pet(pet)
+                .user(requester)
+                .status(VisitStatus.READY)
+                .build();
+        when(visitRepository.findByVisitIdAndUser_Uid(7L, uid)).thenReturn(Optional.of(visit));
 
         assertThatThrownBy(() -> visitAccessService.requireOwnedVisit(7L, uid))
                 .isInstanceOf(GeneralException.class)

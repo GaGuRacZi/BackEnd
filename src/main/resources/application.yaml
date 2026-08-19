@@ -12,7 +12,7 @@ spring:
     multipart:
       enabled: true
       max-file-size: 100MB
-      max-request-size: 100MB
+      max-request-size: 110MB
   sql:
     init:
       # postgis/vector extensions are created at app startup via db/extensions.sql
@@ -20,7 +20,7 @@ spring:
       # ;; so PL/pgSQL DO $$ blocks are not split on inner semicolons
       mode: always
       separator: ";;"
-      schema-locations: classpath:db/extensions.sql,classpath:db/backfill-user-role.sql
+      schema-locations: classpath:db/extensions.sql,classpath:db/backfill-user-role.sql,classpath:db/backfill-user-coin.sql
   jpa:
     defer-datasource-initialization: false
   jwt:
@@ -71,8 +71,8 @@ server:
   port: ${PORT:8080}
   forward-headers-strategy: framework
   tomcat:
-    max-http-form-post-size: 100MB
-    max-swallow-size: 100MB
+    max-http-form-post-size: 110MB
+    max-swallow-size: 110MB
     connection-timeout: 600s
 
 #Swagger
@@ -122,6 +122,7 @@ paw:
   visit:
     stt-model: ${OPENAI_VISIT_STT_MODEL:gpt-4o-transcribe-diarize}
     chat-model: ${OPENAI_VISIT_CHAT_MODEL:${OPENAI_CHAT_MODEL:gpt-5.6-luna}}
+    ai-summary-chat-model: ${OPENAI_VISIT_AI_SUMMARY_CHAT_MODEL:${OPENAI_VISIT_CHAT_MODEL:${OPENAI_CHAT_MODEL:gpt-5.6-luna}}}
     reasoning-effort: ${OPENAI_VISIT_REASONING_EFFORT:none}
     ai-summary-coin-cost: 1
     ai-summary-include-sources: ${VISIT_AI_SUMMARY_INCLUDE_SOURCES:true}

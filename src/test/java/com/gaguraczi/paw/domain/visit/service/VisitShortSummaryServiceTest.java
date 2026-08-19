@@ -59,4 +59,31 @@ class VisitShortSummaryServiceTest {
                 .extracting(ex -> ((GeneralException) ex).getCode())
                 .isEqualTo(VisitErrorCode.VISIT_SUMMARY_FAILED);
     }
+
+    @Test
+    void rejectsSummaryWithoutEnoughCareItems() {
+        assertThatThrownBy(() -> service.parse("""
+                {
+                  "visitName": "진료",
+                  "diagnosisFindings": ["하나", "둘", "셋"],
+                  "oneLineSummary": "요약",
+                  "careItems": ["관리"]
+                }
+                """))
+                .isInstanceOf(GeneralException.class)
+                .extracting(ex -> ((GeneralException) ex).getCode())
+                .isEqualTo(VisitErrorCode.VISIT_SUMMARY_FAILED);
+
+        assertThatThrownBy(() -> service.parse("""
+                {
+                  "visitName": "진료",
+                  "diagnosisFindings": ["하나", "둘", "셋"],
+                  "oneLineSummary": "요약",
+                  "careItems": ["하나", "둘"]
+                }
+                """))
+                .isInstanceOf(GeneralException.class)
+                .extracting(ex -> ((GeneralException) ex).getCode())
+                .isEqualTo(VisitErrorCode.VISIT_SUMMARY_FAILED);
+    }
 }

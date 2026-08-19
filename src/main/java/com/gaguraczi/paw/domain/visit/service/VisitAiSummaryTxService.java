@@ -9,11 +9,13 @@ import com.gaguraczi.paw.domain.visit.exception.code.VisitErrorCode;
 import com.gaguraczi.paw.domain.visit.repository.VisitRepository;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class VisitAiSummaryTxService {
@@ -60,11 +62,18 @@ public class VisitAiSummaryTxService {
     public void refund(Long visitId, UUID uid, int cost) {
         Visit visit = visitRepository.findByIdForUpdate(visitId)
                 .orElseThrow(() -> GeneralException.of(VisitErrorCode.VISIT_NOT_FOUND));
-        if (visit.getAiSummaryStatus() == AiSummaryStatus.GENERATING) {
-            visit.resetAiSummary();
-        }
         User user = userRepository.findByIdForUpdate(uid)
                 .orElseThrow(() -> GeneralException.of(VisitErrorCode.VISIT_NOT_FOUND));
+        if (visit.getAiSummaryStatus() != AiSummaryStatus.GENERATING) {
+            log.warn(
+                    "Skip AI summary refund visitId={} status={} uid={}",
+                    visitId,
+                    visit.getAiSummaryStatus(),
+                    uid
+            );
+            return;
+        }
+        visit.resetAiSummary();
         user.refundCoin(cost);
     }
 }

@@ -77,6 +77,20 @@ class VisitAudioValidatorTest {
                 .isEqualTo(VisitErrorCode.VISIT_AUDIO_TOO_LARGE);
     }
 
+    @Test
+    void rejectsWhenDurationHeaderCannotBeRead() {
+        byte[] id3 = new byte[128];
+        byte[] tag = "ID3".getBytes(StandardCharsets.US_ASCII);
+        System.arraycopy(tag, 0, id3, 0, 3);
+        MockMultipartFile file = new MockMultipartFile(
+                "audio", "clinic.mp3", "audio/mpeg", id3);
+
+        assertThatThrownBy(() -> validator.validateAndDurationSec(file))
+                .isInstanceOf(GeneralException.class)
+                .extracting(ex -> ((GeneralException) ex).getCode())
+                .isEqualTo(VisitErrorCode.VISIT_AUDIO_TYPE);
+    }
+
     private static byte[] wavBytes() {
         byte[] wav = new byte[44];
         byte[] riff = "RIFF".getBytes(StandardCharsets.US_ASCII);

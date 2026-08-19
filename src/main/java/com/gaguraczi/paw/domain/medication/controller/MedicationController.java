@@ -165,6 +165,19 @@ public class MedicationController {
                                             """
                             )
                     )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "JWT_401_1",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "JWT_401_1",
+                                    value = """
+                                            {"isSuccess":false,"code":"JWT_401_1","message":"token 유효기간이 만료되었습니다.","result":null}
+                                            """
+                            )
+                    )
             )
     })
     @GetMapping("/{medicationId}")

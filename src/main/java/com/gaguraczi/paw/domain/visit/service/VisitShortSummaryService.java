@@ -67,7 +67,7 @@ public class VisitShortSummaryService {
             String oneLine = text(node, "oneLineSummary");
             List<String> findings = stringList(node, "diagnosisFindings");
             List<String> careItems = stringList(node, "careItems");
-            if (visitName == null || oneLine == null || findings.size() < 3 || careItems.isEmpty()) {
+            if (visitName == null || oneLine == null || findings.size() < 3 || careItems.size() < 3) {
                 throw GeneralException.of(VisitErrorCode.VISIT_SUMMARY_FAILED);
             }
             if (findings.size() > 4) {

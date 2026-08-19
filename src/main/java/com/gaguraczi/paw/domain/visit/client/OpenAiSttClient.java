@@ -8,10 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.HttpClientSettings;
-import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
@@ -21,6 +20,8 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.databind.JsonNode;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 
 @Slf4j
@@ -54,12 +55,19 @@ public class OpenAiSttClient {
         this.visitProperties = visitProperties;
     }
 
-    public DiarizedTranscript transcribe(byte[] audio, String filename, String contentType) {
-        if (audio == null || audio.length == 0) {
+    public DiarizedTranscript transcribe(Path audio, String filename, String contentType) {
+        if (audio == null || !Files.isRegularFile(audio)) {
             throw GeneralException.of(VisitErrorCode.VISIT_STT_FAILED);
         }
+        try {
+            if (Files.size(audio) == 0) {
+                throw GeneralException.of(VisitErrorCode.VISIT_STT_FAILED);
+            }
+        } catch (java.io.IOException e) {
+            throw GeneralException.of(VisitErrorCode.VISIT_STT_FAILED, e);
+        }
         String safeName = (filename == null || filename.isBlank()) ? "visit-audio.m4a" : filename;
-        ByteArrayResource fileResource = new ByteArrayResource(audio) {
+        FileSystemResource fileResource = new FileSystemResource(audio) {
             @Override
             public String getFilename() {
                 return safeName;

@@ -136,6 +136,37 @@ class VisitAiSummaryTxServiceTest {
     }
 
     @Test
+    void skipsRefundWhenStatusIsNone() {
+        UUID uid = UUID.randomUUID();
+        User user = User.builder().uid(uid).coin(2).usedCoin(2).build();
+        Visit visit = readyVisit(user);
+        when(visitRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(visit));
+        when(userRepository.findByIdForUpdate(uid)).thenReturn(Optional.of(user));
+
+        txService.refund(11L, uid, 1);
+
+        assertThat(visit.getAiSummaryStatus()).isEqualTo(AiSummaryStatus.NONE);
+        assertThat(user.coinBalance()).isEqualTo(2);
+        assertThat(user.usedCoinBalance()).isEqualTo(2);
+    }
+
+    @Test
+    void skipsRefundWhenStatusIsDone() {
+        UUID uid = UUID.randomUUID();
+        User user = User.builder().uid(uid).coin(2).usedCoin(2).build();
+        Visit visit = readyVisit(user);
+        visit.completeAiSummary("# 완료");
+        when(visitRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(visit));
+        when(userRepository.findByIdForUpdate(uid)).thenReturn(Optional.of(user));
+
+        txService.refund(11L, uid, 1);
+
+        assertThat(visit.getAiSummaryStatus()).isEqualTo(AiSummaryStatus.DONE);
+        assertThat(user.coinBalance()).isEqualTo(2);
+        assertThat(user.usedCoinBalance()).isEqualTo(2);
+    }
+
+    @Test
     void completePersistsMarkdown() {
         UUID uid = UUID.randomUUID();
         User user = User.builder().uid(uid).coin(2).usedCoin(2).build();

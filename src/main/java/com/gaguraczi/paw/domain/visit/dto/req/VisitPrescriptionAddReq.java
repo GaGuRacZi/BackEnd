@@ -6,6 +6,7 @@ import com.gaguraczi.paw.domain.visit.enums.PrescriptionSource;
 import com.gaguraczi.paw.domain.visit.enums.TakeTime;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 import java.util.List;
 
@@ -35,6 +36,7 @@ public record VisitPrescriptionAddReq(
         String nameEn,
         @Schema(description = "성분명. CUSTOM에서만 사용. CATALOG이면 마스터 ingredient.", example = "글루코사민")
         String ingredient,
+        @Positive
         @Schema(description = "1회 용량 숫자. 생략 가능.", example = "1")
         Integer dosageAmount,
         @Schema(description = "용량 단위. 생략하거나 빈 문자열이면 기본값 '정'.", example = "정")

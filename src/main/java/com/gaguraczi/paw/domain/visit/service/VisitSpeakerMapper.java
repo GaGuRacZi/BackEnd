@@ -6,6 +6,7 @@ import com.gaguraczi.paw.domain.visit.config.VisitProperties;
 import com.gaguraczi.paw.domain.visit.enums.TranscriptSpeaker;
 import com.gaguraczi.paw.domain.visit.exception.code.VisitErrorCode;
 import com.gaguraczi.paw.domain.visit.support.VisitJsonText;
+import com.gaguraczi.paw.domain.visit.support.VisitTextLimits;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,7 +61,7 @@ public class VisitSpeakerMapper {
             }
             TranscriptSpeaker speaker = roles.get(normalizeSpeaker(segment.speaker()));
             if (speaker == null) {
-                throw GeneralException.of(VisitErrorCode.VISIT_SUMMARY_FAILED);
+                speaker = TranscriptSpeaker.OWNER;
             }
             turns.add(new MappedTurn(speaker, segment.text().trim(), segment.startSec(), segment.endSec(), order++));
         }
@@ -133,7 +134,8 @@ public class VisitSpeakerMapper {
         }
         for (Map.Entry<String, StringBuilder> entry : bySpeaker.entrySet()) {
             sb.append("### speaker ").append(entry.getKey()).append('\n');
-            sb.append(entry.getValue()).append('\n');
+            sb.append(VisitTextLimits.truncate(entry.getValue().toString(), VisitTextLimits.SPEAKER_PROMPT_MAX_CHARS))
+                    .append('\n');
         }
         return sb.toString();
     }

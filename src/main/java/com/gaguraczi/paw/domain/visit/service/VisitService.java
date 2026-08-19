@@ -34,6 +34,7 @@ import com.gaguraczi.paw.global.security.SecurityUtils;
 import com.gaguraczi.paw.utils.S3.S3Dto;
 import com.gaguraczi.paw.utils.S3.S3Utils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -260,13 +261,13 @@ public class VisitService {
 
     private void afterCommitProcess(Long visitId, String s3Key) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            visitProcessService.processAsync(visitId);
+            submitProcess(visitId);
             return;
         }
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                visitProcessService.processAsync(visitId);
+                submitProcess(visitId);
             }
 
             @Override
@@ -276,6 +277,14 @@ public class VisitService {
                 }
             }
         });
+    }
+
+    private void submitProcess(Long visitId) {
+        try {
+            visitProcessService.processAsync(visitId);
+        } catch (TaskRejectedException e) {
+            visitProcessService.handleSubmitRejected(visitId);
+        }
     }
 
     private String buildAiSummaryInput(Visit visit) {

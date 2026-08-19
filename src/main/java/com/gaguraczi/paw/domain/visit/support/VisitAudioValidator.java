@@ -90,13 +90,13 @@ public class VisitAudioValidator {
             AudioFile audioFile = AudioFileIO.read(temp.toFile());
             AudioHeader header = audioFile.getAudioHeader();
             if (header == null) {
-                return 0;
+                throw GeneralException.of(VisitErrorCode.VISIT_AUDIO_TYPE);
             }
             return Math.max(header.getTrackLength(), 0);
         } catch (GeneralException e) {
             throw e;
         } catch (Exception e) {
-            return 0;
+            throw GeneralException.of(VisitErrorCode.VISIT_AUDIO_TYPE, e);
         } finally {
             if (temp != null) {
                 try {

@@ -22,6 +22,7 @@ import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.databind.JsonNode;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,21 +32,12 @@ import java.util.Map;
 @Component
 public class VisitAiSummaryClient {
 
-    static final String INSTRUCTIONS = """
-            너는 반려동물 진료 내용을 보호자에게 설명하는 보조다.
-            요약 전에 반드시 file_search로 진료 주제(치과, 마취, 스케일링, 처방 등) 관련 지식을 검색한다.
-            전사문·처방 약물·file_search 자료만 근거로 한국어 해요체 마크다운을 작성한다.
-            전사에 없는 진단·처방·처치를 지어내지 마라. file_search는 보호자 설명·주의·관리 안내에만 보탠다.
-            줄바꿈과 제목/불릿 마크다운을 사용한다.
-            본문 길이는 공백 포함 1000자 이상 1500자 이하다.
-            마지막에 이 요약은 진료 기록을 돕기 위한 것이며 수의사 진단을 대신하지 않는다는 한 줄을 넣어라.
-            """;
-
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(90);
     private static final int MAX_ATTEMPTS = 3;
     private static final long INITIAL_BACKOFF_MS = 200L;
 
+    private final RestClient.Builder restClientBuilder;
     private final RestClient restClient;
     private final VisitProperties visitProperties;
     private final RagProperties ragProperties;
@@ -59,43 +51,47 @@ public class VisitAiSummaryClient {
     ) {
         this.visitProperties = visitProperties;
         this.ragProperties = ragProperties;
-        this.restClient = restClientBuilder.clone()
-                .requestFactory(ClientHttpRequestFactoryBuilder.detect()
-                        .build(HttpClientSettings.defaults()
-                                .withTimeouts(CONNECT_TIMEOUT, READ_TIMEOUT)))
+        this.restClientBuilder = restClientBuilder.clone()
                 .baseUrl("https://api.openai.com")
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
-                .build();
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey);
+        this.restClient = null;
     }
 
     VisitAiSummaryClient(RestClient restClient, VisitProperties visitProperties, RagProperties ragProperties) {
+        this.restClientBuilder = null;
         this.restClient = restClient;
         this.visitProperties = visitProperties;
         this.ragProperties = ragProperties;
     }
 
     public RagAskResult generate(String input) {
-        RagAskResult first = callOnce(input);
+        Instant deadline = Instant.now().plus(READ_TIMEOUT);
+        ensureBudget(deadline);
+        RagAskResult first = callOnce(input, deadline);
         if (VisitTextLimits.inRange(first.answer(), visitProperties.getAiSummaryMinChars(), visitProperties.getAiSummaryMaxChars())) {
             return first;
         }
-        String retryInput = input + "\n\n이전 초안 글자수가 범위를 벗어났다. 공백 포함 1000~1500자로 다시 작성하라.\n초안:\n" + first.answer();
-        RagAskResult second = callOnce(retryInput);
+        String retryInput = input + "\n\n이전 초안 글자수가 범위를 벗어났다. 공백 포함 "
+                + visitProperties.getAiSummaryMinChars() + "~" + visitProperties.getAiSummaryMaxChars()
+                + "자로 다시 작성하라.\n초안:\n" + first.answer();
+        ensureBudget(deadline);
+        RagAskResult second = callOnce(retryInput, deadline);
         if (!VisitTextLimits.inRange(second.answer(), visitProperties.getAiSummaryMinChars(), visitProperties.getAiSummaryMaxChars())) {
             throw GeneralException.of(VisitErrorCode.VISIT_AI_SUMMARY_FAILED);
         }
         return second;
     }
 
-    private RagAskResult callOnce(String input) {
+    private RagAskResult callOnce(String input, Instant deadline) {
+        ensureBudget(deadline);
         String vectorStoreId = ragProperties.getVectorStoreId();
         if (vectorStoreId == null || vectorStoreId.isBlank()) {
             throw GeneralException.of(VisitErrorCode.VISIT_VECTOR_STORE_MISSING);
         }
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("model", visitProperties.getChatModel());
+        body.put("model", visitProperties.getAiSummaryChatModel());
         body.put("input", input);
-        body.put("instructions", INSTRUCTIONS);
+        body.put("instructions", instructions());
         body.put("max_output_tokens", 2500);
         body.put("tools", List.of(Map.of(
                 "type", "file_search",
@@ -112,8 +108,9 @@ public class VisitAiSummaryClient {
 
         RestClientResponseException lastResponse = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            ensureBudget(deadline);
             try {
-                JsonNode response = restClient.post()
+                JsonNode response = clientFor(remaining(deadline)).post()
                         .uri("/v1/responses")
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON)
@@ -137,12 +134,54 @@ public class VisitAiSummaryClient {
                 if (!isRetryable(e.getStatusCode()) || attempt == MAX_ATTEMPTS) {
                     throw GeneralException.of(VisitErrorCode.VISIT_AI_SUMMARY_FAILED, e);
                 }
-                backoff(attempt);
+                ensureBudget(deadline);
+                backoff(attempt, deadline);
             } catch (RestClientException e) {
                 throw GeneralException.of(VisitErrorCode.VISIT_AI_SUMMARY_FAILED, e);
             }
         }
         throw GeneralException.of(VisitErrorCode.VISIT_AI_SUMMARY_FAILED, lastResponse);
+    }
+
+    private String instructions() {
+        return """
+                너는 반려동물 진료 내용을 보호자에게 설명하는 보조다.
+                요약 전에 반드시 file_search로 진료 주제(치과, 마취, 스케일링, 처방 등) 관련 지식을 검색한다.
+                전사문·처방 약물·file_search 자료만 근거로 한국어 해요체 마크다운을 작성한다.
+                전사에 없는 진단·처방·처치를 지어내지 마라. file_search는 보호자 설명·주의·관리 안내에만 보탠다.
+                줄바꿈과 제목/불릿 마크다운을 사용한다.
+                본문 길이는 공백 포함 %d자 이상 %d자 이하다.
+                마지막에 이 요약은 진료 기록을 돕기 위한 것이며 수의사 진단을 대신하지 않는다는 한 줄을 넣어라.
+                """.formatted(visitProperties.getAiSummaryMinChars(), visitProperties.getAiSummaryMaxChars());
+    }
+
+    private RestClient clientFor(Duration remaining) {
+        if (restClientBuilder == null) {
+            return restClient;
+        }
+        Duration readTimeout = remaining.compareTo(READ_TIMEOUT) < 0 ? remaining : READ_TIMEOUT;
+        if (readTimeout.isZero() || readTimeout.isNegative()) {
+            throw GeneralException.of(VisitErrorCode.VISIT_AI_SUMMARY_FAILED);
+        }
+        return restClientBuilder.clone()
+                .requestFactory(ClientHttpRequestFactoryBuilder.detect()
+                        .build(HttpClientSettings.defaults()
+                                .withTimeouts(CONNECT_TIMEOUT, readTimeout)))
+                .build();
+    }
+
+    private static Duration remaining(Instant deadline) {
+        Duration remaining = Duration.between(Instant.now(), deadline);
+        if (remaining.isZero() || remaining.isNegative()) {
+            throw GeneralException.of(VisitErrorCode.VISIT_AI_SUMMARY_FAILED);
+        }
+        return remaining;
+    }
+
+    private static void ensureBudget(Instant deadline) {
+        if (!Instant.now().isBefore(deadline)) {
+            throw GeneralException.of(VisitErrorCode.VISIT_AI_SUMMARY_FAILED);
+        }
     }
 
     private static String outputTypes(JsonNode response) {
@@ -164,8 +203,12 @@ public class VisitAiSummaryClient {
         return status.value() == HttpStatus.TOO_MANY_REQUESTS.value() || status.is5xxServerError();
     }
 
-    private static void backoff(int attempt) {
+    private static void backoff(int attempt, Instant deadline) {
         long delayMs = INITIAL_BACKOFF_MS * (1L << (attempt - 1));
+        Duration remaining = remaining(deadline);
+        if (remaining.toMillis() < delayMs) {
+            throw GeneralException.of(VisitErrorCode.VISIT_AI_SUMMARY_FAILED);
+        }
         try {
             Thread.sleep(delayMs);
         } catch (InterruptedException e) {

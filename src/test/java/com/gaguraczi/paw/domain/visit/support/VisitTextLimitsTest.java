@@ -20,4 +20,11 @@ class VisitTextLimitsTest {
         assertThat(VisitTextLimits.inRange("a".repeat(1501), 1000, 1500)).isFalse();
         assertThat(VisitTextLimits.inRange("", 1000, 1500)).isFalse();
     }
+
+    @Test
+    void truncatesToMaxInclusive() {
+        assertThat(VisitTextLimits.truncate("abcd", 3)).isEqualTo("abc");
+        assertThat(VisitTextLimits.truncate("abc", 3)).isEqualTo("abc");
+        assertThat(VisitTextLimits.truncate(null, 3)).isEmpty();
+    }
 }

@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
@@ -69,11 +70,13 @@ public class User extends BaseEntity {
     private String pushToken;
 
     @Builder.Default
-    @Column(name = "coin")
+    @ColumnDefault("10")
+    @Column(name = "coin", nullable = false)
     private Integer coin = 10;
 
     @Builder.Default
-    @Column(name = "used_coin")
+    @ColumnDefault("0")
+    @Column(name = "used_coin", nullable = false)
     private Integer usedCoin = 0;
 
     @Builder.Default

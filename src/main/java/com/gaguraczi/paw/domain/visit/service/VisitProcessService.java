@@ -15,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 @Slf4j
@@ -38,29 +40,54 @@ public class VisitProcessService {
             log.error("Visit processing failed visitId={}", visitId, e);
             String message = e instanceof GeneralException ge ? ge.getMessage() : "진료 요약 생성에 실패했습니다.";
             visitProcessTxService.markFailed(visitId, message);
+            try {
+                notifyStatus(visitId, "VISIT_FAILED", "진료 요약", "진료 요약 생성에 실패했어요.");
+            } catch (Exception notifyEx) {
+                log.warn("Visit failed push failed visitId={}: {}", visitId, notifyEx.getMessage());
+            }
+        }
+    }
+
+    public void handleSubmitRejected(Long visitId) {
+        log.error("Visit processing rejected visitId={}", visitId);
+        visitProcessTxService.markFailed(visitId, "진료 요약 생성에 실패했습니다.");
+        try {
             notifyStatus(visitId, "VISIT_FAILED", "진료 요약", "진료 요약 생성에 실패했어요.");
+        } catch (Exception e) {
+            log.warn("Visit failed push failed visitId={}: {}", visitId, e.getMessage());
         }
     }
 
     void process(Long visitId) {
         Visit visit = visitProcessTxService.requireForProcessing(visitId);
-        byte[] audio = s3Utils.downloadBytes(visit.getAudioS3Key());
-        DiarizedTranscript transcript = openAiSttClient.transcribe(
-                audio,
-                filenameOf(visit.getAudioS3Key()),
-                visit.getAudioContentType()
-        );
-        if (transcript.durationSec() != null && transcript.durationSec() > visitProperties.getMaxAudioDurationSec()) {
-            throw GeneralException.of(VisitErrorCode.VISIT_AUDIO_DURATION);
-        }
-        Pet pet = visit.getPet();
-        List<VisitSpeakerMapper.MappedTurn> turns = visitSpeakerMapper.map(transcript, pet.getPetName());
-        VisitShortSummary summary = visitShortSummaryService.summarize(turns, pet);
-        visitProcessTxService.saveReady(visitId, turns, summary, transcript.durationSec());
+        Path audio = null;
         try {
-            notifyStatus(visitId, "VISIT_READY", "진료 요약", "AI 진료 요약이 완료되었어요.");
-        } catch (Exception e) {
-            log.warn("Visit ready push failed visitId={}: {}", visitId, e.getMessage());
+            audio = s3Utils.downloadToTempFile(visit.getAudioS3Key());
+            DiarizedTranscript transcript = openAiSttClient.transcribe(
+                    audio,
+                    filenameOf(visit.getAudioS3Key()),
+                    visit.getAudioContentType()
+            );
+            if (transcript.durationSec() != null && transcript.durationSec() > visitProperties.getMaxAudioDurationSec()) {
+                throw GeneralException.of(VisitErrorCode.VISIT_AUDIO_DURATION);
+            }
+            Pet pet = visit.getPet();
+            List<VisitSpeakerMapper.MappedTurn> turns = visitSpeakerMapper.map(transcript, pet.getPetName());
+            VisitShortSummary summary = visitShortSummaryService.summarize(turns, pet);
+            visitProcessTxService.saveReady(visitId, turns, summary, transcript.durationSec());
+            try {
+                notifyStatus(visitId, "VISIT_READY", "진료 요약", "AI 진료 요약이 완료되었어요.");
+            } catch (Exception e) {
+                log.warn("Visit ready push failed visitId={}: {}", visitId, e.getMessage());
+            }
+        } finally {
+            if (audio != null) {
+                try {
+                    Files.deleteIfExists(audio);
+                } catch (Exception e) {
+                    log.warn("Failed to delete visit audio temp file visitId={}: {}", visitId, e.getMessage());
+                }
+            }
         }
     }
 
