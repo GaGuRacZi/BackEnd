@@ -9,7 +9,6 @@ import com.gaguraczi.paw.domain.todo.entity.TodoDateEntity;
 import com.gaguraczi.paw.domain.todo.entity.TodoEntity;
 import com.gaguraczi.paw.domain.todo.enums.WeekEnum;
 import com.gaguraczi.paw.domain.todo.exception.code.TodoErrorCode;
-import com.gaguraczi.paw.domain.todo.generator.RoutineTodoDateGenerator;
 import com.gaguraczi.paw.domain.todo.repository.TagRepository;
 import com.gaguraczi.paw.domain.todo.repository.TodoDateRepository;
 import com.gaguraczi.paw.domain.todo.repository.TodoRepository;
@@ -21,6 +20,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Comparator;
@@ -36,7 +36,6 @@ public class TodoService {
     private final TodoDateRepository todoDateRepository;
     private final TagRepository tagRepository;
     private final UserRepository userRepository;
-    private final RoutineTodoDateGenerator routineTodoDateGenerator;
 
     private static final Comparator<TodoDateEntity> LIST_ORDER =
             Comparator.comparing(
@@ -94,12 +93,6 @@ public class TodoService {
             throw new GeneralException(TodoErrorCode.TODO_CREATE_400_1);
         }
 
-        if (routineEnabled) {
-            routineTodoDateGenerator.generate(todo, startDate, endDate, startDate);
-        } else {
-            saveSingleDate(todo, request.date());
-        }
-
         return TodoDetailResponse.from(todo);
     }
 
@@ -111,14 +104,18 @@ public class TodoService {
         boolean wasRoutine = todo.isRoutineEnabled();
         boolean nowRoutine = (request.routineEnabled() != null) ? request.routineEnabled() : wasRoutine;
 
+
+        if (wasRoutine != nowRoutine) {
+            throw new GeneralException(TodoErrorCode.TODO_ROUTINE_TYPE_CHANGE_400_6);
+        }
+
         LocalDate startDate = null;
         LocalDate endDate = null;
         WeekEnum week = null;
 
         if (nowRoutine) {
-            startDate = (request.startDate() != null)
-                    ? request.startDate()
-                    : (wasRoutine ? todo.getStartDate() : LocalDate.now());
+
+            startDate = (request.startDate() != null) ? request.startDate() : todo.getStartDate();
             endDate = request.endDate();
             week = request.week();
             validateRoutine(startDate, endDate, week);
@@ -132,16 +129,12 @@ public class TodoService {
 
         LocalDate today = LocalDate.now();
 
-        if (nowRoutine && wasRoutine) {
+        if (nowRoutine) {
+
             todoDateRepository.deleteAllByTodo_TodoIdAndDateGreaterThanEqualAndCompletedFalse(todoId, today);
             todoDateRepository.flush();
-            routineTodoDateGenerator.generate(todo, startDate, endDate, generateFrom(startDate, today));
-        } else if (nowRoutine) {
-            deleteAllDates(todoId);
-            routineTodoDateGenerator.generate(todo, startDate, endDate, generateFrom(startDate, today));
-        } else if (wasRoutine) {
-            deleteAllDates(todoId);
-            saveSingleDate(todo, request.date());
+
+            deleteStaleDates(todoId, startDate, endDate, week);
         } else {
             TodoDateEntity todoDate = todoDateRepository.findAllByTodo_TodoIdOrderByDateAsc(todoId).stream()
                     .findFirst()
@@ -217,16 +210,21 @@ public class TodoService {
     }
 
 
-    private LocalDate generateFrom(LocalDate startDate, LocalDate today) {
-        return startDate.isAfter(today) ? startDate : today;
-    }
 
-    private void deleteAllDates(Long todoId) {
-        List<TodoDateEntity> existing = todoDateRepository.findAllByTodo_TodoIdOrderByDateAsc(todoId);
-        if (!existing.isEmpty()) {
-            todoDateRepository.deleteAll(existing);
+    private void deleteStaleDates(Long todoId, LocalDate startDate, LocalDate endDate, WeekEnum week) {
+        DayOfWeek dayOfWeek = week.toDayOfWeek();
+
+        List<TodoDateEntity> stale = todoDateRepository.findAllByTodo_TodoIdOrderByDateAsc(todoId).stream()
+                .filter(td -> !td.isCompleted())
+                .filter(td -> td.getDate().isBefore(startDate)
+                        || td.getDate().isAfter(endDate)
+                        || td.getDate().getDayOfWeek() != dayOfWeek)
+                .toList();
+
+        if (!stale.isEmpty()) {
+            todoDateRepository.deleteAll(stale);
+            todoDateRepository.flush();
         }
-        todoDateRepository.flush();
     }
 
     private void saveSingleDate(TodoEntity todo, LocalDate date) {
