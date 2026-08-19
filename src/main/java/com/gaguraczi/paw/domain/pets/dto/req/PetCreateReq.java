@@ -8,10 +8,10 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-@Schema(description = "펫 등록 요청 (multipart data part JSON)")
+@Schema(description = "펫 등록 요청 (multipart data part JSON). breedId 또는 breed 중 하나 필수.")
 public record PetCreateReq(
         @NotNull(message = "반려동물 종류는 필수입니다.")
-        @Schema(description = "반려동물 종류", example = "DOG")
+        @Schema(description = "반려동물 종류 (DOG/CAT 등)", example = "DOG", requiredMode = Schema.RequiredMode.REQUIRED)
         PetType petType,
 
         @Schema(description = "품종 ID (GET /breeds 검색 결과의 breedId 권장)", example = "1")
@@ -23,26 +23,26 @@ public record PetCreateReq(
 
         @NotBlank(message = "반려동물 이름은 필수입니다.")
         @Size(max = 50, message = "반려동물 이름은 50자 이내이어야 합니다.")
-        @Schema(description = "반려동물 이름", example = "초코")
+        @Schema(description = "반려동물 이름 (최대 50자)", example = "초코", requiredMode = Schema.RequiredMode.REQUIRED)
         String petName,
 
         @NotNull(message = "생년월일은 필수입니다.")
         @PastOrPresent(message = "생년월일은 오늘 이전이어야 합니다.")
-        @Schema(description = "생년월일", example = "2022-01-15")
+        @Schema(description = "생년월일 (오늘 이전)", example = "2022-01-15", requiredMode = Schema.RequiredMode.REQUIRED)
         LocalDate birth,
 
         @NotNull(message = "몸무게는 필수입니다.")
         @DecimalMin(value = "0.01", message = "몸무게는 0보다 커야 합니다.")
         @Digits(integer = 3, fraction = 2, message = "몸무게 형식이 올바르지 않습니다.")
-        @Schema(description = "몸무게(kg)", example = "3.50")
+        @Schema(description = "몸무게(kg)", example = "3.50", requiredMode = Schema.RequiredMode.REQUIRED)
         BigDecimal petWeight,
 
         @NotNull(message = "성별은 필수입니다.")
-        @Schema(description = "성별", example = "MALE")
+        @Schema(description = "성별 (MALE/FEMALE 등)", example = "MALE", requiredMode = Schema.RequiredMode.REQUIRED)
         Gender gender,
 
         @NotNull(message = "중성화 여부는 필수입니다.")
-        @Schema(description = "중성화 여부", example = "true")
+        @Schema(description = "중성화 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
         Boolean neutering
 ) {
 }

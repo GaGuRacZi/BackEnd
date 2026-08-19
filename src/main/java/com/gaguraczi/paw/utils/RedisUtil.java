@@ -17,14 +17,29 @@ import java.util.concurrent.TimeUnit;
 public class RedisUtil {
 
     private static final DefaultRedisScript<Long> INCREMENT_WITH_TTL_SCRIPT = new DefaultRedisScript<>();
+    private static final DefaultRedisScript<Long> DECREMENT_CLAMP_WITH_TTL_SCRIPT = new DefaultRedisScript<>();
     private static final DefaultRedisScript<Long> COMPARE_AND_SET_SCRIPT = new DefaultRedisScript<>();
     private static final DefaultRedisScript<Long> COMPARE_AND_DELETE_SCRIPT = new DefaultRedisScript<>();
+    private static final DefaultRedisScript<Long> REMOVE_FROM_SET_IF_UNCHANGED_SCRIPT = new DefaultRedisScript<>();
 
     static {
         INCREMENT_WITH_TTL_SCRIPT.setResultType(Long.class);
         INCREMENT_WITH_TTL_SCRIPT.setScriptText("""
                 local count = redis.call('INCR', KEYS[1])
                 if count == 1 then
+                    redis.call('EXPIRE', KEYS[1], ARGV[1])
+                end
+                return count
+                """);
+
+        DECREMENT_CLAMP_WITH_TTL_SCRIPT.setResultType(Long.class);
+        DECREMENT_CLAMP_WITH_TTL_SCRIPT.setScriptText("""
+                local count = redis.call('INCRBY', KEYS[1], -1)
+                if count < 0 then
+                    redis.call('SET', KEYS[1], '0', 'EX', ARGV[1])
+                    return 0
+                end
+                if redis.call('TTL', KEYS[1]) < 0 then
                     redis.call('EXPIRE', KEYS[1], ARGV[1])
                 end
                 return count
@@ -43,6 +58,17 @@ public class RedisUtil {
         COMPARE_AND_DELETE_SCRIPT.setScriptText("""
                 if redis.call('GET', KEYS[1]) == ARGV[1] then
                     return redis.call('DEL', KEYS[1])
+                end
+                return 0
+                """);
+
+        // KEYS[1]=view, KEYS[2]=like, KEYS[3]=dirtySet; ARGV[1]=expectedView, ARGV[2]=expectedLike, ARGV[3]=member
+        REMOVE_FROM_SET_IF_UNCHANGED_SCRIPT.setResultType(Long.class);
+        REMOVE_FROM_SET_IF_UNCHANGED_SCRIPT.setScriptText("""
+                local view = redis.call('GET', KEYS[1])
+                local like = redis.call('GET', KEYS[2])
+                if view == ARGV[1] and like == ARGV[2] then
+                    return redis.call('SREM', KEYS[3], ARGV[3])
                 end
                 return 0
                 """);
@@ -69,6 +95,62 @@ public class RedisUtil {
                 List.of(key),
                 String.valueOf(duration));
         return count == null ? 0L : count;
+    }
+
+    public long incrementBy(String key, long delta) {
+        Long count = redisTemplate.opsForValue().increment(key, delta);
+        return count == null ? 0L : count;
+    }
+
+    /** Atomic decrement clamped at 0, refreshing TTL when needed. */
+    public long decrementClampToZero(String key, long durationSeconds) {
+        Long count = redisTemplate.execute(
+                DECREMENT_CLAMP_WITH_TTL_SCRIPT,
+                List.of(key),
+                String.valueOf(durationSeconds));
+        return count == null ? 0L : count;
+    }
+
+    public List<String> multiGet(List<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return List.of();
+        }
+        List<String> values = redisTemplate.opsForValue().multiGet(keys);
+        return values == null ? List.of() : values;
+    }
+
+    public void addToSet(String key, String value) {
+        redisTemplate.opsForSet().add(key, value);
+    }
+
+    public java.util.Set<String> members(String key) {
+        java.util.Set<String> members = redisTemplate.opsForSet().members(key);
+        return members == null ? java.util.Set.of() : members;
+    }
+
+    public void removeFromSet(String key, String value) {
+        redisTemplate.opsForSet().remove(key, value);
+    }
+
+    /**
+     * Removes {@code member} from {@code dirtySetKey} only when view/like keys still equal the
+     * flushed values (concurrent increments keep the post dirty).
+     */
+    public boolean removeFromSetIfCountersUnchanged(
+            String viewKey,
+            String likeKey,
+            String dirtySetKey,
+            String expectedView,
+            String expectedLike,
+            String member
+    ) {
+        Long result = redisTemplate.execute(
+                REMOVE_FROM_SET_IF_UNCHANGED_SCRIPT,
+                List.of(viewKey, likeKey, dirtySetKey),
+                expectedView,
+                expectedLike,
+                member);
+        return result != null && result > 0L;
     }
 
     // 데이터 조회
