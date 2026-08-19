@@ -13,6 +13,7 @@ import com.gaguraczi.paw.domain.walkcourse.exception.WalkCourseErrorCode;
 import com.gaguraczi.paw.domain.walkcourse.repository.WalkCourseRepository;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +45,13 @@ public class WalkCourseService {
         }
 
         WalkCourseEntity course = WalkCourseConverter.toWalkCourse(request, pet);
-        WalkCourseEntity saved = walkCourseRepository.save(course);
+
+        WalkCourseEntity saved;
+        try {
+            saved = walkCourseRepository.saveAndFlush(course);
+        } catch (DataIntegrityViolationException e) {
+            throw new GeneralException(WalkCourseErrorCode.COURSE_NAME_DUPLICATED);
+        }
 
         return WalkCourseConverter.toWalkCourseResponse(saved);
     }
@@ -91,6 +98,12 @@ public class WalkCourseService {
                 request.getThumbnailUrl(),
                 WalkCourseConverter.toPathJson(request.getPath())
         );
+
+        try {
+            walkCourseRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new GeneralException(WalkCourseErrorCode.COURSE_NAME_DUPLICATED);
+        }
 
         return WalkCourseConverter.toWalkCourseResponse(course);
     }
