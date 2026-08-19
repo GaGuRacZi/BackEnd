@@ -15,9 +15,11 @@ public interface WalkCourseRepository extends JpaRepository<WalkCourseEntity, Lo
     List<WalkCourseEntity> findAllByPet_PetIdOrderByLastUsedAtDescIdDesc(Long petId);
 
 
-    List<WalkCourseEntity> findAllByPet_PetIdOrderByUseCountDescLastUsedAtDesc(Long petId, Limit limit);
+    List<WalkCourseEntity> findAllByPet_PetIdOrderByUseCountDescLastUsedAtDescIdDesc(Long petId, Limit limit);
 
     Optional<WalkCourseEntity> findByIdAndPet_PetId(Long courseId, Long petId);
 
     boolean existsByPet_PetIdAndName(Long petId, String name);
+
+    List<WalkCourseEntity> findAllByPet_PetIdOrderByLastUsedAtDescIdDesc(Long petId, Limit limit);
 }

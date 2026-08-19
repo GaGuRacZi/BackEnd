@@ -27,6 +27,8 @@ public class WalkCourseService {
 
 
     private static final int DEFAULT_FREQUENT_SIZE = 3;
+    private static final int MAX_FREQUENT_SIZE = 10;
+    private static final int MAX_LIST_SIZE = 50;
 
     private final WalkCourseRepository walkCourseRepository;
     private final PetRepository petRepository;
@@ -54,16 +56,20 @@ public class WalkCourseService {
 
 
     public List<WalkCourseSummaryResponse> getCourses(Long petId) {
-        List<WalkCourseEntity>courses = walkCourseRepository.findAllByPet_PetIdOrderByLastUsedAtDescIdDesc(petId);
+        List<WalkCourseEntity> courses = walkCourseRepository
+                .findAllByPet_PetIdOrderByLastUsedAtDescIdDesc(petId, Limit.of(MAX_LIST_SIZE));
+
         return WalkCourseConverter.toWalkCourseSummaryResponseList(courses);
     }
 
 
     public List<WalkCourseSummaryResponse> getFrequentCourses(Long petId, Integer size) {
-        int limit = (size != null && size > 0) ? size : DEFAULT_FREQUENT_SIZE;
+        int limit = (size == null || size <= 0)
+                ? DEFAULT_FREQUENT_SIZE
+                : Math.min(size, MAX_FREQUENT_SIZE);
 
         List<WalkCourseEntity> courses = walkCourseRepository
-                .findAllByPet_PetIdOrderByUseCountDescLastUsedAtDesc(petId, Limit.of(limit));
+                .findAllByPet_PetIdOrderByUseCountDescLastUsedAtDescIdDesc(petId, Limit.of(limit));
 
         return WalkCourseConverter.toWalkCourseSummaryResponseList(courses);
     }
