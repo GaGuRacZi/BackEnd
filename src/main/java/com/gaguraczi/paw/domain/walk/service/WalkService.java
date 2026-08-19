@@ -78,6 +78,8 @@ public class WalkService {
         LocalDateTime startTime = (request.getStartTime() != null)
                 ? request.getStartTime()
                 : LocalDateTime.now();
+        validateNotFuture(startTime.toLocalDate());
+
 
         WalkEntity walk = WalkConverter.toStartedWalk(request, pet, course, startTime);
         WalkEntity saved = walkRepository.save(walk);
@@ -301,7 +303,7 @@ public class WalkService {
         if (startDate.isAfter(endDate)) {
             throw new GeneralException(WalkErrorCode.WALK_DATE_RANGE_INVALID);
         }
-        if (ChronoUnit.DAYS.between(startDate, endDate) > MAX_STAT_DAYS) {
+        if (ChronoUnit.DAYS.between(startDate, endDate) >= MAX_STAT_DAYS) {
             throw new GeneralException(WalkErrorCode.WALK_STAT_RANGE_TOO_LONG);
         }
     }
