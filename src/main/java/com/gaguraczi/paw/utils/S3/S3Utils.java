@@ -238,6 +238,26 @@ public class S3Utils {
         });
     }
 
+    /**
+     * Deletes the key only after the current transaction commits, so a rolled-back
+     * DB change never leaves the S3 object deleted while still referenced.
+     */
+    public void scheduleDeleteAfterCommit(String key) {
+        if (key == null || key.isBlank()) {
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deleteQuietly(key);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deleteQuietly(key);
+            }
+        });
+    }
+
     public void deleteQuietly(String key) {
         if (key == null || key.isBlank()) {
             return;

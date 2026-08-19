@@ -48,9 +48,12 @@ public class NoticeService {
 
     @Transactional
     public NoticeDetailRes getDetail(Long noticeId) {
+        int updated = noticeRepository.increaseViewCount(noticeId);
+        if (updated == 0) {
+            throw GeneralException.of(MypageErrorCode.NOTICE_NOT_FOUND);
+        }
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> GeneralException.of(MypageErrorCode.NOTICE_NOT_FOUND));
-        notice.increaseViewCount();
         return NoticeDetailRes.from(notice);
     }
 

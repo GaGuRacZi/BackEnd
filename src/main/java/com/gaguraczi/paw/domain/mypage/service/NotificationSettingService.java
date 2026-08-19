@@ -9,6 +9,7 @@ import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import com.gaguraczi.paw.global.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ public class NotificationSettingService {
     private final NotificationSettingRepository notificationSettingRepository;
     private final SecurityUtils securityUtils;
 
+    @Transactional
     public NotificationSettingRes get() {
         User user = securityUtils.currentUser();
         return NotificationSettingRes.from(getOrCreate(user));
@@ -54,8 +56,16 @@ public class NotificationSettingService {
     @Transactional
     public NotificationSetting getOrCreate(User user) {
         return notificationSettingRepository.findByUser(user)
-                .orElseGet(() -> notificationSettingRepository.save(
-                        NotificationSetting.builder().user(user).build()
-                ));
+                .orElseGet(() -> createDefault(user));
+    }
+
+    /** 동시 lazy 생성 요청이 uid unique 제약에 충돌하면, 먼저 커밋된 행을 다시 조회해 복구한다. */
+    private NotificationSetting createDefault(User user) {
+        try {
+            return notificationSettingRepository.save(NotificationSetting.builder().user(user).build());
+        } catch (DataIntegrityViolationException e) {
+            return notificationSettingRepository.findByUser(user)
+                    .orElseThrow(() -> e);
+        }
     }
 }

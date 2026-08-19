@@ -46,10 +46,8 @@ public class MypageProfileService {
     public void deleteProfileImage() {
         User user = securityUtils.currentUser();
         String previousKey = user.getProfileS3Key();
-        if (previousKey != null) {
-            s3Utils.deleteQuietly(previousKey);
-        }
         user.updateProfileImage(null, null);
+        s3Utils.scheduleDeleteAfterCommit(previousKey);
     }
 
     @Transactional

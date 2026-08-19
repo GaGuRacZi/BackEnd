@@ -38,8 +38,4 @@ public class Notice extends BaseEntity {
     @Builder.Default
     @Column(name = "view_count", nullable = false)
     private Long viewCount = 0L;
-
-    public void increaseViewCount() {
-        this.viewCount = this.viewCount == null ? 1L : this.viewCount + 1L;
-    }
 }
