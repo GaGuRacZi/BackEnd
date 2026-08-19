@@ -44,12 +44,12 @@ public class TodoController {
     public ApiResponse<List<TodoListResponse>> getTodosByDate(
             @Parameter(description = "조회 날짜 (yyyy-MM-dd)")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @Parameter(description = "태그 필터") @RequestParam(required = false) Long tagId
+            @Parameter(description = "태그 필터") @RequestParam(required = false) Long todoId
     ) {
         UUID uid = securityUtils.currentUid();
         return ApiResponse.onSuccess(
                 TodoSuccessCode.TODO_LIST_200,
-                todoService.getTodosByDate(uid, date, tagId)
+                todoService.getTodosByDate(uid, date, todoId)
         );
     }
 
