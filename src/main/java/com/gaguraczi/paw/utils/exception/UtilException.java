@@ -13,6 +13,7 @@ public class UtilException extends RuntimeException {
         IMAGE_PROCESS_FAILED,
 
         S3_UPLOAD_FAILED,
+        S3_DOWNLOAD_FAILED,
         S3_DELETE_FAILED
     }
 

@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
@@ -69,8 +70,14 @@ public class User extends BaseEntity {
     private String pushToken;
 
     @Builder.Default
-    @Column(name = "coin")
-    private Integer coin = 0;
+    @ColumnDefault("10")
+    @Column(name = "coin", nullable = false)
+    private Integer coin = 10;
+
+    @Builder.Default
+    @ColumnDefault("0")
+    @Column(name = "used_coin", nullable = false)
+    private Integer usedCoin = 0;
 
     @Builder.Default
     @Column(name = "subscribe")
@@ -123,5 +130,33 @@ public class User extends BaseEntity {
         if (locationAddress != null && !locationAddress.isBlank()) {
             this.locationAddress = locationAddress;
         }
+    }
+
+    public int coinBalance() {
+        return coin == null ? 0 : coin;
+    }
+
+    public int usedCoinBalance() {
+        return usedCoin == null ? 0 : usedCoin;
+    }
+
+    public void deductCoin(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("amount must be positive");
+        }
+        int current = coinBalance();
+        if (current < amount) {
+            throw new IllegalStateException("insufficient coin");
+        }
+        this.coin = current - amount;
+        this.usedCoin = usedCoinBalance() + amount;
+    }
+
+    public void refundCoin(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("amount must be positive");
+        }
+        this.coin = coinBalance() + amount;
+        this.usedCoin = Math.max(0, usedCoinBalance() - amount);
     }
 }

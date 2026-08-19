@@ -33,7 +33,10 @@ public class UserController {
 
     @Operation(
             summary = "내 프로필 조회",
-            description = "Access Token(JWT) 필수. 현재 로그인 유저의 프로필(이름, 닉네임, 지역, isNew 등)을 반환합니다."
+            description = """
+                    Access Token(JWT) 필수. 현재 로그인 유저의 프로필(이름, 닉네임, 지역, 코인, isNew 등)을 반환합니다.
+                    `coin`은 남은 코인, `usedCoin`은 사용한 누적입니다. `POST /visits/{visitId}/ai-summary`가 코인 1개를 쓰며, 생성 실패 시 환불됩니다.
+                    """
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -57,7 +60,9 @@ public class UserController {
                                                 "profileUrl": "https://cdn.example.com/profiles/uid.jpg",
                                                 "regionCode": "11680",
                                                 "regionName": "강남구",
-                                                "isNew": false
+                                                "isNew": false,
+                                                "coin": 3,
+                                                "usedCoin": 1
                                               }
                                             }
                                             """
@@ -159,7 +164,9 @@ public class UserController {
                                                 "profileUrl": "https://cdn.example.com/profiles/uid.jpg",
                                                 "regionCode": "11680",
                                                 "regionName": "강남구",
-                                                "isNew": false
+                                                "isNew": false,
+                                                "coin": 3,
+                                                "usedCoin": 1
                                               }
                                             }
                                             """

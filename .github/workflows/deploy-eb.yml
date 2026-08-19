@@ -295,7 +295,7 @@ jobs:
         run: |
           set -euo pipefail
           sed -i "s/IMAGE_TAG/${{ steps.meta.outputs.IMAGE_TAG }}/g" Dockerrun.aws.json
-          zip deploy.zip Dockerrun.aws.json
+          zip -r deploy.zip Dockerrun.aws.json .platform .ebextensions
 
       - name: Deploy to Elastic Beanstalk
         run: |

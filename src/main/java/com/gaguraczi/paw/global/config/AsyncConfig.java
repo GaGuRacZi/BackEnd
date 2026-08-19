@@ -1,4 +1,3 @@
-/*
 package com.gaguraczi.paw.global.config;
 
 import java.util.concurrent.Executor;
@@ -12,6 +11,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 public class AsyncConfig {
 
     public static final String ALARM_TASK_EXECUTOR = "alarmTaskExecutor";
+    public static final String VISIT_TASK_EXECUTOR = "visitTaskExecutor";
 
     @Bean(name = ALARM_TASK_EXECUTOR)
     public Executor alarmTaskExecutor() {
@@ -23,5 +23,15 @@ public class AsyncConfig {
         executor.initialize();
         return executor;
     }
+
+    @Bean(name = VISIT_TASK_EXECUTOR)
+    public Executor visitTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("visit-stt-");
+        executor.initialize();
+        return executor;
+    }
 }
-*/

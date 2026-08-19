@@ -4,7 +4,7 @@ import com.gaguraczi.paw.domain.rag.dto.RagSearchHit;
 import com.gaguraczi.paw.domain.rag.enums.RagSourceType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(description = "RAG 검색 결과")
+@Schema(description = "지식 검색(file_search) 출처 한 건. POST /visits/{visitId}/ai-summary 의 sources 배열에도 사용됩니다.")
 public record RagSearchRes(
         @Schema(description = "원본 ID", example = "DR-001-0001")
         String sourceId,
@@ -31,7 +31,10 @@ public record RagSearchRes(
         String content,
 
         @Schema(description = "유사도 점수", example = "0.87")
-        double score
+        double score,
+
+        @Schema(description = "검색된 파일명", example = "내과_QA_000.md")
+        String fileName
 ) {
 
     public static RagSearchRes from(RagSearchHit hit) {
@@ -44,7 +47,8 @@ public record RagSearchRes(
                 hit.disease(),
                 hit.title(),
                 hit.content(),
-                hit.score()
+                hit.score(),
+                hit.fileName()
         );
     }
 }

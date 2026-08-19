@@ -11,9 +11,13 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -246,6 +250,40 @@ public class S3Utils {
             deleteFile(key);
         } catch (Exception ex) {
             log.warn("Failed to cleanup S3 object: {}", key, ex);
+        }
+    }
+
+    public Path downloadToTempFile(String key) {
+        if (key == null || key.isBlank()) {
+            throw new UtilException(FILE_EMPTY);
+        }
+        Path temp = null;
+        try {
+            String suffix = ".audio";
+            int slash = key.lastIndexOf('/');
+            String name = slash >= 0 ? key.substring(slash + 1) : key;
+            int dot = name.lastIndexOf('.');
+            if (dot > 0 && dot < name.length() - 1) {
+                suffix = name.substring(dot);
+            }
+            temp = Files.createTempFile("visit-audio-", suffix);
+            GetObjectRequest req = GetObjectRequest.builder()
+                    .bucket(config.getBucket())
+                    .key(key)
+                    .build();
+            try (InputStream in = s3Client.getObject(req)) {
+                Files.copy(in, temp, StandardCopyOption.REPLACE_EXISTING);
+            }
+            return temp;
+        } catch (Exception e) {
+            if (temp != null) {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (Exception ignored) {
+                    // temp cleanup best-effort
+                }
+            }
+            throw new UtilException(S3_DOWNLOAD_FAILED, e);
         }
     }
 }

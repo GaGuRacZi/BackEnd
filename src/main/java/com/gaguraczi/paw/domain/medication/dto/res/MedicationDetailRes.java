@@ -7,7 +7,7 @@ import lombok.Getter;
 
 @Getter
 @Builder
-@Schema(description = "약물 상세")
+@Schema(description = "약물 마스터 상세. 진료 CATALOG 처방에서 caution을 생략하면 precautionMd 첫 줄이 들어갑니다.")
 public class MedicationDetailRes {
 
     @Schema(description = "약물 ID", example = "1")
