@@ -9,8 +9,6 @@ import com.gaguraczi.paw.domain.chat.repository.ChatMessageRepository;
 import com.gaguraczi.paw.domain.chat.repository.ChatRoomRepository;
 import com.gaguraczi.paw.domain.chat.support.ChatMessageCursorCodec;
 import com.gaguraczi.paw.domain.community.support.CommunityImageValidator;
-import com.gaguraczi.paw.domain.notification.enums.NotificationCategory;
-import com.gaguraczi.paw.domain.notification.service.NotificationSender;
 import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.global.api.CursorPageRes;
 import com.gaguraczi.paw.global.exception.GeneralException;
@@ -41,7 +39,6 @@ public class ChatMessageService {
     private final ChatMessageRepository chatMessageRepository;
     private final S3Utils s3Utils;
     private final SecurityUtils securityUtils;
-    private final NotificationSender notificationSender;
 
     @Transactional
     public ChatMessageRes send(Long roomId, MessageType type, String content, MultipartFile image) {
@@ -59,9 +56,8 @@ public class ChatMessageService {
         room.recordLastMessage(preview, message.getCreatedAt());
 
         User opponent = room.opponentOf(me.getUid());
-        afterCommit(() -> notificationSender.send(
+        afterCommit(() -> notifyOpponent(
                 opponent,
-                NotificationCategory.CHAT,
                 me.getNickname() + "님의 메시지",
                 preview,
                 Map.of(
@@ -73,6 +69,10 @@ public class ChatMessageService {
         ));
 
         return ChatMessageRes.from(message, me.getUid());
+    }
+
+    /** TODO: 알림 발송 공통 서비스 머지되면 여기서 실제 FCM 발송 호출 */
+    private void notifyOpponent(User opponent, String title, String body, Map<String, String> data) {
     }
 
     @Transactional(readOnly = true)
