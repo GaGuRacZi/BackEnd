@@ -38,3 +38,11 @@ out/
 
 ### env ###
 .env
+google-services.json
+*-firebase-adminsdk*.json
+
+### rag corpus & dumps (not packaged; restore dumps manually) ###
+rag/data/
+rag/dumps/*
+!rag/dumps/.gitkeep
+rag/openai-export/

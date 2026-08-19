@@ -36,19 +36,23 @@ dependencies {
 
 	//db
 	implementation 'org.postgresql:postgresql'
+	implementation 'org.springframework.boot:spring-boot-starter-flyway'
+	runtimeOnly 'org.flywaydb:flyway-database-postgresql'
 
 	//validation
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-	// image content-type detection (magic bytes; HEIC/HEIF 포함)
+	// image/audio content-type detection (magic bytes; HEIC/HEIF 포함)
 	implementation 'org.apache.tika:tika-core:3.2.2'
+	implementation 'net.jthink:jaudiotagger:3.0.1'
 
 	//mail
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 
-	//spring ai
-	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
-	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
+	//spring ai (OpenAI chat + embedding)
+	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+	runtimeOnly 'io.netty:netty-resolver-dns-native-macos::osx-aarch_64'
+	runtimeOnly 'io.netty:netty-resolver-dns-native-macos::osx-x86_64'
 
 
 
@@ -101,7 +105,12 @@ tasks.named('jar') {
 	enabled = false
 }
 
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
 // classpath 리소스 변경도 DevTools 재시작 트리거에 포함
 tasks.named('bootRun') {
 	sourceResources sourceSets.main
+	jvmArgs '-Djava.net.preferIPv4Stack=true'
 }

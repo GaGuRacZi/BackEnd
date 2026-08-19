@@ -3,11 +3,16 @@ spring:
     import: optional:file:.env[.properties]
   profiles:
     active: local
+    group:
+      rag-ingest:
+        - local
+      medication-ingest:
+        - local
   servlet:
     multipart:
       enabled: true
-      max-file-size: 50MB
-      max-request-size: 50MB
+      max-file-size: 100MB
+      max-request-size: 110MB
   sql:
     init:
       # postgis/vector extensions are created at app startup via db/extensions.sql
@@ -16,6 +21,10 @@ spring:
       mode: always
       separator: ";;"
       schema-locations: classpath:db/extensions.sql,classpath:db/backfill-user-role.sql
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
   jpa:
     defer-datasource-initialization: false
   jwt:
@@ -23,11 +32,14 @@ spring:
     access-exp-ms: ${JWT_EXPIRATION:3600000} # 1시간
     refresh-exp-ms: ${JWT_REFRESH_EXPIRATION:1209600000} # 14일
   ai:
-    google:
-      genai:
-        api-key: ${GOOGLE_AI_API_KEY}
-        embedding:
-          api-key: ${GOOGLE_AI_API_KEY}
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        # empty OPENAI_CHAT_MODEL= would become model="" → OpenAI 400. Omit the key to use the default.
+        model: ${OPENAI_CHAT_MODEL:gpt-5.6-luna}
+      embedding:
+        # Omit the key to use the default. A blank OPENAI_EMBEDDING_MODEL= is rejected at startup.
+        model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
 
 kakao:
   user-info-uri: https://kapi.kakao.com/v2/user/me
@@ -62,6 +74,10 @@ cloud:
 server:
   port: ${PORT:8080}
   forward-headers-strategy: framework
+  tomcat:
+    max-http-form-post-size: 110MB
+    max-swallow-size: 110MB
+    connection-timeout: 600s
 
 #Swagger
 springdoc:
@@ -73,9 +89,49 @@ springdoc:
     display-request-duration: true
     operations-sorter: method
 
+# Firebase Admin SDK (FCM). Values come from .env locally or EB_ENV_FILE in deploy.
+# See docs/fcm-secrets.md for service-account → FCM_* mapping.
+fcm:
+  type: ${FCM_TYPE}
+  project-id: ${FCM_PROJECT_ID}
+  private-key-id: ${FCM_PRIVATE_KEY_ID}
+  private-key: ${FCM_PRIVATE_KEY}
+  client-email: ${FCM_CLIENT_EMAIL}
+  client-id: ${FCM_CLIENT_ID}
+  auth-uri: ${FCM_AUTH_URI:https://accounts.google.com/o/oauth2/auth}
+  token-uri: ${FCM_TOKEN_URI:https://oauth2.googleapis.com/token}
+  auth-provider-x509-cert-url: ${FCM_AUTH_PROVIDER_X509_CERT_URL:https://www.googleapis.com/oauth2/v1/certs}
+  client-x509-cert-url: ${FCM_CLIENT_X509_CERT_URL}
+  universe-domain: ${FCM_UNIVERSE_DOMAIN:googleapis.com}
+
 paw:
   swagger:
     prod-server-url: ${PAW_SWAGGER_PROD_SERVER_URL:https://issueissyu-ai.cloud}
+  rag:
+    corpus-path: ${RAG_CORPUS_PATH:rag/data/59.반려견 성장 및 질병 관련 말뭉치 데이터}
+    chunk-size-chars: 1000
+    chunk-overlap-chars: 150
+    ingest-batch-size: 64
+    embedding-dimensions: 1536
+    search-top-k: 8
+    vector-store-id: ${OPENAI_VECTOR_STORE_ID:}
+    chat-model: ${OPENAI_CHAT_MODEL:gpt-5.6-luna}
+    reasoning-effort: ${OPENAI_RAG_REASONING_EFFORT:none}
+  medication:
+    ingest-batch-size: 8
+    embedding-dimensions: 1536
+    search-top-k: 10
+    chat-model: ${OPENAI_MEDICATION_CHAT_MODEL:${OPENAI_CHAT_MODEL:gpt-5.6-luna}}
+    reasoning-effort: ${OPENAI_MEDICATION_REASONING_EFFORT:none}
+  visit:
+    stt-model: ${OPENAI_VISIT_STT_MODEL:gpt-4o-transcribe-diarize}
+    chat-model: ${OPENAI_VISIT_CHAT_MODEL:${OPENAI_CHAT_MODEL:gpt-5.6-luna}}
+    ai-summary-chat-model: ${OPENAI_VISIT_AI_SUMMARY_CHAT_MODEL:}
+    reasoning-effort: ${OPENAI_VISIT_REASONING_EFFORT:none}
+    ai-summary-coin-cost: 1
+    ai-summary-include-sources: ${VISIT_AI_SUMMARY_INCLUDE_SOURCES:true}
+    max-audio-bytes: 104857600
+    max-audio-duration-sec: 3600
 
 ---
 # local profile
@@ -150,3 +206,31 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+---
+# rag-ingest — local CLI only. Activate with rag-ingest (group includes local).
+# Does not apply RAG DDL. Compose lifecycle is off so ingest does not wait for
+# elasticsearch or stop already-running postgres/redis on exit.
+spring:
+  config:
+    activate:
+      on-profile: rag-ingest
+  docker:
+    compose:
+      lifecycle-management: none
+  devtools:
+    restart:
+      enabled: false
+
+---
+# medication-ingest — local CLI only. Activate with medication-ingest (group includes local).
+spring:
+  config:
+    activate:
+      on-profile: medication-ingest
+  docker:
+    compose:
+      lifecycle-management: none
+  devtools:
+    restart:
+      enabled: false
