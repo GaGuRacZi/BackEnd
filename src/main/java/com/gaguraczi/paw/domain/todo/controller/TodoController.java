@@ -124,4 +124,5 @@ public class TodoController {
         todoService.deleteTodo(uid, todoId, date, deleteAll);
         return ApiResponse.onSuccess(TodoSuccessCode.TODO_DELETE_200, null);
     }
+
 }
