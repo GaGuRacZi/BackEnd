@@ -59,14 +59,14 @@ jobs:
 
       # Required GitHub Secrets:
       # - AWS_ROLE_ARN: IAM role for GitHub OIDC
-      # - EB_ENV_FILE: full env text (SPRING_PROFILES_ACTIVE, AWS_DB_*, VALKEY_*, JWT_*, FCM_*, etc.)
+      # - EB_ENV_FILE: full env text (SPRING_PROFILES_ACTIVE, AWS_DB_*, VALKEY_*, JWT_*, FCM_*, OPENAI_*, etc.)
       # Required GitHub Variables:
       # - EB_ENVIRONMENT_NAME: Elastic Beanstalk environment name (e.g. Paw-env)
-      # Sensitive AWS_DB_*, VALKEY_*, JWT_*, FCM_* values are stored in Secrets Manager and
+      # Sensitive AWS_DB_*, VALKEY_*, JWT_*, FCM_*, OPENAI_* values are stored in Secrets Manager and
       # referenced via aws:elasticbeanstalk:application:environmentsecrets.
       # The EB instance profile is granted GetSecretValue on those secret ARNs.
       # FCM_* comes from Firebase Admin service account JSON (not google-services.json).
-      # See docs/fcm-secrets.md for the field mapping.
+      # See docs/fcm-secrets.md and docs/openai-secrets.md for field mapping.
       # Env sync + app version deploy share one update-environment to avoid double restart.
       - name: Prepare env options
         env:
@@ -83,7 +83,8 @@ jobs:
           env_name = os.environ["EB_ENVIRONMENT_NAME"]
           app_name = os.environ["EB_APPLICATION_NAME"]
 
-          SENSITIVE_KEY_RE = re.compile(r"^(AWS_DB_|VALKEY_|JWT_|FCM_)")
+          SENSITIVE_KEY_RE = re.compile(r"^(AWS_DB_|VALKEY_|JWT_|FCM_|OPENAI_)")
+          NONBLANK_SENSITIVE_KEYS = {"OPENAI_EMBEDDING_MODEL"}
 
           def aws_json(args, stdin=None):
               out = subprocess.check_output(
@@ -170,6 +171,9 @@ jobs:
 
               if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
                   raise SystemExit(f"Invalid env key: {key}")
+
+              if key in NONBLANK_SENSITIVE_KEYS and not value:
+                  raise SystemExit(f"{key} must not be blank")
 
               if SENSITIVE_KEY_RE.match(key):
                   secret_name = f"paw/eb/{env_name}/{key}"
@@ -291,7 +295,7 @@ jobs:
         run: |
           set -euo pipefail
           sed -i "s/IMAGE_TAG/${{ steps.meta.outputs.IMAGE_TAG }}/g" Dockerrun.aws.json
-          zip deploy.zip Dockerrun.aws.json
+          zip -r deploy.zip Dockerrun.aws.json .platform .ebextensions
 
       - name: Deploy to Elastic Beanstalk
         run: |

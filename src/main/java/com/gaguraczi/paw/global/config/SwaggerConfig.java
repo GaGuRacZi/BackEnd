@@ -39,6 +39,14 @@ public class SwaggerConfig {
                         ## 주요 태그
                         - auth / users / pets / location / terms / breeds / regions
                         - communities / comments
+                        - visits (진료 녹음·전사·처방·AI 요약) / medications (처방 CATALOG 검색)
+                        
+                        ## 진료 기록 화면 흐름
+                        1. `POST /visits` 로 녹음 업로드 → 즉시 `status=PROCESSING`
+                        2. 목록/상세 폴링 또는 FCM(`VISIT_READY` / `VISIT_FAILED`)으로 완료 확인
+                        3. `READY` 후 `GET /visits/{id}` 요약, `GET /visits/{id}/transcript` 전사문
+                        4. 약물: `GET /medications` 검색 → `POST /visits/{id}/medications` (CATALOG 또는 CUSTOM)
+                        5. `POST /visits/{id}/ai-summary` 로 코인 1개 AI 상세 요약
                         """);
 
         String jwtSchemeName = "BearerToken";
@@ -75,6 +83,14 @@ public class SwaggerConfig {
         return GroupedOpenApi.builder()
                 .group("All APIs")
                 .pathsToMatch("/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi visitGroup() {
+        return GroupedOpenApi.builder()
+                .group("visits")
+                .pathsToMatch("/visits/**", "/medications/**", "/users/me")
                 .build();
     }
 }

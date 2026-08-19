@@ -71,8 +71,14 @@ public class User extends BaseEntity {
     private String pushToken;
 
     @Builder.Default
-    @Column(name = "coin")
-    private Integer coin = 0;
+    @ColumnDefault("10")
+    @Column(name = "coin", nullable = false)
+    private Integer coin = 10;
+
+    @Builder.Default
+    @ColumnDefault("0")
+    @Column(name = "used_coin", nullable = false)
+    private Integer usedCoin = 0;
 
     @Builder.Default
     @Column(name = "subscribe")
@@ -146,5 +152,33 @@ public class User extends BaseEntity {
         this.profileUrl = null;
         this.email = "withdrawn-" + this.uid + "@paw.local";
         this.pushToken = null;
+    }
+
+    public int coinBalance() {
+        return coin == null ? 0 : coin;
+    }
+
+    public int usedCoinBalance() {
+        return usedCoin == null ? 0 : usedCoin;
+    }
+
+    public void deductCoin(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("amount must be positive");
+        }
+        int current = coinBalance();
+        if (current < amount) {
+            throw new IllegalStateException("insufficient coin");
+        }
+        this.coin = current - amount;
+        this.usedCoin = usedCoinBalance() + amount;
+    }
+
+    public void refundCoin(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("amount must be positive");
+        }
+        this.coin = coinBalance() + amount;
+        this.usedCoin = Math.max(0, usedCoinBalance() - amount);
     }
 }
