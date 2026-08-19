@@ -182,6 +182,9 @@ public class PetWeightService {
 
     private BigDecimal calculateMonthChange(Pet pet, PetWeightEntity latest) {
         LocalDateTime monthStart = YearMonth.now().atDay(1).atStartOfDay();
+        if (latest.getRecordedAt().isBefore(monthStart)) {
+            return null;
+              }
 
         BigDecimal baseline = petWeightRepository
                 .findFirstByPetAndRecordedAtLessThanOrderByRecordedAtDescPetWeightIdDesc(pet, monthStart)
