@@ -92,7 +92,8 @@ public class CommunityCommandService {
                     community,
                     community.getViewCount(),
                     community.getLikeCount(),
-                    false
+                    false,
+                    true
             );
         } catch (RuntimeException e) {
             uploaded.forEach(u -> s3Utils.deleteQuietly(u.getKey()));
@@ -176,7 +177,8 @@ public class CommunityCommandService {
                     community,
                     communityCountRedisStore.getViewCount(community),
                     communityCountRedisStore.getLikeCount(community),
-                    liked
+                    liked,
+                    true
             );
         } catch (RuntimeException e) {
             uploaded.forEach(u -> s3Utils.deleteQuietly(u.getKey()));

@@ -138,7 +138,8 @@ public class CommunityService {
         Boolean likedByMe = viewerUid == null
                 ? null
                 : communityLikeRepository.findByCommunity_PostIdAndUser_Uid(postId, viewerUid).isPresent();
-        return CommunityDetailRes.from(community, viewCount, likeCount, likedByMe);
+        Boolean isMine = viewerUid == null ? null : community.getUser().getUid().equals(viewerUid);
+        return CommunityDetailRes.from(community, viewCount, likeCount, likedByMe, isMine);
     }
 
     private List<Community> findFeedRows(
