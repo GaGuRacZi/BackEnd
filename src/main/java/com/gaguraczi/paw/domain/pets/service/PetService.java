@@ -205,6 +205,12 @@ public class PetService {
         boolean bloodTypeTouched = req.bloodType() != null && !req.bloodType().isBlank();
         String bloodType = bloodTypeTouched ? resolveBloodType(petType, req.bloodType()) : null;
 
+        if (petTypeChanged && !bloodTypeTouched) {
+            // 기존 품종의 혈액형 코드는 새 petType 기준으로 무효하므로 초기화한다.
+            bloodTypeTouched = true;
+            bloodType = DogBloodType.NONE.name();
+        }
+
         pet.update(
                 req.petType(),
                 breedTouched ? breed : null,

@@ -3,6 +3,7 @@ package com.gaguraczi.paw.domain.pets.service;
 import com.gaguraczi.paw.domain.breed.entity.Breed;
 import com.gaguraczi.paw.domain.breed.service.BreedService;
 import com.gaguraczi.paw.domain.pets.dto.req.PetCreateReq;
+import com.gaguraczi.paw.domain.pets.dto.req.PetUpdateReq;
 import com.gaguraczi.paw.domain.pets.exception.code.PetErrorCode;
 import com.gaguraczi.paw.domain.users.entity.Pet;
 import com.gaguraczi.paw.domain.users.entity.User;
@@ -78,6 +79,29 @@ class PetServiceTest {
         var res = petService.create(req, null);
 
         assertThat(res.bloodType()).isEqualTo("NONE");
+    }
+
+    @Test
+    void 품종변경시_혈액형_미입력이면_NONE으로_초기화된다() {
+        Pet pet = Pet.builder()
+                .petId(1L)
+                .user(user)
+                .petType(PetType.DOG)
+                .petName("초코")
+                .bloodType("DEA_1_1_POSITIVE")
+                .build();
+
+        when(securityUtils.currentUser()).thenReturn(user);
+        when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
+
+        PetUpdateReq req = new PetUpdateReq(
+                PetType.CAT, null, null, null, null, null, null, null, null
+        );
+
+        var res = petService.update(1L, req, null);
+
+        assertThat(res.petType()).isEqualTo(PetType.CAT);
+        assertThat(pet.getBloodType()).isEqualTo("NONE");
     }
 
     @Test
