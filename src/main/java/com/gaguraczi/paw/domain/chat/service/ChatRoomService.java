@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -111,11 +112,12 @@ public class ChatRoomService {
         List<ChatRoom> page = hasNext ? rows.subList(0, pageSize) : rows;
 
         Map<Long, Long> unreadCounts = countUnread(page, me.getUid());
+        Map<Long, ChatPostSummaryRes> postSummaries = resolvePostSummaries(page);
 
         List<ChatRoomListItemRes> content = new ArrayList<>(page.size());
         for (ChatRoom room : page) {
             ChatUserSummaryRes opponent = ChatUserSummaryRes.from(room.opponentOf(me.getUid()));
-            ChatPostSummaryRes post = resolvePostSummary(room.getPostId());
+            ChatPostSummaryRes post = postSummaries.get(room.getPostId());
             content.add(ChatRoomListItemRes.of(room, opponent, post, unreadCounts.getOrDefault(room.getRoomId(), 0L)));
         }
 
@@ -134,6 +136,10 @@ public class ChatRoomService {
                 .orElseThrow(() -> GeneralException.of(ChatErrorCode.ROOM_NOT_FOUND_404));
         assertParticipant(room, me.getUid());
 
+        if (lastReadMessageId != null && !chatMessageRepository.existsByMessageIdAndRoom_RoomId(lastReadMessageId, roomId)) {
+            throw GeneralException.of(ChatErrorCode.MESSAGE_NOT_FOUND_404);
+        }
+
         ChatRoomParticipant participant = chatRoomParticipantRepository
                 .findByRoom_RoomIdAndUser_Uid(roomId, me.getUid())
                 .orElseGet(() -> chatRoomParticipantRepository.save(
@@ -146,6 +152,20 @@ public class ChatRoomService {
         return communityRepository.findById(postId)
                 .map(ChatPostSummaryRes::from)
                 .orElseGet(() -> ChatPostSummaryRes.deleted(postId));
+    }
+
+    private Map<Long, ChatPostSummaryRes> resolvePostSummaries(List<ChatRoom> rooms) {
+        List<Long> postIds = rooms.stream().map(ChatRoom::getPostId).distinct().toList();
+        if (postIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, ChatPostSummaryRes> found = communityRepository.findByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(Community::getPostId, ChatPostSummaryRes::from));
+        Map<Long, ChatPostSummaryRes> result = new HashMap<>();
+        for (Long postId : postIds) {
+            result.put(postId, found.getOrDefault(postId, ChatPostSummaryRes.deleted(postId)));
+        }
+        return result;
     }
 
     private Map<Long, Long> countUnread(List<ChatRoom> rooms, UUID uid) {

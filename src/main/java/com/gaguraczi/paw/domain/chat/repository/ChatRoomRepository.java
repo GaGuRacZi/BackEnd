@@ -1,9 +1,11 @@
 package com.gaguraczi.paw.domain.chat.repository;
 
 import com.gaguraczi.paw.domain.chat.entity.ChatRoom;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,6 +20,12 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
     @EntityGraph(attributePaths = {"seller", "buyer"})
     Optional<ChatRoom> findWithParticipantsByRoomId(Long roomId);
+
+    /** 메시지 전송 시 사용. 동시 전송 시 lastMessageAt/preview가 오래된 메시지로 덮어써지지 않도록 방 행을 잠근다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"seller", "buyer"})
+    @Query("SELECT r FROM ChatRoom r WHERE r.roomId = :roomId")
+    Optional<ChatRoom> findWithParticipantsForUpdate(@Param("roomId") Long roomId);
 
     @EntityGraph(attributePaths = {"seller", "buyer"})
     @Query("""

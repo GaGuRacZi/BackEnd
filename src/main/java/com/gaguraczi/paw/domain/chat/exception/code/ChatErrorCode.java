@@ -12,6 +12,7 @@ public enum ChatErrorCode implements BaseErrorCode {
 
     ROOM_NOT_FOUND_404(HttpStatus.NOT_FOUND, "CHAT_404_1", "채팅방을 찾을 수 없습니다."),
     POST_NOT_FOUND_404(HttpStatus.NOT_FOUND, "CHAT_404_2", "게시글을 찾을 수 없습니다."),
+    MESSAGE_NOT_FOUND_404(HttpStatus.NOT_FOUND, "CHAT_404_3", "해당 채팅방의 메시지를 찾을 수 없습니다."),
 
     POST_TYPE_UNSUPPORTED_400(HttpStatus.BAD_REQUEST, "CHAT_400_1", "장터 게시글에만 채팅을 시작할 수 있습니다."),
     INVALID_CURSOR_400(HttpStatus.BAD_REQUEST, "CHAT_400_2", "유효하지 않은 커서입니다."),

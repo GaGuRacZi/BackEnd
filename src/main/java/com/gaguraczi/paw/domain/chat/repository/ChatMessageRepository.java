@@ -25,6 +25,8 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             Pageable pageable
     );
 
+    boolean existsByMessageIdAndRoom_RoomId(Long messageId, Long roomId);
+
     interface UnreadCount {
         Long getRoomId();
 

@@ -43,7 +43,7 @@ public class ChatMessageService {
     @Transactional
     public ChatMessageRes send(Long roomId, MessageType type, String content, MultipartFile image) {
         User me = securityUtils.currentUser();
-        ChatRoom room = chatRoomRepository.findWithParticipantsByRoomId(roomId)
+        ChatRoom room = chatRoomRepository.findWithParticipantsForUpdate(roomId)
                 .orElseThrow(() -> GeneralException.of(ChatErrorCode.ROOM_NOT_FOUND_404));
         ChatRoomService.assertParticipant(room, me.getUid());
 
@@ -114,6 +114,7 @@ public class ChatMessageService {
         }
         CommunityImageValidator.validate(image);
         S3Dto uploaded = s3Utils.uploadMultipartUnderDirectory(image, "chat");
+        scheduleUploadedCleanupOnRollback(uploaded.getKey());
         return ChatMessage.builder()
                 .room(room)
                 .sender(sender)
@@ -135,6 +136,20 @@ public class ChatMessageService {
             return DEFAULT_SIZE;
         }
         return Math.min(size, MAX_SIZE);
+    }
+
+    private void scheduleUploadedCleanupOnRollback(String key) {
+        if (key == null || !TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    s3Utils.deleteQuietly(key);
+                }
+            }
+        });
     }
 
     private void afterCommit(Runnable action) {
