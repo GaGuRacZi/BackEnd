@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -96,5 +97,35 @@ class TodoFcmServiceTest {
 
         verify(notificationInboxService, never()).insert(any(), any(), any(), any(), any(), any(), any(), any());
         verify(fcmPushService, never()).send(any(), any(), any(), any());
+    }
+
+    @Test
+    void 발송_실패를_숨기지_않는다() {
+        User user = User.builder().uid(UUID.randomUUID()).pushToken("tok").build();
+        TodoEntity todo = mock(TodoEntity.class);
+        TodoDateEntity todoDate = mock(TodoDateEntity.class);
+        NotificationSetting setting = NotificationSetting.builder().user(user).todoAlarm(true).build();
+        when(todo.getTodo()).thenReturn("심장약 복용");
+        when(todo.getTodoTime()).thenReturn(LocalTime.of(20, 0));
+        when(todo.getTodoId()).thenReturn(7L);
+        when(todo.getUser()).thenReturn(user);
+        when(todoDate.getTodo()).thenReturn(todo);
+        when(todoDate.getTodoDateId()).thenReturn(11L);
+        when(notificationSettingService.getOrCreate(user)).thenReturn(setting);
+        when(notificationPolicy.allowInbox(setting, NotificationCategory.TODO)).thenReturn(true);
+        when(notificationInboxService.insert(
+                eq(user.getUid()),
+                eq(NotificationCategory.TODO),
+                eq("심장약 복용 체크가 필요해요"),
+                eq("오늘 20:00 · 미완료 상태예요"),
+                eq(NotificationTargetType.TODO),
+                eq(7L),
+                eq(11L),
+                eq("할 일 보기")
+        )).thenThrow(new RuntimeException("inbox down"));
+
+        assertThatThrownBy(() -> todoFcmService.sendReminder(todoDate))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("inbox down");
     }
 }

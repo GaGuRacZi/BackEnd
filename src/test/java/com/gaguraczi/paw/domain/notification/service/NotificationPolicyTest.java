@@ -56,6 +56,18 @@ class NotificationPolicyTest {
     }
 
     @Test
+    void todoAlarm이_꺼져_있으면_건강이상_예외여도_FCM을_막는다() {
+        NotificationSetting setting = on()
+                .todoAlarm(false)
+                .healthAlarm(true)
+                .dndEnabled(true)
+                .build();
+
+        assertThat(NotificationPolicy.allowFcm(setting, NotificationCategory.TODO, true, LocalTime.of(23, 30)))
+                .isFalse();
+    }
+
+    @Test
     void 심야_DND는_시작이_종료보다_늦다() {
         assertThat(NotificationPolicy.inDndWindow(LocalTime.of(21, 59), LocalTime.of(22, 0), LocalTime.of(7, 0)))
                 .isFalse();

@@ -6,8 +6,8 @@ import com.gaguraczi.paw.domain.community.dto.res.CommentRes;
 import com.gaguraczi.paw.domain.community.entity.Comment;
 import com.gaguraczi.paw.domain.community.entity.Community;
 import com.gaguraczi.paw.domain.community.enums.PostType;
+import com.gaguraczi.paw.domain.community.event.CommentCreatedEvent;
 import com.gaguraczi.paw.domain.community.exception.code.CommunityErrorCode;
-import com.gaguraczi.paw.domain.community.fcm.CommunityFcmService;
 import com.gaguraczi.paw.domain.community.repository.CommentRepository;
 import com.gaguraczi.paw.domain.community.repository.CommunityRepository;
 import com.gaguraczi.paw.domain.community.support.CommentCursorCodec;
@@ -16,6 +16,7 @@ import com.gaguraczi.paw.global.api.CursorPageRes;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import com.gaguraczi.paw.global.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +38,7 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final CommunityRepository communityRepository;
-    private final CommunityFcmService communityFcmService;
+    private final ApplicationEventPublisher eventPublisher;
     private final SecurityUtils securityUtils;
 
     @Transactional(readOnly = true)
@@ -95,7 +96,7 @@ public class CommentService {
         }
         commentRepository.save(comment);
         communityRepository.increaseCommentCount(postId);
-        communityFcmService.notifyCommentCreated(comment);
+        eventPublisher.publishEvent(new CommentCreatedEvent(comment.getCommentId()));
         return CommentRes.from(comment);
     }
 

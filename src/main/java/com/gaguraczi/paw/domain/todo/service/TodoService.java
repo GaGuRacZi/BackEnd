@@ -114,6 +114,9 @@ public class TodoService {
         boolean wasRoutine = todo.isRoutineEnabled();
         boolean nowRoutine = (request.routineEnabled() != null) ? request.routineEnabled() : wasRoutine;
         LocalTime previousTime = todo.getTodoTime();
+        LocalDate previousStart = todo.getStartDate();
+        LocalDate previousEnd = todo.getEndDate();
+        WeekEnum previousWeek = todo.getWeek();
 
         if (wasRoutine != nowRoutine) {
             throw new GeneralException(TodoErrorCode.TODO_ROUTINE_TYPE_CHANGE_400_6);
@@ -141,13 +144,18 @@ public class TodoService {
         boolean timeChanged = !Objects.equals(previousTime, todoTime);
 
         if (nowRoutine) {
+            boolean scheduleChanged = !Objects.equals(previousTime, todoTime)
+                    || !Objects.equals(previousStart, startDate)
+                    || !Objects.equals(previousEnd, endDate)
+                    || !Objects.equals(previousWeek, week);
+            if (scheduleChanged) {
+                todoDateRepository.deleteAllByTodo_TodoIdAndDateGreaterThanEqualAndCompletedFalse(todoId, today);
+                todoDateRepository.flush();
 
-            todoDateRepository.deleteAllByTodo_TodoIdAndDateGreaterThanEqualAndCompletedFalse(todoId, today);
-            todoDateRepository.flush();
-
-            deleteStaleDates(todoId, startDate, endDate, week);
-            if (matchesToday(todo, today)) {
-                upsertDate(todo, today);
+                deleteStaleDates(todoId, startDate, endDate, week);
+                if (matchesToday(todo, today)) {
+                    upsertDate(todo, today);
+                }
             }
         } else {
             TodoDateEntity todoDate = todoDateRepository.findAllByTodo_TodoIdOrderByDateAsc(todoId).stream()

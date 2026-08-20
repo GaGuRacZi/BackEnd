@@ -47,6 +47,9 @@ public class TodoDateEntity extends BaseEntity {
     @Column(name = "notified_at", columnDefinition = "timestamptz")
     private Instant notifiedAt;
 
+    @Column(name = "notify_lease_until", columnDefinition = "timestamptz")
+    private Instant notifyLeaseUntil;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "todo_id", nullable = false)
     private TodoEntity todo;
@@ -59,6 +62,7 @@ public class TodoDateEntity extends BaseEntity {
         todoDate.completedAt = null;
         todoDate.remindAt = TodoRemindAt.of(date, todo.getTodoTime());
         todoDate.notifiedAt = null;
+        todoDate.notifyLeaseUntil = null;
         return todoDate;
     }
 
@@ -75,5 +79,6 @@ public class TodoDateEntity extends BaseEntity {
     public void refreshSchedule() {
         this.remindAt = TodoRemindAt.of(this.date, this.todo.getTodoTime());
         this.notifiedAt = null;
+        this.notifyLeaseUntil = null;
     }
 }

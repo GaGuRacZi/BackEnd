@@ -47,15 +47,17 @@ public class FcmPushService {
         } catch (FirebaseMessagingException e) {
             if (isUnregistered(e)) {
                 fcmTokenClearer.clearByToken(token);
+                log.warn("FCM send skipped: {}", e.getMessage());
+                return;
             }
             log.warn("FCM send skipped: {}", e.getMessage());
+            throw new IllegalStateException("FCM send failed", e);
         } catch (Exception e) {
             log.warn("FCM send skipped: {}", e.getMessage());
         }
     }
 
     private static boolean isUnregistered(FirebaseMessagingException e) {
-        MessagingErrorCode code = e.getMessagingErrorCode();
-        return code == MessagingErrorCode.UNREGISTERED || code == MessagingErrorCode.INVALID_ARGUMENT;
+        return e.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED;
     }
 }

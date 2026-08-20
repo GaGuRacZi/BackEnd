@@ -65,13 +65,22 @@ public class TodoReminderScheduler {
 
         long afterId = 0L;
         while (true) {
-            List<TodoDateEntity> batch = todoReminderService.findDue(from, to, afterId);
+            Instant now = Instant.now(clock);
+            List<TodoDateEntity> batch = todoReminderService.findDue(from, to, afterId, now);
             if (batch.isEmpty()) {
                 break;
             }
             for (TodoDateEntity todoDate : batch) {
-                if (todoReminderService.claim(todoDate.getTodoDateId(), Instant.now(clock))) {
-                    todoFcmService.sendReminder(todoDate);
+                Instant claimedAt = Instant.now(clock);
+                if (todoReminderService.claim(todoDate.getTodoDateId(), claimedAt)) {
+                    try {
+                        todoFcmService.sendReminder(todoDate);
+                        todoReminderService.complete(todoDate.getTodoDateId(), Instant.now(clock));
+                    } catch (Exception e) {
+                        log.warn("Todo reminder send failed todoDateId={}: {}",
+                                todoDate.getTodoDateId(), e.getMessage());
+                        todoReminderService.release(todoDate.getTodoDateId());
+                    }
                 }
             }
             afterId = batch.getLast().getTodoDateId();

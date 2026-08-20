@@ -11,14 +11,12 @@ import com.gaguraczi.paw.domain.todo.entity.TodoEntity;
 import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.global.fcm.FcmPushService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TodoFcmService {
@@ -43,26 +41,22 @@ public class TodoFcmService {
         }
         String title = todo.getTodo() + " 체크가 필요해요";
         String body = "오늘 " + todoTime.format(TIME) + " · 미완료 상태예요";
-        try {
-            notificationInboxService.insert(
-                    user.getUid(),
-                    NotificationCategory.TODO,
-                    title,
-                    body,
-                    NotificationTargetType.TODO,
-                    todo.getTodoId(),
-                    todoDate.getTodoDateId(),
-                    "할 일 보기"
-            );
-            if (notificationPolicy.allowFcm(setting, NotificationCategory.TODO)) {
-                fcmPushService.send(user.getPushToken(), title, body, Map.of(
-                        "type", "TODO_REMINDER",
-                        "todoId", String.valueOf(todo.getTodoId()),
-                        "todoDateId", String.valueOf(todoDate.getTodoDateId())
-                ));
-            }
-        } catch (Exception e) {
-            log.warn("Todo reminder FCM skipped todoDateId={}: {}", todoDate.getTodoDateId(), e.getMessage());
+        notificationInboxService.insert(
+                user.getUid(),
+                NotificationCategory.TODO,
+                title,
+                body,
+                NotificationTargetType.TODO,
+                todo.getTodoId(),
+                todoDate.getTodoDateId(),
+                "할 일 보기"
+        );
+        if (notificationPolicy.allowFcm(setting, NotificationCategory.TODO)) {
+            fcmPushService.send(user.getPushToken(), title, body, Map.of(
+                    "type", "TODO_REMINDER",
+                    "todoId", String.valueOf(todo.getTodoId()),
+                    "todoDateId", String.valueOf(todoDate.getTodoDateId())
+            ));
         }
     }
 }

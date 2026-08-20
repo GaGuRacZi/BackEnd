@@ -56,13 +56,13 @@ public class NotificationPolicy {
             boolean healthException,
             LocalTime now
     ) {
-        if (healthException) {
-            return Boolean.TRUE.equals(setting.getHealthAlarm());
-        }
         if (!isChannelEnabled(setting, category)) {
             return false;
         }
-        return !isDndActive(setting, now);
+        if (!isDndActive(setting, now)) {
+            return true;
+        }
+        return healthException && Boolean.TRUE.equals(setting.getHealthAlarm());
     }
 
     static boolean inDndWindow(LocalTime now, LocalTime start, LocalTime end) {

@@ -29,7 +29,8 @@ import java.time.LocalDateTime;
         name = "notification",
         indexes = {
                 @Index(name = "idx_notification_uid_created", columnList = "uid, created_at, notification_id"),
-                @Index(name = "idx_notification_uid_category", columnList = "uid, category, created_at")
+                @Index(name = "idx_notification_uid_category", columnList = "uid, category, created_at"),
+                @Index(name = "idx_notification_uid_is_read", columnList = "uid, is_read")
         }
 )
 public class Notification extends BaseEntity {

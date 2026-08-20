@@ -21,6 +21,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -51,7 +52,7 @@ class TodoReminderSchedulerTest {
 
         scheduler.tick();
 
-        verify(todoReminderService, never()).findDue(any(), any(), anyLong());
+        verify(todoReminderService, never()).findDue(any(), any(), anyLong(), any());
         verify(todoFcmService, never()).sendReminder(any());
     }
 
@@ -62,7 +63,7 @@ class TodoReminderSchedulerTest {
         when(due.getTodoDateId()).thenReturn(15L);
         Instant from = ZonedDateTime.of(2026, 8, 19, 20, 0, 0, 0, TodoRemindAt.KST).toInstant();
         Instant to = from.plusSeconds(60);
-        when(todoReminderService.findDue(from, to, 0L)).thenReturn(List.of(due));
+        when(todoReminderService.findDue(eq(from), eq(to), eq(0L), any())).thenReturn(List.of(due));
         when(todoReminderService.claim(eq(15L), any())).thenReturn(true);
 
         scheduler.tick();
@@ -75,6 +76,8 @@ class TodoReminderSchedulerTest {
                 eq(false)
         );
         verify(todoFcmService).sendReminder(due);
+        verify(todoReminderService).complete(eq(15L), any());
+        verify(todoReminderService, never()).release(any());
     }
 
     @Test
@@ -83,11 +86,29 @@ class TodoReminderSchedulerTest {
         ZonedDateTime minute = from.atZone(TodoRemindAt.KST);
         TodoDateEntity due = mock(TodoDateEntity.class);
         when(due.getTodoDateId()).thenReturn(15L);
-        when(todoReminderService.findDue(any(), any(), eq(0L))).thenReturn(List.of(due));
+        when(todoReminderService.findDue(any(), any(), eq(0L), any())).thenReturn(List.of(due));
         when(todoReminderService.claim(eq(15L), any())).thenReturn(false);
 
         scheduler.processMinute(minute);
 
         verify(todoFcmService, never()).sendReminder(any());
+        verify(todoReminderService, never()).complete(any(), any());
+        verify(todoReminderService, never()).release(any());
+    }
+
+    @Test
+    void 발송_실패면_claim을_해제한다() {
+        Instant from = ZonedDateTime.of(2026, 8, 19, 20, 0, 0, 0, TodoRemindAt.KST).toInstant();
+        ZonedDateTime minute = from.atZone(TodoRemindAt.KST);
+        TodoDateEntity due = mock(TodoDateEntity.class);
+        when(due.getTodoDateId()).thenReturn(15L);
+        when(todoReminderService.findDue(any(), any(), eq(0L), any())).thenReturn(List.of(due));
+        when(todoReminderService.claim(eq(15L), any())).thenReturn(true);
+        doThrow(new RuntimeException("fcm down")).when(todoFcmService).sendReminder(due);
+
+        scheduler.processMinute(minute);
+
+        verify(todoReminderService).release(15L);
+        verify(todoReminderService, never()).complete(any(), any());
     }
 }
