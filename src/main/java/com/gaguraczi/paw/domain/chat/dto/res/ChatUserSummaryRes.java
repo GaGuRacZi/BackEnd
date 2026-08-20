@@ -5,11 +5,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.UUID;
 
-@Schema(description = "채팅 상대방 요약 정보")
+@Schema(description = "채팅 상대 요약")
 public record ChatUserSummaryRes(
+        @Schema(description = "상대 uid", example = "11111111-1111-1111-1111-111111111111")
         UUID uid,
-        @Schema(example = "길동이") String nickname,
-        @Schema(example = "https://cdn.example.com/users/a.jpg") String profileUrl
+        @Schema(description = "닉네임. 알림 제목 `{nickname}님의 메시지`에 사용", example = "초코")
+        String nickname,
+        @Schema(description = "프로필 이미지 URL", example = "https://cdn.example.com/users/choco.jpg")
+        String profileUrl
 ) {
     public static ChatUserSummaryRes from(User user) {
         return new ChatUserSummaryRes(user.getUid(), user.getNickname(), user.getProfileUrl());

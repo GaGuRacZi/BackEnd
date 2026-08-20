@@ -5,6 +5,7 @@ import com.gaguraczi.paw.domain.chat.entity.ChatMessage;
 import com.gaguraczi.paw.domain.chat.entity.ChatRoom;
 import com.gaguraczi.paw.domain.chat.enums.MessageType;
 import com.gaguraczi.paw.domain.chat.exception.code.ChatErrorCode;
+import com.gaguraczi.paw.domain.chat.fcm.ChatFcmService;
 import com.gaguraczi.paw.domain.chat.repository.ChatMessageRepository;
 import com.gaguraczi.paw.domain.chat.repository.ChatRoomRepository;
 import com.gaguraczi.paw.domain.chat.support.ChatMessageCursorCodec;
@@ -24,7 +25,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +37,7 @@ public class ChatMessageService {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final ChatFcmService chatFcmService;
     private final S3Utils s3Utils;
     private final SecurityUtils securityUtils;
 
@@ -56,23 +57,21 @@ public class ChatMessageService {
         room.recordLastMessage(preview, message.getCreatedAt());
 
         User opponent = room.opponentOf(me.getUid());
-        afterCommit(() -> notifyOpponent(
+        String title = messageTitle(me.getNickname());
+        Long roomIdValue = room.getRoomId();
+        Long postId = room.getPostId();
+        Long messageId = message.getMessageId();
+        afterCommit(() -> chatFcmService.notifyMessage(
                 opponent,
-                me.getNickname() + "님의 메시지",
+                me.getUid(),
+                title,
                 preview,
-                Map.of(
-                        "category", "CHAT",
-                        "roomId", String.valueOf(room.getRoomId()),
-                        "postId", String.valueOf(room.getPostId()),
-                        "senderId", String.valueOf(me.getUid())
-                )
+                roomIdValue,
+                postId,
+                messageId
         ));
 
         return ChatMessageRes.from(message, me.getUid());
-    }
-
-    /** TODO: 알림 발송 공통 서비스 머지되면 여기서 실제 FCM 발송 호출 */
-    private void notifyOpponent(User opponent, String title, String body, Map<String, String> data) {
     }
 
     @Transactional(readOnly = true)
@@ -122,6 +121,13 @@ public class ChatMessageService {
                 .imageUrl(uploaded.getUrl())
                 .imageS3Key(uploaded.getKey())
                 .build();
+    }
+
+    private static String messageTitle(String nickname) {
+        if (nickname == null || nickname.isBlank()) {
+            return "새 메시지";
+        }
+        return nickname + "님의 메시지";
     }
 
     private String truncate(String content) {

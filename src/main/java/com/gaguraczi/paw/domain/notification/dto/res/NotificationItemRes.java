@@ -12,22 +12,22 @@ import java.time.LocalDateTime;
 public record NotificationItemRes(
         @Schema(description = "알림 ID", example = "101")
         Long id,
-        @Schema(description = "카테고리", example = "TODO")
+        @Schema(description = "TODO | AI | COMMUNITY | CHAT | EMERGENCY", example = "CHAT")
         NotificationCategory category,
-        @Schema(description = "제목", example = "슬개골 영양제 체크가 필요해요")
+        @Schema(description = "제목. CHAT이면 `{닉네임}님의 메시지`", example = "초코님의 메시지")
         String title,
-        @Schema(description = "본문", example = "오늘 09:00 · 미완료 상태예요")
+        @Schema(description = "본문. CHAT 텍스트는 최대 100자, 이미지는 '사진을 보냈습니다'", example = "나눔 가능할까요?")
         String body,
         @JsonProperty("isRead")
         @Schema(description = "읽음 여부", example = "false")
         boolean isRead,
         @Schema(description = "생성 시각", example = "2026-08-20T09:00:00")
         LocalDateTime createdAt,
-        @Schema(description = "CTA 버튼 라벨", example = "할 일 보기")
+        @Schema(description = "CTA 라벨. CHAT은 '채팅 보기'", example = "채팅 보기")
         String ctaLabel,
-        @Schema(description = "딥링크 대상 유형", example = "TODO")
+        @Schema(description = "TODO | VISIT | POST | CHAT_ROOM | MAP", example = "CHAT_ROOM")
         NotificationTargetType targetType,
-        @Schema(description = "딥링크 대상 ID (할 일/진료/게시글 등)", example = "15")
+        @Schema(description = "CHAT_ROOM=roomId, POST=postId, VISIT=visitId, TODO=todoId", example = "12")
         Long targetId
 ) {
     public static NotificationItemRes from(Notification notification) {

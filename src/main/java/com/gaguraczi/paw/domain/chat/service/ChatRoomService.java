@@ -25,7 +25,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -44,6 +43,7 @@ public class ChatRoomService {
     private final ChatRoomParticipantRepository chatRoomParticipantRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final CommunityRepository communityRepository;
+    private final ChatRoomCreateTxService chatRoomCreateTxService;
     private final SecurityUtils securityUtils;
 
     @Transactional
@@ -60,25 +60,20 @@ public class ChatRoomService {
 
         return chatRoomRepository.findByPostIdAndBuyer_Uid(postId, buyer.getUid())
                 .map(ChatRoomCreateRes::from)
-                .orElseGet(() -> ChatRoomCreateRes.from(createRoom(post, buyer)));
+                .orElseGet(() -> createOrRecover(post, buyer));
     }
 
-    private ChatRoom createRoom(Community post, User buyer) {
-        ChatRoom room = ChatRoom.builder()
-                .postId(post.getPostId())
-                .seller(post.getUser())
-                .buyer(buyer)
-                .lastMessageAt(LocalDateTime.now())
-                .build();
+    private ChatRoomCreateRes createOrRecover(Community post, User buyer) {
         try {
-            ChatRoom saved = chatRoomRepository.saveAndFlush(room);
-            // 안읽음 카운트 서브쿼리가 항상 참여자 행을 찾을 수 있도록 생성 시점에 양쪽 참여자 행을 만들어 둔다.
-            chatRoomParticipantRepository.save(ChatRoomParticipant.builder().room(saved).user(buyer).build());
-            chatRoomParticipantRepository.save(ChatRoomParticipant.builder().room(saved).user(post.getUser()).build());
-            return saved;
+            return ChatRoomCreateRes.from(chatRoomCreateTxService.insert(
+                    post.getPostId(),
+                    post.getUser().getUid(),
+                    buyer.getUid()
+            ));
         } catch (DataIntegrityViolationException e) {
-            // 동시 클릭으로 인한 unique 제약 충돌 시 기존 방을 재조회해서 idempotent하게 반환
+            // unique 충돌은 REQUIRES_NEW 트랜잭션만 rollback하므로, 바깥에서 기존 방을 재조회한다.
             return chatRoomRepository.findByPostIdAndBuyer_Uid(post.getPostId(), buyer.getUid())
+                    .map(ChatRoomCreateRes::from)
                     .orElseThrow(() -> e);
         }
     }
