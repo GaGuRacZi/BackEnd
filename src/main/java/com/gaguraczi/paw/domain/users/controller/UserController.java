@@ -36,7 +36,7 @@ public class UserController {
             summary = "내 프로필 조회",
             description = """
                     Access Token(JWT) 필수. 현재 로그인 유저의 프로필(이름, 닉네임, 지역, 코인, isNew 등)을 반환합니다.
-                    `coin`은 남은 코인, `usedCoin`은 사용한 누적입니다. `POST /visits/{visitId}/ai-summary`가 코인 1개를 쓰며, 생성 실패 시 환불됩니다.
+                    `coin`은 남은 코인, `usedCoin`은 사용한 누적입니다. `POST /visits/{visitId}/ai-summary`가 코인 1개를 쓰며, 생성 실패 시 환불됩니다. `unlimitedCoin`이 true(어른 젤리)이면 차감하지 않습니다.
                     """
     )
     @ApiResponses({
@@ -63,7 +63,8 @@ public class UserController {
                                                 "regionName": "강남구",
                                                 "isNew": false,
                                                 "coin": 3,
-                                                "usedCoin": 1
+                                                "usedCoin": 1,
+                                                "unlimitedCoin": false
                                               }
                                             }
                                             """
@@ -167,7 +168,8 @@ public class UserController {
                                                 "regionName": "강남구",
                                                 "isNew": false,
                                                 "coin": 3,
-                                                "usedCoin": 1
+                                                "usedCoin": 1,
+                                                "unlimitedCoin": false
                                               }
                                             }
                                             """

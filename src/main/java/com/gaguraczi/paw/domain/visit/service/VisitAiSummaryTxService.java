@@ -44,10 +44,12 @@ public class VisitAiSummaryTxService {
         visit.markAiSummaryGenerating();
         User user = userRepository.findByIdForUpdate(uid)
                 .orElseThrow(() -> GeneralException.of(VisitErrorCode.VISIT_NOT_FOUND));
-        if (user.coinBalance() < cost) {
-            throw GeneralException.of(VisitErrorCode.VISIT_COIN_INSUFFICIENT);
+        if (!user.hasUnlimitedCoins()) {
+            if (user.coinBalance() < cost) {
+                throw GeneralException.of(VisitErrorCode.VISIT_COIN_INSUFFICIENT);
+            }
+            user.deductCoin(cost);
         }
-        user.deductCoin(cost);
         return ReserveResult.RESERVED;
     }
 
@@ -74,6 +76,8 @@ public class VisitAiSummaryTxService {
             return;
         }
         visit.resetAiSummary();
-        user.refundCoin(cost);
+        if (!user.hasUnlimitedCoins()) {
+            user.refundCoin(cost);
+        }
     }
 }

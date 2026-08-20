@@ -1,0 +1,89 @@
+package com.gaguraczi.paw.domain.billing.controller;
+
+import com.gaguraczi.paw.domain.billing.dto.req.PlanChangeReq;
+import com.gaguraczi.paw.domain.billing.dto.res.SubscriptionRes;
+import com.gaguraczi.paw.domain.billing.exception.code.BillingSuccessCode;
+import com.gaguraczi.paw.domain.billing.service.SubscriptionService;
+import com.gaguraczi.paw.global.api.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@Tag(name = "billing", description = BillingApiDocs.TAG_DESCRIPTION)
+@RestController
+@RequestMapping("/mypage/subscription")
+@RequiredArgsConstructor
+public class SubscriptionController {
+
+    private final SubscriptionService subscriptionService;
+
+    @Operation(summary = "현재 요금제 조회", description = BillingApiDocs.GET_DESCRIPTION)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "BILLING_PLAN_200",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(name = "성공", value = BillingApiDocs.SUBSCRIPTION_EXAMPLE)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = BillingApiDocs.JWT_401_1_DESCRIPTION,
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(name = "JWT_401_1", value = BillingApiDocs.JWT_401_1_EXAMPLE)
+                    )
+            )
+    })
+    @GetMapping
+    public ApiResponse<SubscriptionRes> getCurrent() {
+        return ApiResponse.onSuccess(BillingSuccessCode.PLAN_GET_200, subscriptionService.getCurrent());
+    }
+
+    @Operation(summary = "요금제 변경/예약", description = BillingApiDocs.CHANGE_DESCRIPTION)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "BILLING_PLAN_CHANGE_200",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(name = "성공", value = BillingApiDocs.SUBSCRIPTION_EXAMPLE)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "BILLING_400_1 이미 이용 중인 요금제",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "BILLING_400_1",
+                                    value = """
+                                            {"isSuccess":false,"code":"BILLING_400_1","message":"이미 이용 중인 요금제입니다.","result":null}
+                                            """
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = BillingApiDocs.JWT_401_1_DESCRIPTION,
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(name = "JWT_401_1", value = BillingApiDocs.JWT_401_1_EXAMPLE)
+                    )
+            )
+    })
+    @PostMapping
+    public ApiResponse<SubscriptionRes> changePlan(@Valid @RequestBody PlanChangeReq req) {
+        return ApiResponse.onSuccess(BillingSuccessCode.PLAN_CHANGE_200, subscriptionService.changePlan(req));
+    }
+}

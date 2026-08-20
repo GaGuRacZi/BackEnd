@@ -3,6 +3,7 @@ package com.gaguraczi.paw.domain.visit.service;
 import com.gaguraczi.paw.domain.users.entity.Pet;
 import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.domain.users.enums.Gender;
+import com.gaguraczi.paw.domain.users.enums.SubscribeType;
 import com.gaguraczi.paw.domain.users.repository.UserRepository;
 import com.gaguraczi.paw.domain.visit.entity.Visit;
 import com.gaguraczi.paw.domain.visit.enums.AiSummaryStatus;
@@ -179,6 +180,37 @@ class VisitAiSummaryTxServiceTest {
         assertThat(visit.getAiSummaryStatus()).isEqualTo(AiSummaryStatus.DONE);
         assertThat(visit.getAiSummaryMd()).isEqualTo("# 요약");
         assertThat(visit.getAiSummaryGeneratedAt()).isNotNull();
+    }
+
+    @Test
+    void ultimate는_코인을_차감하지_않는다() {
+        UUID uid = UUID.randomUUID();
+        User user = User.builder().uid(uid).coin(3).usedCoin(0).subscribe(SubscribeType.ULTIMATE).build();
+        Visit visit = readyVisit(user);
+        when(visitRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(visit));
+        when(userRepository.findByIdForUpdate(uid)).thenReturn(Optional.of(user));
+
+        VisitAiSummaryTxService.ReserveResult result = txService.reserve(11L, uid, 1);
+
+        assertThat(result).isEqualTo(VisitAiSummaryTxService.ReserveResult.RESERVED);
+        assertThat(user.coinBalance()).isEqualTo(3);
+        assertThat(user.usedCoinBalance()).isZero();
+    }
+
+    @Test
+    void ultimate는_환불에서도_코인을_건드리지_않는다() {
+        UUID uid = UUID.randomUUID();
+        User user = User.builder().uid(uid).coin(3).usedCoin(0).subscribe(SubscribeType.ULTIMATE).build();
+        Visit visit = readyVisit(user);
+        visit.markAiSummaryGenerating();
+        when(visitRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(visit));
+        when(userRepository.findByIdForUpdate(uid)).thenReturn(Optional.of(user));
+
+        txService.refund(11L, uid, 1);
+
+        assertThat(visit.getAiSummaryStatus()).isEqualTo(AiSummaryStatus.NONE);
+        assertThat(user.coinBalance()).isEqualTo(3);
+        assertThat(user.usedCoinBalance()).isZero();
     }
 
     private static Visit readyVisit(User user) {
