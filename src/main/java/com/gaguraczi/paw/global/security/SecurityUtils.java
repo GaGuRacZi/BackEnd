@@ -18,6 +18,19 @@ public class SecurityUtils {
     private final UserRepository userRepository;
 
     public UUID currentUid() {
+        return currentUser().getUid();
+    }
+
+    public User currentUser() {
+        User user = userRepository.findById(authenticatedUid())
+                .orElseThrow(() -> AuthException.of(AuthErrorCode.LOGIN_LINK_400));
+        if (user.isDeleted()) {
+            throw AuthException.of(AuthErrorCode.LOGIN_LINK_400);
+        }
+        return user;
+    }
+
+    private UUID authenticatedUid() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || authentication.getPrincipal() == null) {
             throw AuthException.of(AuthErrorCode.LOGIN_LINK_400);
@@ -27,10 +40,5 @@ public class SecurityUtils {
         } catch (IllegalArgumentException e) {
             throw AuthException.of(AuthErrorCode.LOGIN_LINK_400);
         }
-    }
-
-    public User currentUser() {
-        return userRepository.findById(currentUid())
-                .orElseThrow(() -> AuthException.of(AuthErrorCode.LOGIN_LINK_400));
     }
 }

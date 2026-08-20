@@ -18,6 +18,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -25,6 +28,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Tag(name = "pets", description = "반려동물 API")
 @RestController
@@ -299,6 +304,121 @@ public class PetController {
             @RequestPart(value = "image", required = false) MultipartFile image
     ) {
         return ApiResponse.onSuccess(PetSuccessCode.PET_UPDATE_200, petService.update(petId, data, image));
+    }
+
+    @Operation(
+            summary = "내 반려동물 목록 조회",
+            description = "Access Token(JWT) 필수. 대표(main) 반려동물이 첫 번째로 정렬되어 반환됩니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "조회 성공",
+                    content = @Content(mediaType = "application/json")
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "JWT 만료/미인증",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "JWT_401_1",
+                                    value = "{\"isSuccess\":false,\"code\":\"JWT_401_1\",\"message\":\"token 유효기간이 만료되었습니다.\",\"result\":null}"
+                            )
+                    )
+            )
+    })
+    @GetMapping
+    public ApiResponse<List<PetRes>> getMyPets() {
+        return ApiResponse.onSuccess(PetSuccessCode.PET_LIST_200, petService.getMyPets());
+    }
+
+    @Operation(
+            summary = "반려동물 단건 조회",
+            description = "Access Token(JWT) 필수. 본인 소유 펫만 조회 가능. 없으면 PET_404."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "조회 성공",
+                    content = @Content(mediaType = "application/json")
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "펫 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "PET_404",
+                                    value = "{\"isSuccess\":false,\"code\":\"PET_404\",\"message\":\"펫을 찾을 수 없습니다.\",\"result\":null}"
+                            )
+                    )
+            )
+    })
+    @GetMapping("/{petId}")
+    public ApiResponse<PetRes> getPet(
+            @Parameter(description = "조회할 펫 ID", example = "1") @PathVariable Long petId
+    ) {
+        return ApiResponse.onSuccess(PetSuccessCode.PET_GET_200, petService.getPet(petId));
+    }
+
+    @Operation(
+            summary = "대표 반려동물 전환",
+            description = "Access Token(JWT) 필수. 기존 대표 펫은 자동으로 해제되고 지정한 펫이 대표로 전환됩니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "전환 성공",
+                    content = @Content(mediaType = "application/json")
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "펫 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "PET_404",
+                                    value = "{\"isSuccess\":false,\"code\":\"PET_404\",\"message\":\"펫을 찾을 수 없습니다.\",\"result\":null}"
+                            )
+                    )
+            )
+    })
+    @PatchMapping("/{petId}/main")
+    public ApiResponse<PetRes> setMainPet(
+            @Parameter(description = "대표로 지정할 펫 ID", example = "1") @PathVariable Long petId
+    ) {
+        return ApiResponse.onSuccess(PetSuccessCode.PET_MAIN_UPDATE_200, petService.setMainPet(petId));
+    }
+
+    @Operation(
+            summary = "반려동물 삭제",
+            description = "Access Token(JWT) 필수. 본인 소유 펫만 삭제 가능. 대표 펫 삭제 시 남은 펫 중 최근 등록순 1마리가 자동으로 대표 지정됩니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "삭제 성공",
+                    content = @Content(mediaType = "application/json")
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "펫 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "PET_404",
+                                    value = "{\"isSuccess\":false,\"code\":\"PET_404\",\"message\":\"펫을 찾을 수 없습니다.\",\"result\":null}"
+                            )
+                    )
+            )
+    })
+    @DeleteMapping("/{petId}")
+    public ApiResponse<Void> delete(
+            @Parameter(description = "삭제할 펫 ID", example = "1") @PathVariable Long petId
+    ) {
+        petService.delete(petId);
+        return ApiResponse.onSuccess(PetSuccessCode.PET_DELETE_200, null);
     }
 
     @Schema(name = "PetCreateMultipart", description = "펫 등록 multipart")
