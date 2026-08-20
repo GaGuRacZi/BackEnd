@@ -323,5 +323,35 @@ jobs:
           echo "Updating environment with app version ${VERSION_LABEL} and env options in one pass"
           "${UPDATE_ARGS[@]}"
 
-          aws elasticbeanstalk wait environment-updated \
-            --environment-name "$EB_ENVIRONMENT_NAME"
+          # Default `wait environment-updated` is 20s * 20 = ~6.5m, but Rolling with
+          # Additional Batch often takes 7m+. CI then goes red a few seconds before EB
+          # becomes Ready. Poll until Ready (15m) and require the new version so a
+          # rollback is not treated as success.
+          wait_start=$SECONDS
+          while true; do
+            read -r status health current_version < <(
+              aws elasticbeanstalk describe-environments \
+                --environment-names "$EB_ENVIRONMENT_NAME" \
+                --query 'Environments[0].[Status,Health,VersionLabel]' \
+                --output text
+            )
+            echo "Waiting for Ready: status=${status} health=${health} version=${current_version}"
+
+            if [[ "$status" == "Ready" ]]; then
+              if [[ "$current_version" != "$VERSION_LABEL" ]]; then
+                echo "Deploy rolled back or never applied. expected=${VERSION_LABEL} actual=${current_version}"
+                exit 1
+              fi
+              echo "Environment Ready with ${VERSION_LABEL} (health=${health})"
+              break
+            fi
+            if [[ "$status" == "Terminated" || "$status" == "Terminating" ]]; then
+              echo "Environment entered ${status}"
+              exit 1
+            fi
+            if (( SECONDS - wait_start >= 900 )); then
+              echo "Timed out after 15m waiting for environment Ready (last status=${status})"
+              exit 1
+            fi
+            sleep 20
+          done
