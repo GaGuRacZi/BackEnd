@@ -1,16 +1,18 @@
 package com.gaguraczi.paw.domain.weights.enums;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(description = "컨디션(식욕) 체크")
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+@Getter
+@RequiredArgsConstructor
+@Schema(description = "식욕 상태 (Low: 식욕이 떨어짐, Middle: 식욕 평범, High: 식욕이 많음)")
 public enum AppetiteTypeEnum {
 
-    @Schema(description = "식욕이 떨어짐")
-    LOW,
+    Low("식욕이 떨어짐"),
+    Middle("식욕 평범"),
+    High("식욕이 많음");
 
-    @Schema(description = "식욕 평범")
-    MIDDLE,
-
-    @Schema(description = "식욕이 많음")
-    HIGH
+    private final String label;
 }
