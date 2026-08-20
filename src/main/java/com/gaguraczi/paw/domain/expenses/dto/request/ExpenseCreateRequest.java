@@ -36,10 +36,6 @@ public record ExpenseCreateRequest(
         @Size(max = 255, message = "병원명은 255자 이하여야 합니다.")
         String expenseName,
 
-        @Schema(description = "병원 주소 (수기 입력)", example = "서울특별시 종로구 세종대로 110")
-        @Size(max = 255, message = "주소는 255자 이하여야 합니다.")
-        String expenseAddress,
-
         @Schema(description = "세부 항목 목록 (어디에 얼마를 썼는지 항목별 기록)")
         @NotEmpty(message = "세부 항목은 최소 1개 이상이어야 합니다.")
         @Valid

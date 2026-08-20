@@ -14,13 +14,12 @@ import com.gaguraczi.paw.domain.walk.dto.response.WalkStartResponse;
 import com.gaguraczi.paw.domain.walk.dto.response.WalkSummaryResponse;
 import com.gaguraczi.paw.domain.walk.dto.response.WalkWeeklySummaryResponse;
 import com.gaguraczi.paw.domain.walk.entity.WalkEntity;
-import com.gaguraczi.paw.domain.walk.enums.WalkStatusEnum;
 import com.gaguraczi.paw.domain.walk.enums.WalkTypeEnum;
 import com.gaguraczi.paw.domain.walk.enums.WeatherTypeEnum;
 import com.gaguraczi.paw.domain.walk.exception.WalkErrorCode;
+import com.gaguraczi.paw.domain.walk.redis.WalkInProgressRedisStore;
+import com.gaguraczi.paw.domain.walk.redis.WalkInProgressSession;
 import com.gaguraczi.paw.domain.walk.repository.WalkRepository;
-import com.gaguraczi.paw.domain.walkcourse.entity.WalkCourseEntity;
-import com.gaguraczi.paw.domain.walkcourse.repository.WalkCourseRepository;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -46,86 +45,79 @@ public class WalkService {
 
     private final WalkRepository walkRepository;
     private final PetRepository petRepository;
-    private final WalkCourseRepository walkCourseRepository;
+    private final WalkInProgressRedisStore walkInProgressRedisStore;
 
    // 산책 기록 수동 저장
     @Transactional
     public WalkResponse createWalk(WalkCreateRequest request) {
         Pet pet = getPetOrThrow(request.getPetId());
-        WalkCourseEntity course = findCourseOrNull(request.getCourseId(), request.getPetId());
 
         validateWalkTime(request.getStartTime(), request.getEndTime());
         validateNotFuture(request.getWalkDate());
 
-        WalkEntity walk = WalkConverter.toWalk(request, pet, course);
+        WalkEntity walk = WalkConverter.toWalk(request, pet);
         WalkEntity saved = walkRepository.save(walk);
-
-        markCourseUsed(course, saved.getStartTime());
 
         return WalkConverter.toWalkResponse(saved);
     }
 
-    //타이머 시작
-    @Transactional
+    //타이머 시작 — DB에 쓰지 않고 Redis에 6시간 보관
     public WalkStartResponse startWalk(WalkStartRequest request) {
-        Pet pet = getPetOrThrow(request.getPetId());
-        WalkCourseEntity course = findCourseOrNull(request.getCourseId(), request.getPetId());
-
-        if (walkRepository.existsByPet_PetIdAndWalkStatus(request.getPetId(), WalkStatusEnum.IN_PROGRESS)) {
-            throw new GeneralException(WalkErrorCode.WALK_ALREADY_IN_PROGRESS);
-        }
+        getPetOrThrow(request.getPetId());
 
         LocalDateTime startTime = (request.getStartTime() != null)
                 ? request.getStartTime()
                 : LocalDateTime.now();
         validateNotFuture(startTime.toLocalDate());
 
+        WalkInProgressSession session = WalkConverter.toInProgressSession(
+                request.getPetId(),
+                startTime
+        );
 
-        WalkEntity walk = WalkConverter.toStartedWalk(request, pet, course, startTime);
-        WalkEntity saved = walkRepository.save(walk);
+        if (!walkInProgressRedisStore.saveIfAbsent(session)) {
+            throw new GeneralException(WalkErrorCode.WALK_ALREADY_IN_PROGRESS);
+        }
 
-        return WalkConverter.toWalkStartResponse(saved);
+        return WalkConverter.toWalkStartResponse(session);
     }
 
-   // 타이머 종료
+   // 타이머 종료 — Redis 세션을 꺼내 완료 기록만 DB에 저장
     @Transactional
-    public WalkResponse finishWalk(Long walkId, WalkFinishRequest request) {
-        WalkEntity walk = getWalkOrThrow(walkId);
+    public WalkResponse finishWalk(WalkFinishRequest request) {
+        Pet pet = getPetOrThrow(request.getPetId());
 
-        if (walk.isCompleted()) {
+        String json = walkInProgressRedisStore.getRaw(request.getPetId())
+                .orElseThrow(() -> new GeneralException(WalkErrorCode.WALK_IN_PROGRESS_NOT_FOUND));
+        WalkInProgressSession session = walkInProgressRedisStore.parse(json);
+
+        if (!walkInProgressRedisStore.removeIfUnchanged(request.getPetId(), json)) {
             throw new GeneralException(WalkErrorCode.WALK_ALREADY_FINISHED);
         }
 
-        LocalDateTime endTime = (request.getEndTime() != null)
-                ? request.getEndTime()
-                : LocalDateTime.now();
+        try {
+            LocalDateTime endTime = (request.getEndTime() != null)
+                    ? request.getEndTime()
+                    : LocalDateTime.now();
 
-        validateWalkTime(walk.getStartTime(), endTime);
+            validateWalkTime(session.getStartTime(), endTime);
 
-        WalkCourseEntity course = findCourseOrNull(request.getCourseId(), walk.getPet().getPetId());
+            WalkEntity walk = WalkConverter.toFinishedWalk(session, pet, request, endTime);
+            WalkEntity saved = walkRepository.save(walk);
 
-        walk.finish(
-                endTime,
-                course,
-                request.getWalkingAmount(),
-                WalkTypeEnum.from(request.getWalkType()),
-                request.getIsStool(),
-                request.getIsUrine(),
-                request.getSignificant()
-        );
-
-        markCourseUsed(walk.getWalkCourse(), endTime);
-
-        return WalkConverter.toWalkResponse(walk);
+            return WalkConverter.toWalkResponse(saved);
+        } catch (RuntimeException e) {
+            walkInProgressRedisStore.restore(request.getPetId(), json);
+            throw e;
+        }
     }
 
 
     public WalkResponse getInProgressWalk(Long petId) {
-        WalkEntity walk = walkRepository
-                .findFirstByPet_PetIdAndWalkStatusOrderByStartTimeDesc(petId, WalkStatusEnum.IN_PROGRESS)
+        WalkInProgressSession session = walkInProgressRedisStore.getAndRefreshTtl(petId)
                 .orElseThrow(() -> new GeneralException(WalkErrorCode.WALK_IN_PROGRESS_NOT_FOUND));
 
-        return WalkConverter.toWalkResponse(walk);
+        return WalkConverter.toInProgressWalkResponse(session);
     }
 
     //산책 기록 조회
@@ -225,10 +217,7 @@ public class WalkService {
             validateNotFuture(request.getWalkDate());
         }
 
-        WalkCourseEntity course = findCourseOrNull(request.getCourseId(), walk.getPet().getPetId());
-
         walk.update(
-                course,
                 WeatherTypeEnum.fromNullable(request.getWeatherType()),
                 request.getWalkingAmount(),
                 WalkTypeEnum.fromNullable(request.getWalkType()),
@@ -261,26 +250,6 @@ public class WalkService {
     private Pet getPetOrThrow(Long petId) {
         return petRepository.findById(petId)
                 .orElseThrow(() -> new GeneralException(WalkErrorCode.PET_NOT_FOUND));
-    }
-
-
-    private WalkCourseEntity findCourseOrNull(Long courseId, Long petId) {
-        if (courseId == null) {
-            return null;
-        }
-        WalkCourseEntity course = walkCourseRepository.findById(courseId)
-                .orElseThrow(() -> new GeneralException(WalkErrorCode.WALK_COURSE_NOT_FOUND));
-
-        if (!course.isOwnedBy(petId)) {
-            throw new GeneralException(WalkErrorCode.WALK_COURSE_FORBIDDEN);
-        }
-        return course;
-    }
-
-    private void markCourseUsed(WalkCourseEntity course, LocalDateTime usedAt) {
-        if (course != null) {
-            course.markUsed(usedAt);
-        }
     }
 
 

@@ -22,11 +22,21 @@ import java.time.LocalDateTime;
 @Schema(description = "산책 자동기록 종료 요청")
 public class WalkFinishRequest {
 
+    @NotNull(message = "반려동물 id는 필수입니다.")
+    @Schema(description = "반려동물 id", example = "1")
+    private Long petId;
+
     @Schema(description = "산책 종료 시간. 안 보내면 서버 현재 시각으로 자동 설정", example = "2026-07-06T19:05:00")
     private LocalDateTime endTime;
 
-    @Schema(description = "산책 코스 id (코스를 골랐을 때만)", example = "1")
-    private Long courseId;
+    @NotBlank(message = "날씨는 필수입니다.")
+    @Schema(description = "날씨", example = "맑음",
+            allowableValues = {"맑음", "흐림", "비", "눈", "바람"})
+    private String weatherType;
+
+    @NotNull(message = "온도는 필수입니다.")
+    @Schema(description = "날씨 온도(℃)", example = "24")
+    private Integer temp;
 
     @NotNull(message = "산책 거리는 필수입니다.")
     @DecimalMin(value = "0.0", message = "산책 거리는 0 이상이어야 합니다.")

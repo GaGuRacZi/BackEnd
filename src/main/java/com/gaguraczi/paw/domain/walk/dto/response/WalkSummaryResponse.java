@@ -24,12 +24,6 @@ public class WalkSummaryResponse {
     @Schema(description = "산책 id", example = "1")
     private final Long walkId;
 
-    @Schema(description = "산책 코스 id (없으면 null)", example = "1")
-    private final Long courseId;
-
-    @Schema(description = "산책 코스 이름 (없으면 null)", example = "한강공원 한 바퀴")
-    private final String courseName;
-
     @Schema(description = "산책 날짜", example = "2026-07-06")
     private final LocalDate walkDate;
 

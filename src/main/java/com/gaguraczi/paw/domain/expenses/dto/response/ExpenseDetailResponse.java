@@ -33,9 +33,6 @@ public record ExpenseDetailResponse(
         @Schema(description = "방문/구매처", example = "행복동물병원")
         String expenseName,
 
-        @Schema(description = "병원 주소 (수기 입력)", example = "서울특별시 종로구 세종대로 110")
-        String expenseAddress,
-
         @Schema(description = "세부 항목 목록")
         List<ExpenseDetailItemResponse> expenseDetails
 ) {
@@ -53,7 +50,6 @@ public record ExpenseDetailResponse(
                 expense.getPaymentType(),
                 expense.getPaymentType().getLabel(),
                 expense.getExpenseName(),
-                expense.getExpenseAddress(),
                 details
         );
     }

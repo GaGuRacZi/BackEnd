@@ -50,7 +50,6 @@ public class ExpenseService {
                 .expenseAmount(request.expenseAmount())
                 .expenseDate(expenseDate)
                 .paymentType(request.paymentType())
-                .expenseAddress(blankToNull(request.expenseAddress()))
                 .build();
 
         for (ExpenseDetailCreateRequest detailRequest : request.expenseDetails()) {
@@ -71,8 +70,7 @@ public class ExpenseService {
                 request.expenseName() != null ? request.expenseName().trim() : null,
                 request.expenseAmount(),
                 expenseDate,
-                request.paymentType(),
-                request.expenseAddress() != null ? blankToNull(request.expenseAddress()) : null
+                request.paymentType()
         );
 
         if (request.expenseDetails() != null) {
@@ -162,10 +160,6 @@ public class ExpenseService {
                 .expenseDetailName(detailRequest.expenseDetailName().trim())
                 .expenseAmount(detailRequest.expenseAmount())
                 .build();
-    }
-
-    private static String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private Pet loadOwnedPet(Long petId) {

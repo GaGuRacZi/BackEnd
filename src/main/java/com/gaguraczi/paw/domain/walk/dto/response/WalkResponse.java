@@ -20,28 +20,19 @@ import java.time.LocalDateTime;
 @Schema(description = "산책 기록 상세 응답")
 public class WalkResponse {
 
-    @Schema(description = "산책 id", example = "1")
+    @Schema(description = "산책 id. 진행 중이면 null", example = "1")
     private final Long walkId;
 
     @Schema(description = "반려동물 id", example = "1")
     private final Long petId;
 
-    @Schema(description = "산책 코스 id (없으면 null)", example = "1")
-    private final Long courseId;
-
-    @Schema(description = "산책 코스 이름 (없으면 null)", example = "한강공원 한 바퀴")
-    private final String courseName;
-
-    @Schema(description = "산책 코스 지도 썸네일 URL", example = "https://cdn.example.com/course/1.png")
-    private final String courseThumbnailUrl;
-
     @Schema(description = "산책 날짜", example = "2026-07-06")
     private final LocalDate walkDate;
 
-    @Schema(description = "날씨", example = "맑음")
+    @Schema(description = "날씨. 진행 중이면 null", example = "맑음")
     private final WeatherTypeEnum weatherType;
 
-    @Schema(description = "날씨 온도(℃)", example = "24")
+    @Schema(description = "날씨 온도(℃). 진행 중이면 null", example = "24")
     private final Integer temp;
 
     @Schema(description = "산책 시작 시간", example = "2026-07-06T18:20:00")

@@ -59,10 +59,6 @@ public class ExpenseEntity extends BaseEntity { // 지출비용(의료비)
     @Column(name = "expense_type", nullable = false)
     private PaymentTypeEnum paymentType;
 
-
-    @Column(name = "expense_address", length = 255)
-    private String expenseAddress;
-
     @Builder.Default
     @OneToMany(mappedBy = "expense", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ExpenseDetailEntity> expenseDetails = new ArrayList<>();
@@ -84,8 +80,7 @@ public class ExpenseEntity extends BaseEntity { // 지출비용(의료비)
             String expenseName,
             Long expenseAmount,
             LocalDateTime expenseDate,
-            PaymentTypeEnum paymentType,
-            String expenseAddress
+            PaymentTypeEnum paymentType
     ) {
         if (expenseName != null) {
             this.expenseName = expenseName;
@@ -98,9 +93,6 @@ public class ExpenseEntity extends BaseEntity { // 지출비용(의료비)
         }
         if (paymentType != null) {
             this.paymentType = paymentType;
-        }
-        if (expenseAddress != null) {
-            this.expenseAddress = expenseAddress;
         }
     }
 }

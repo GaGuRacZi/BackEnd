@@ -20,9 +20,6 @@ import java.time.LocalDateTime;
 @Schema(description = "산책 기록 수정 요청 (보낸 필드만 반영)")
 public class WalkUpdateRequest {
 
-    @Schema(description = "산책 코스 id", example = "1")
-    private Long courseId;
-
     @Schema(description = "산책 날짜", example = "2026-07-06")
     private LocalDate walkDate;
 

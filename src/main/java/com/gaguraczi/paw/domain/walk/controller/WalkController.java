@@ -39,7 +39,7 @@ public class WalkController {
 
 
     @Operation(summary = "산책 자동기록 시작",
-            description = "타이머를 시작합니다. 응답의 walkId를 들고 있다가 종료 API에 넘겨주세요.")
+            description = "타이머를 시작합니다. 진행 중 상태는 Redis에 6시간 보관되며, 그동안 요청이 없으면 사라집니다. 종료 시 petId를 넘겨주세요.")
     @PostMapping("/start")
     public ApiResponse<WalkStartResponse> startWalk(@Valid @RequestBody WalkStartRequest request) {
         WalkStartResponse result = walkService.startWalk(request);
@@ -47,12 +47,10 @@ public class WalkController {
     }
 
     @Operation(summary = "산책 자동기록 종료",
-            description = "타이머를 종료하고 거리·강도·컨디션을 채워 기록을 완성합니다.")
-    @PatchMapping("/{walkId}/finish")
-    public ApiResponse<WalkResponse> finishWalk(
-            @Parameter(description = "산책 id", example = "1") @PathVariable Long walkId,
-            @Valid @RequestBody WalkFinishRequest request) {
-        WalkResponse result = walkService.finishWalk(walkId, request);
+            description = "타이머를 종료하고 거리·강도·컨디션을 채워 기록을 완성합니다. 진행 중 세션이 만료되었으면 실패합니다.")
+    @PatchMapping("/finish")
+    public ApiResponse<WalkResponse> finishWalk(@Valid @RequestBody WalkFinishRequest request) {
+        WalkResponse result = walkService.finishWalk(request);
         return ApiResponse.onSuccess(WalkSuccessCode.WALK_FINISHED, result);
     }
 

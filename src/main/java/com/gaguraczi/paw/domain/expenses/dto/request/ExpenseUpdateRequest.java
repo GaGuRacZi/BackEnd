@@ -29,10 +29,6 @@ public record ExpenseUpdateRequest(
         @Size(max = 255, message = "병원명은 255자 이하여야 합니다.")
         String expenseName,
 
-        @Schema(description = "병원 주소 (수기 입력)", example = "서울특별시 종로구 세종대로 110")
-        @Size(max = 255, message = "주소는 255자 이하여야 합니다.")
-        String expenseAddress,
-
         @Schema(description = "세부 항목 목록. 보내면 기존 항목 전체를 이 목록으로 교체합니다 (생략 시 기존 항목 유지).")
         @Valid
         List<ExpenseDetailCreateRequest> expenseDetails

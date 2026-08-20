@@ -4,7 +4,6 @@ import com.gaguraczi.paw.domain.users.entity.Pet;
 import com.gaguraczi.paw.domain.walk.enums.WalkStatusEnum;
 import com.gaguraczi.paw.domain.walk.enums.WalkTypeEnum;
 import com.gaguraczi.paw.domain.walk.enums.WeatherTypeEnum;
-import com.gaguraczi.paw.domain.walkcourse.entity.WalkCourseEntity;
 import com.gaguraczi.paw.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -37,10 +36,6 @@ public class WalkEntity extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "pet_id", nullable = false)
     private Pet pet;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_id")
-    private WalkCourseEntity walkCourse;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "weather_type", nullable = false, length = 20)
@@ -80,7 +75,6 @@ public class WalkEntity extends BaseEntity {
 
     @Builder
     private WalkEntity(Pet pet,
-                       WalkCourseEntity walkCourse,
                        WeatherTypeEnum weatherType,
                        BigDecimal walkingAmount,
                        WalkTypeEnum walkType,
@@ -93,7 +87,6 @@ public class WalkEntity extends BaseEntity {
                        String significant,
                        WalkStatusEnum walkStatus) {
         this.pet = pet;
-        this.walkCourse = walkCourse;
         this.weatherType = weatherType;
         this.walkingAmount = (walkingAmount != null) ? walkingAmount : BigDecimal.ZERO;
         this.walkType = (walkType != null) ? walkType : WalkTypeEnum.NORMAL;
@@ -107,25 +100,7 @@ public class WalkEntity extends BaseEntity {
         this.walkStatus = (walkStatus != null) ? walkStatus : WalkStatusEnum.COMPLETED;
     }
 
-    public void finish(LocalDateTime endTime,
-                       WalkCourseEntity walkCourse,
-                       BigDecimal walkingAmount,
-                       WalkTypeEnum walkType,
-                       Boolean isStool,
-                       Boolean isUrine,
-                       String significant) {
-        this.endTime = endTime;
-        if (walkCourse != null) this.walkCourse = walkCourse;
-        if (walkingAmount != null) this.walkingAmount = walkingAmount;
-        if (walkType != null) this.walkType = walkType;
-        if (isStool != null) this.isStool = isStool;
-        if (isUrine != null) this.isUrine = isUrine;
-        if (significant != null) this.significant = significant;
-        this.walkStatus = WalkStatusEnum.COMPLETED;
-    }
-
-    public void update(WalkCourseEntity walkCourse,
-                       WeatherTypeEnum weatherType,
+    public void update(WeatherTypeEnum weatherType,
                        BigDecimal walkingAmount,
                        WalkTypeEnum walkType,
                        LocalDateTime startTime,
@@ -135,7 +110,6 @@ public class WalkEntity extends BaseEntity {
                        Boolean isStool,
                        Boolean isUrine,
                        String significant) {
-        if (walkCourse != null) this.walkCourse = walkCourse;
         if (weatherType != null) this.weatherType = weatherType;
         if (walkingAmount != null) this.walkingAmount = walkingAmount;
         if (walkType != null) this.walkType = walkType;

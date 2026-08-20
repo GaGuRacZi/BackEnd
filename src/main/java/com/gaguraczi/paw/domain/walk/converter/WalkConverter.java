@@ -2,7 +2,7 @@ package com.gaguraczi.paw.domain.walk.converter;
 
 import com.gaguraczi.paw.domain.users.entity.Pet;
 import com.gaguraczi.paw.domain.walk.dto.request.WalkCreateRequest;
-import com.gaguraczi.paw.domain.walk.dto.request.WalkStartRequest;
+import com.gaguraczi.paw.domain.walk.dto.request.WalkFinishRequest;
 import com.gaguraczi.paw.domain.walk.dto.response.WalkDailyStatResponse;
 import com.gaguraczi.paw.domain.walk.dto.response.WalkIdResponse;
 import com.gaguraczi.paw.domain.walk.dto.response.WalkResponse;
@@ -13,7 +13,7 @@ import com.gaguraczi.paw.domain.walk.entity.WalkEntity;
 import com.gaguraczi.paw.domain.walk.enums.WalkStatusEnum;
 import com.gaguraczi.paw.domain.walk.enums.WalkTypeEnum;
 import com.gaguraczi.paw.domain.walk.enums.WeatherTypeEnum;
-import com.gaguraczi.paw.domain.walkcourse.entity.WalkCourseEntity;
+import com.gaguraczi.paw.domain.walk.redis.WalkInProgressSession;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,10 +26,9 @@ import java.util.Locale;
 public class WalkConverter {
 
 
-    public static WalkEntity toWalk(WalkCreateRequest request, Pet pet, WalkCourseEntity walkCourse) {
+    public static WalkEntity toWalk(WalkCreateRequest request, Pet pet) {
         return WalkEntity.builder()
                 .pet(pet)
-                .walkCourse(walkCourse)
                 .walkDate(request.getWalkDate())
                 .weatherType(WeatherTypeEnum.from(request.getWeatherType()))
                 .temp(request.getTemp())
@@ -40,42 +39,45 @@ public class WalkConverter {
                 .isUrine(request.getIsUrine())
                 .isStool(request.getIsStool())
                 .significant(request.getSignificant())
-                .walkStatus(WalkStatusEnum.COMPLETED) // 수동 기록은 저장하는 순간 이미 끝난 산책
+                .walkStatus(WalkStatusEnum.COMPLETED)
                 .build();
     }
 
 
-    public static WalkEntity toStartedWalk(WalkStartRequest request,
-                                           Pet pet,
-                                           WalkCourseEntity walkCourse,
-                                           LocalDateTime startTime) {
+    public static WalkInProgressSession toInProgressSession(Long petId, LocalDateTime startTime) {
+        return WalkInProgressSession.builder()
+                .petId(petId)
+                .startTime(startTime)
+                .walkDate(startTime.toLocalDate())
+                .build();
+    }
+
+
+    public static WalkEntity toFinishedWalk(WalkInProgressSession session,
+                                            Pet pet,
+                                            WalkFinishRequest request,
+                                            LocalDateTime endTime) {
         return WalkEntity.builder()
                 .pet(pet)
-                .walkCourse(walkCourse)
-                .walkDate(startTime.toLocalDate())
+                .walkDate(session.getWalkDate())
                 .weatherType(WeatherTypeEnum.from(request.getWeatherType()))
                 .temp(request.getTemp())
-                .startTime(startTime)
-                .endTime(null)
-                .walkingAmount(BigDecimal.ZERO)
-                .walkType(WalkTypeEnum.NORMAL)
-                .isUrine(Boolean.FALSE)
-                .isStool(Boolean.FALSE)
-                .walkStatus(WalkStatusEnum.IN_PROGRESS)
+                .startTime(session.getStartTime())
+                .endTime(endTime)
+                .walkingAmount(request.getWalkingAmount())
+                .walkType(WalkTypeEnum.from(request.getWalkType()))
+                .isUrine(request.getIsUrine())
+                .isStool(request.getIsStool())
+                .significant(request.getSignificant())
+                .walkStatus(WalkStatusEnum.COMPLETED)
                 .build();
     }
-
 
 
     public static WalkResponse toWalkResponse(WalkEntity walk) {
-        WalkCourseEntity course = walk.getWalkCourse();
-
         return WalkResponse.builder()
                 .walkId(walk.getId())
                 .petId(walk.getPet().getPetId())
-                .courseId((course != null) ? course.getId() : null)
-                .courseName((course != null) ? course.getName() : null)
-                .courseThumbnailUrl((course != null) ? course.getThumbnailUrl() : null)
                 .walkDate(walk.getWalkDate())
                 .weatherType(walk.getWeatherType())
                 .temp(walk.getTemp())
@@ -91,13 +93,28 @@ public class WalkConverter {
                 .build();
     }
 
-    public static WalkSummaryResponse toWalkSummaryResponse(WalkEntity walk) {
-        WalkCourseEntity course = walk.getWalkCourse();
+    public static WalkResponse toInProgressWalkResponse(WalkInProgressSession session) {
+        return WalkResponse.builder()
+                .walkId(null)
+                .petId(session.getPetId())
+                .walkDate(session.getWalkDate())
+                .weatherType(null)
+                .temp(null)
+                .startTime(session.getStartTime())
+                .endTime(null)
+                .durationMinutes(null)
+                .walkingAmount(BigDecimal.ZERO)
+                .walkType(WalkTypeEnum.NORMAL)
+                .isUrine(Boolean.FALSE)
+                .isStool(Boolean.FALSE)
+                .significant(null)
+                .walkStatus(WalkStatusEnum.IN_PROGRESS)
+                .build();
+    }
 
+    public static WalkSummaryResponse toWalkSummaryResponse(WalkEntity walk) {
         return WalkSummaryResponse.builder()
                 .walkId(walk.getId())
-                .courseId((course != null) ? course.getId() : null)
-                .courseName((course != null) ? course.getName() : null)
                 .walkDate(walk.getWalkDate())
                 .startTime(walk.getStartTime())
                 .endTime(walk.getEndTime())
@@ -114,15 +131,12 @@ public class WalkConverter {
                 .toList();
     }
 
-    public static WalkStartResponse toWalkStartResponse(WalkEntity walk) {
+    public static WalkStartResponse toWalkStartResponse(WalkInProgressSession session) {
         return WalkStartResponse.builder()
-                .walkId(walk.getId())
-                .petId(walk.getPet().getPetId())
-                .walkDate(walk.getWalkDate())
-                .startTime(walk.getStartTime())
-                .weatherType(walk.getWeatherType())
-                .temp(walk.getTemp())
-                .walkStatus(walk.getWalkStatus())
+                .petId(session.getPetId())
+                .walkDate(session.getWalkDate())
+                .startTime(session.getStartTime())
+                .walkStatus(WalkStatusEnum.IN_PROGRESS)
                 .build();
     }
 

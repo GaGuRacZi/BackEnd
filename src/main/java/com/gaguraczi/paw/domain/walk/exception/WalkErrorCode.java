@@ -14,7 +14,6 @@ public enum WalkErrorCode implements BaseErrorCode {
     WALK_NOT_FOUND(HttpStatus.NOT_FOUND, "WALK_404_1", "존재하지 않는 산책 기록입니다."),
     PET_NOT_FOUND(HttpStatus.NOT_FOUND, "WALK_404_2", "존재하지 않는 반려동물입니다."),
     WALK_IN_PROGRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "WALK_404_3", "진행 중인 산책이 없습니다."),
-    WALK_COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "WALK_404_4", "존재하지 않는 산책 코스입니다."),
 
 
     WALK_TIME_INVALID(HttpStatus.BAD_REQUEST, "WALK_400_1", "종료 시간은 시작 시간보다 빠를 수 없습니다."),
@@ -30,7 +29,6 @@ public enum WalkErrorCode implements BaseErrorCode {
 
 
     WALK_FORBIDDEN(HttpStatus.FORBIDDEN, "WALK_403_1", "해당 산책 기록에 접근할 권한이 없습니다."),
-    WALK_COURSE_FORBIDDEN(HttpStatus.FORBIDDEN, "WALK_403_2", "다른 반려동물의 산책 코스는 사용할 수 없습니다."),
 
     WALK_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "WALK_409_1", "이미 진행 중인 산책이 있습니다.");
 

@@ -26,9 +26,6 @@ public class WalkCreateRequest {
     @Schema(description = "반려동물 id", example = "1")
     private Long petId;
 
-    @Schema(description = "산책 코스 id (코스를 골랐을 때만). 안 고르면 null", example = "1")
-    private Long courseId;
-
     @NotNull(message = "산책 날짜는 필수입니다.")
     @Schema(description = "산책 날짜", example = "2026-07-06")
     private LocalDate walkDate;
