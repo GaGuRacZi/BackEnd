@@ -32,7 +32,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
             Pageable pageable
     );
 
-    @EntityGraph(attributePaths = {"user", "parent", "community"})
+    @EntityGraph(attributePaths = {"user", "parent", "parent.user", "community", "community.user"})
     @Query("SELECT c FROM Comment c WHERE c.commentId = :commentId")
     Optional<Comment> findDetailById(@Param("commentId") Long commentId);
 

@@ -10,7 +10,11 @@ import org.springframework.http.HttpStatus;
 public enum PetSuccessCode implements BaseSuccessCode {
 
     PET_CREATE_200(HttpStatus.OK, "PET_CREATE_200", "펫이 등록되었습니다."),
-    PET_UPDATE_200(HttpStatus.OK, "PET_UPDATE_200", "펫 정보가 수정되었습니다.");
+    PET_UPDATE_200(HttpStatus.OK, "PET_UPDATE_200", "펫 정보가 수정되었습니다."),
+    PET_LIST_200(HttpStatus.OK, "PET_LIST_200", "반려동물 목록 조회에 성공했습니다."),
+    PET_GET_200(HttpStatus.OK, "PET_GET_200", "반려동물 조회에 성공했습니다."),
+    PET_MAIN_UPDATE_200(HttpStatus.OK, "PET_MAIN_UPDATE_200", "대표 반려동물이 변경되었습니다."),
+    PET_DELETE_200(HttpStatus.OK, "PET_DELETE_200", "반려동물이 삭제되었습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

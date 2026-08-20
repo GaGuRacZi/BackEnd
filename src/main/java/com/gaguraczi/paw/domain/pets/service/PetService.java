@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -30,6 +32,57 @@ public class PetService {
     private final BreedService breedService;
     private final SecurityUtils securityUtils;
     private final S3Utils s3Utils;
+
+    public List<PetRes> getMyPets() {
+        User user = securityUtils.currentUser();
+        return petRepository.findByUserOrderByIsMainDescPetIdAsc(user).stream()
+                .map(PetRes::from)
+                .toList();
+    }
+
+    public PetRes getPet(Long petId) {
+        Pet pet = findOwnedPet(petId);
+        return PetRes.from(pet);
+    }
+
+    @Transactional
+    public PetRes setMainPet(Long petId) {
+        User user = securityUtils.currentUser();
+        Pet target = findOwnedPet(petId);
+        petRepository.findFirstByUserAndIsMainTrue(user)
+                .filter(current -> !current.getPetId().equals(petId))
+                .ifPresent(current -> current.setMain(false));
+        target.setMain(true);
+        return PetRes.from(target);
+    }
+
+    @Transactional
+    public void delete(Long petId) {
+        User user = securityUtils.currentUser();
+        Pet pet = findOwnedPet(petId);
+        boolean wasMain = pet.isMain();
+        String profileS3Key = pet.getProfileS3Key();
+
+        petRepository.delete(pet);
+
+        if (wasMain) {
+            petRepository.findFirstByUserAndPetIdNotOrderByCreatedAtDesc(user, petId)
+                    .ifPresent(next -> next.setMain(true));
+        }
+        if (profileS3Key != null) {
+            s3Utils.scheduleDeleteAfterCommit(profileS3Key);
+        }
+    }
+
+    private Pet findOwnedPet(Long petId) {
+        User user = securityUtils.currentUser();
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> GeneralException.of(PetErrorCode.PET_NOT_FOUND));
+        if (!pet.getUser().getUid().equals(user.getUid())) {
+            throw GeneralException.of(PetErrorCode.PET_NOT_FOUND);
+        }
+        return pet;
+    }
 
     @Transactional
     public PetRes create(PetCreateReq req, MultipartFile image) {
