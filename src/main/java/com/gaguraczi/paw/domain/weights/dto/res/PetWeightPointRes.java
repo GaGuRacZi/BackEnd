@@ -8,10 +8,10 @@ import java.time.LocalDate;
 @Schema(name = "PetWeightPointRes", description = "체중 그래프의 점 하나 (날짜별)")
 public record PetWeightPointRes(
 
-        @Schema(description = "기준 날짜", example = "2026-07-06")
+        @Schema(description = "기준 날짜. SIX_MONTHS면 그 달 1일", example = "2026-07-06")
         LocalDate date,
 
-        @Schema(description = "해당 날짜(또는 월)의 대표 몸무게(kg)", example = "4.20")
+        @Schema(description = "해당 날짜(또는 월)의 마지막 기록 몸무게(kg)", example = "4.20")
         BigDecimal weight
 ) {
 

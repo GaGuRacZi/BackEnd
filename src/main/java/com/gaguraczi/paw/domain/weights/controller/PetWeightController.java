@@ -36,7 +36,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-@Tag(name = "pet-weights", description = "건강요약 - 체중 API")
+@Tag(name = "pet-weights", description = PetWeightApiDocs.TAG_DESCRIPTION)
 @RestController
 @RequestMapping("/pets/{petId}/weights")
 @RequiredArgsConstructor
@@ -46,11 +46,7 @@ public class PetWeightController {
 
     @Operation(
             summary = "체중 기록 저장",
-            description = """
-                    multipart/form-data: data(JSON) + images(0~3장)
-                    - Access Token(JWT) 필수. 본인 소유 펫만 기록할 수 있습니다. 미래 날짜는 기록할 수 없습니다.
-                    - 메모 사진: 파일당 최대 5MB, JPEG/PNG/GIF/WEBP/HEIC/HEIF, 최대 3장
-                    """,
+            description = PetWeightApiDocs.CREATE_DESCRIPTION,
             requestBody = @RequestBody(
                     required = true,
                     content = @Content(
@@ -66,72 +62,31 @@ public class PetWeightController {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "저장 성공",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "PET_WEIGHT_CREATE_200",
-                                    value = """
-                                            {
-                                              "isSuccess": true,
-                                              "code": "PET_WEIGHT_CREATE_200",
-                                              "message": "체중 기록이 저장되었습니다.",
-                                              "result": {
-                                                "petWeightId": 1,
-                                                "petId": 1,
-                                                "weight": 4.20,
-                                                "bodyType": "HEALTHY",
-                                                "appetiteType": "LOW",
-                                                "memoContent": "식사 후 같은 시간대에 측정했어요.",
-                                                "recordedAt": "2026-07-06T20:30:00",
-                                                "photos": [
-                                                  {"photoId": 1, "url": "https://cdn.example.com/pet-weight/1/a.jpg", "sortOrder": 0}
-                                                ]
-                                              }
-                                            }
-                                            """
-                            )
-                    )
+                    description = "PET_WEIGHT_CREATE_200",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(
+                            name = "PET_WEIGHT_CREATE_200", value = PetWeightApiDocs.CREATE_200_EXAMPLE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "유효성 오류",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = {
-                                    @ExampleObject(
-                                            name = "PET_WEIGHT_400_1",
-                                            value = """
-                                                    {"isSuccess":false,"code":"PET_WEIGHT_400_1","message":"미래 날짜로는 체중을 기록할 수 없습니다.","result":null}
-                                                    """
-                                    ),
-                                    @ExampleObject(
-                                            name = "PET_WEIGHT_400_3",
-                                            value = """
-                                                    {"isSuccess":false,"code":"PET_WEIGHT_400_3","message":"메모 사진은 최대 3장까지 첨부할 수 있습니다.","result":null}
-                                                    """
-                                    ),
-                                    @ExampleObject(
-                                            name = "PET_WEIGHT_400_6",
-                                            value = """
-                                                    {"isSuccess":false,"code":"PET_WEIGHT_400_6","message":"지원하지 않는 이미지 형식입니다. JPEG, PNG, GIF, WEBP, HEIC, HEIF만 업로드할 수 있습니다.","result":null}
-                                                    """
-                                    )
-                            }
-                    )
+                    description = "PET_WEIGHT_400_1 미래 날짜 / PET_WEIGHT_400_3 사진 3장 초과 / PET_WEIGHT_400_5 5MB 초과 / PET_WEIGHT_400_6 포맷",
+                    content = @Content(mediaType = "application/json", examples = {
+                            @ExampleObject(name = "PET_WEIGHT_400_1", value = PetWeightApiDocs.PET_WEIGHT_400_1_EXAMPLE),
+                            @ExampleObject(name = "PET_WEIGHT_400_3", value = PetWeightApiDocs.PET_WEIGHT_400_3_EXAMPLE),
+                            @ExampleObject(name = "PET_WEIGHT_400_5", value = PetWeightApiDocs.PET_WEIGHT_400_5_EXAMPLE),
+                            @ExampleObject(name = "PET_WEIGHT_400_6", value = PetWeightApiDocs.PET_WEIGHT_400_6_EXAMPLE)
+                    })
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
-                    description = "펫 없음",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "PET_404",
-                                    value = """
-                                            {"isSuccess":false,"code":"PET_404","message":"펫을 찾을 수 없습니다.","result":null}
-                                            """
-                            )
-                    )
+                    description = "PET_404. 없거나 본인 펫이 아님.",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(
+                            name = "PET_404", value = PetWeightApiDocs.PET_404_EXAMPLE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = PetWeightApiDocs.JWT_401_1_DESCRIPTION,
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(
+                            name = "JWT_401_1", value = PetWeightApiDocs.JWT_401_1_EXAMPLE))
             )
     })
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -148,13 +103,7 @@ public class PetWeightController {
 
     @Operation(
             summary = "체중 기록 수정",
-            description = """
-                    multipart/form-data: data(JSON, 선택) + images(신규 추가, 선택)
-                    - 보낸 필드만 반영됩니다.
-                    - data.keepPhotoUrls를 생략하면 기존 사진은 그대로 두고 images만 추가됩니다.
-                    - data.keepPhotoUrls를 보내면 목록에 없는 기존 사진은 삭제됩니다.
-                    - 최종 사진 수(유지 + 신규) ≤ 3
-                    """,
+            description = PetWeightApiDocs.UPDATE_DESCRIPTION,
             requestBody = @RequestBody(
                     required = false,
                     content = @Content(
@@ -169,17 +118,26 @@ public class PetWeightController {
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "PET_WEIGHT_UPDATE_200",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(
+                            name = "PET_WEIGHT_UPDATE_200", value = PetWeightApiDocs.UPDATE_200_EXAMPLE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "유효성 오류",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "PET_WEIGHT_400_3",
-                                    value = """
-                                            {"isSuccess":false,"code":"PET_WEIGHT_400_3","message":"메모 사진은 최대 3장까지 첨부할 수 있습니다.","result":null}
-                                            """
-                            )
-                    )
+                    description = "PET_WEIGHT_400_3 사진 3장 초과 / PET_WEIGHT_400_1 미래 날짜",
+                    content = @Content(mediaType = "application/json", examples = {
+                            @ExampleObject(name = "PET_WEIGHT_400_3", value = PetWeightApiDocs.PET_WEIGHT_400_3_EXAMPLE),
+                            @ExampleObject(name = "PET_WEIGHT_400_1", value = PetWeightApiDocs.PET_WEIGHT_400_1_EXAMPLE)
+                    })
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "PET_WEIGHT_404 기록 없음 / PET_404 펫 없음",
+                    content = @Content(mediaType = "application/json", examples = {
+                            @ExampleObject(name = "PET_WEIGHT_404", value = PetWeightApiDocs.PET_WEIGHT_404_EXAMPLE),
+                            @ExampleObject(name = "PET_404", value = PetWeightApiDocs.PET_404_EXAMPLE)
+                    })
             )
     })
     @PutMapping(value = "/{petWeightId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -195,7 +153,21 @@ public class PetWeightController {
         );
     }
 
-    @Operation(summary = "체중 기록 삭제")
+    @Operation(summary = "체중 기록 삭제", description = PetWeightApiDocs.DELETE_DESCRIPTION)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "PET_WEIGHT_DELETE_200. result=null.",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(
+                            name = "PET_WEIGHT_DELETE_200", value = PetWeightApiDocs.DELETE_200_EXAMPLE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "PET_WEIGHT_404",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(
+                            name = "PET_WEIGHT_404", value = PetWeightApiDocs.PET_WEIGHT_404_EXAMPLE))
+            )
+    })
     @DeleteMapping("/{petWeightId}")
     public ApiResponse<Void> delete(
             @Parameter(description = "펫 ID", example = "1") @PathVariable Long petId,
@@ -205,35 +177,15 @@ public class PetWeightController {
         return ApiResponse.onSuccess(PetWeightSuccessCode.PET_WEIGHT_DELETE_200, null);
     }
 
-    @Operation(
-            summary = "건강요약 - 체중 상단 카드",
-            description = "현재 체중, 이번 달 증감을 반환합니다."
-    )
-    @ApiResponses(
+    @Operation(summary = "건강요약 - 체중 상단 카드", description = PetWeightApiDocs.SUMMARY_DESCRIPTION)
+    @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "조회 성공",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "PET_WEIGHT_SUMMARY_200",
-                                    value = """
-                                            {
-                                              "isSuccess": true,
-                                              "code": "PET_WEIGHT_SUMMARY_200",
-                                              "message": "체중 요약 조회에 성공했습니다.",
-                                              "result": {
-                                                "petId": 1,
-                                                "currentWeight": 4.20,
-                                                "lastRecordedAt": "2026-07-06T20:30:00",
-                                                "monthChange": 0.10
-                                              }
-                                            }
-                                            """
-                            )
-                    )
+                    description = "PET_WEIGHT_SUMMARY_200. monthChange는 비교 대상이 없으면 null.",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(
+                            name = "PET_WEIGHT_SUMMARY_200", value = PetWeightApiDocs.SUMMARY_200_EXAMPLE))
             )
-    )
+    })
     @GetMapping("/summary")
     public ApiResponse<PetWeightSummaryRes> getSummary(
             @Parameter(description = "펫 ID", example = "1") @PathVariable Long petId
@@ -244,45 +196,19 @@ public class PetWeightController {
         );
     }
 
-    @Operation(
-            summary = "최근 체중 변화 그래프 (날짜별)",
-            description = "ONE_MONTH는 일 단위, SIX_MONTHS는 월 단위로 집계해 날짜 오름차순 포인트를 반환합니다."
-    )
-    @ApiResponses(
+    @Operation(summary = "최근 체중 변화 그래프 (날짜별)", description = PetWeightApiDocs.GRAPH_DESCRIPTION)
+    @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "조회 성공",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "PET_WEIGHT_GRAPH_200",
-                                    value = """
-                                            {
-                                              "isSuccess": true,
-                                              "code": "PET_WEIGHT_GRAPH_200",
-                                              "message": "체중 그래프 조회에 성공했습니다.",
-                                              "result": {
-                                                "period": "ONE_MONTH",
-                                                "startDate": "2026-06-07",
-                                                "endDate": "2026-07-06",
-                                                "minWeight": 3.90,
-                                                "maxWeight": 4.20,
-                                                "points": [
-                                                  {"date": "2026-06-08", "weight": 3.90},
-                                                  {"date": "2026-06-15", "weight": 3.95},
-                                                  {"date": "2026-07-06", "weight": 4.20}
-                                                ]
-                                              }
-                                            }
-                                            """
-                            )
-                    )
+                    description = "PET_WEIGHT_GRAPH_200. 기록 없는 날짜는 포인트에 없음.",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(
+                            name = "PET_WEIGHT_GRAPH_200", value = PetWeightApiDocs.GRAPH_200_EXAMPLE))
             )
-    )
+    })
     @GetMapping("/graph")
     public ApiResponse<PetWeightGraphRes> getGraph(
             @Parameter(description = "펫 ID", example = "1") @PathVariable Long petId,
-            @Parameter(description = "조회 기간", example = "ONE_MONTH")
+            @Parameter(description = "ONE_MONTH=최근 1개월 일 단위, SIX_MONTHS=최근 6개월 월 단위", example = "ONE_MONTH")
             @RequestParam(required = false, defaultValue = "ONE_MONTH") WeightGraphPeriodEnum period
     ) {
         return ApiResponse.onSuccess(
@@ -291,15 +217,28 @@ public class PetWeightController {
         );
     }
 
-    @Operation(
-            summary = "월별 체중 기록 목록",
-            description = "year/month 미지정 시 이번 달 기록을 최신순으로 반환합니다."
-    )
+    @Operation(summary = "월별 체중 기록 목록", description = PetWeightApiDocs.LIST_DESCRIPTION)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "PET_WEIGHT_LIST_200. 최신 recordedAt 순.",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(
+                            name = "PET_WEIGHT_LIST_200", value = PetWeightApiDocs.LIST_200_EXAMPLE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "PET_WEIGHT_400_2. month가 1~12가 아님.",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(
+                            name = "PET_WEIGHT_400_2", value = PetWeightApiDocs.PET_WEIGHT_400_2_EXAMPLE))
+            )
+    })
     @GetMapping
     public ApiResponse<List<PetWeightRes>> getMonthlyRecords(
             @Parameter(description = "펫 ID", example = "1") @PathVariable Long petId,
-            @Parameter(description = "연도", example = "2026") @RequestParam(required = false) Integer year,
-            @Parameter(description = "월", example = "7") @RequestParam(required = false) Integer month
+            @Parameter(description = "연도. month와 함께 지정. 생략 시 이번 달", example = "2026")
+            @RequestParam(required = false) Integer year,
+            @Parameter(description = "월(1~12). year와 함께 지정. 생략 시 이번 달", example = "7")
+            @RequestParam(required = false) Integer month
     ) {
         return ApiResponse.onSuccess(
                 PetWeightSuccessCode.PET_WEIGHT_LIST_200,
@@ -307,7 +246,21 @@ public class PetWeightController {
         );
     }
 
-    @Operation(summary = "체중 기록 상세 조회")
+    @Operation(summary = "체중 기록 상세 조회", description = PetWeightApiDocs.GET_DESCRIPTION)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "PET_WEIGHT_GET_200",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(
+                            name = "PET_WEIGHT_GET_200", value = PetWeightApiDocs.GET_200_EXAMPLE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "PET_WEIGHT_404",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(
+                            name = "PET_WEIGHT_404", value = PetWeightApiDocs.PET_WEIGHT_404_EXAMPLE))
+            )
+    })
     @GetMapping("/{petWeightId}")
     public ApiResponse<PetWeightRes> get(
             @Parameter(description = "펫 ID", example = "1") @PathVariable Long petId,

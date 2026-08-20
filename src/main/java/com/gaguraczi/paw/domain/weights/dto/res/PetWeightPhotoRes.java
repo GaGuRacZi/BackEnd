@@ -6,11 +6,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "체중 기록 메모 사진")
 public record PetWeightPhotoRes(
 
-        @Schema(example = "1")
+        @Schema(description = "사진 id", example = "1")
         Long photoId,
-        @Schema(example = "https://cdn.example.com/pet-weight/1/a.jpg")
+        @Schema(description = "사진 URL. 수정 시 keepPhotoUrls에 이 값을 넣습니다", example = "https://cdn.example.com/pet-weight/1/a.jpg")
         String url,
-        @Schema(example = "0")
+        @Schema(description = "정렬 순서 (0부터)", example = "0")
         int sortOrder
 ) {
 

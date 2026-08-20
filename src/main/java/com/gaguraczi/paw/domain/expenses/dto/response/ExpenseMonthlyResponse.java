@@ -13,10 +13,10 @@ public record ExpenseMonthlyResponse(
         @Schema(description = "조회 월", example = "7")
         int month,
 
-        @Schema(description = "해당 월 총 병원비", example = "124000")
+        @Schema(description = "해당 월 총 병원비(원). 목록 합계와 동일", example = "124000")
         Long monthlyTotalAmount,
 
-        @Schema(description = "의료비 내역 목록 (최신순)")
+        @Schema(description = "의료비 내역 목록 (최신 이용일 순). 세부 항목은 없음")
         List<ExpenseItemResponse> expenses
 ) {
 

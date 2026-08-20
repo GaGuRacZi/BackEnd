@@ -11,10 +11,10 @@ public record ExpenseSummaryResponse(
         @Schema(description = "조회 월", example = "7")
         int month,
 
-        @Schema(description = "이번 달 병원비", example = "124000")
+        @Schema(description = "지정 연월의 병원비 합계(원). 기록 없으면 0", example = "124000")
         Long monthlyTotalAmount,
 
-        @Schema(description = "총 병원비 (누적)", example = "980000")
+        @Schema(description = "해당 펫 누적 총 병원비(원). 연월과 무관. 기록 없으면 0", example = "980000")
         Long totalAmount
 ) {
 }

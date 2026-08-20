@@ -24,10 +24,10 @@ public record ExpenseDetailResponse(
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
         LocalDate expenseDate,
 
-        @Schema(description = "결제수단", example = "EASY_PAY")
+        @Schema(description = "결제수단 enum. 수정 폼에 이 값을 넣으세요", example = "EASY_PAY")
         PaymentTypeEnum paymentType,
 
-        @Schema(description = "결제수단 표시명", example = "간편결제")
+        @Schema(description = "결제수단 한글 표시명. UI 라벨용", example = "간편결제")
         String paymentTypeLabel,
 
         @Schema(description = "방문/구매처", example = "행복동물병원")

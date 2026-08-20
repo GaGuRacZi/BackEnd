@@ -10,7 +10,7 @@ import java.util.List;
 @Schema(name = "PetWeightGraphRes", description = "날짜별 체중 그래프 응답")
 public record PetWeightGraphRes(
 
-        @Schema(description = "조회 기간", example = "ONE_MONTH")
+        @Schema(description = "조회 기간. ONE_MONTH=일 단위, SIX_MONTHS=월 단위(date는 그 달 1일)", example = "ONE_MONTH")
         WeightGraphPeriodEnum period,
 
         @Schema(description = "조회 시작일", example = "2026-06-06")
@@ -19,13 +19,13 @@ public record PetWeightGraphRes(
         @Schema(description = "조회 종료일", example = "2026-07-06")
         LocalDate endDate,
 
-        @Schema(description = "구간 내 최저 몸무게(kg)", example = "3.90")
+        @Schema(description = "구간 내 최저 몸무게(kg). 기록 없으면 null", example = "3.90", nullable = true)
         BigDecimal minWeight,
 
-        @Schema(description = "구간 내 최고 몸무게(kg)", example = "4.30")
+        @Schema(description = "구간 내 최고 몸무게(kg). 기록 없으면 null", example = "4.30", nullable = true)
         BigDecimal maxWeight,
 
-        @Schema(description = "날짜순(오름차순) 그래프 포인트")
+        @Schema(description = "날짜 오름차순 포인트. 기록 없는 날짜는 포함하지 않음")
         List<PetWeightPointRes> points
 ) {
 

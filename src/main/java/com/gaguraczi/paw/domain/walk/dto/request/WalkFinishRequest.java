@@ -23,38 +23,43 @@ import java.time.LocalDateTime;
 public class WalkFinishRequest {
 
     @NotNull(message = "반려동물 id는 필수입니다.")
-    @Schema(description = "반려동물 id", example = "1")
+    @Schema(description = "반려동물 id. walkId가 아니라 시작 때 쓴 petId를 보냅니다.",
+            example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long petId;
 
-    @Schema(description = "산책 종료 시간. 안 보내면 서버 현재 시각으로 자동 설정", example = "2026-07-06T19:05:00")
+    @Schema(description = "산책 종료 시간. 생략 시 서버 현재 시각. startTime보다 빠르면 안 됩니다.",
+            example = "2026-07-06T19:05:00")
     private LocalDateTime endTime;
 
     @NotBlank(message = "날씨는 필수입니다.")
-    @Schema(description = "날씨", example = "맑음",
-            allowableValues = {"맑음", "흐림", "비", "눈", "바람"})
+    @Schema(description = "날씨 (한글)", example = "맑음",
+            allowableValues = {"맑음", "흐림", "비", "눈", "바람"},
+            requiredMode = Schema.RequiredMode.REQUIRED)
     private String weatherType;
 
     @NotNull(message = "온도는 필수입니다.")
-    @Schema(description = "날씨 온도(℃)", example = "24")
+    @Schema(description = "날씨 온도(℃)", example = "24", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer temp;
 
     @NotNull(message = "산책 거리는 필수입니다.")
     @DecimalMin(value = "0.0", message = "산책 거리는 0 이상이어야 합니다.")
     @DecimalMax(value = "99.9", message = "산책 거리는 99.9 이하여야 합니다.")
-    @Schema(description = "산책 거리(km). 지도 API로 측정한 값", example = "1.8")
+    @Schema(description = "산책 거리(km). 앱에서 측정한 값, 0.0~99.9",
+            example = "1.8", requiredMode = Schema.RequiredMode.REQUIRED)
     private BigDecimal walkingAmount;
 
     @NotBlank(message = "산책 강도는 필수입니다.")
-    @Schema(description = "산책 강도", example = "보통",
-            allowableValues = {"느긋", "보통", "활발"})
+    @Schema(description = "산책 강도 (한글)", example = "보통",
+            allowableValues = {"느긋", "보통", "활발"},
+            requiredMode = Schema.RequiredMode.REQUIRED)
     private String walkType;
 
-    @Schema(description = "소변 여부", example = "true")
+    @Schema(description = "소변 여부. 생략 시 false", example = "true")
     private Boolean isUrine;
 
-    @Schema(description = "대변 여부", example = "true")
+    @Schema(description = "대변 여부. 생략 시 false", example = "true")
     private Boolean isStool;
 
-    @Schema(description = "특이사항", example = "평소보다 힘들어 함")
+    @Schema(description = "특이사항", example = "평소보다 힘들어 함", nullable = true)
     private String significant;
 }

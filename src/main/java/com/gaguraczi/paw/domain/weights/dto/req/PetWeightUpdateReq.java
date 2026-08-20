@@ -20,10 +20,10 @@ public record PetWeightUpdateReq(
         @Digits(integer = 3, fraction = 2)
         BigDecimal weight,
 
-        @Schema(description = "체형 상태", example = "OVER_WEIGHT")
+        @Schema(description = "체형. SKINNY=마름, HEALTHY=적정, OVER_WEIGHT=과체중", example = "OVER_WEIGHT")
         BodyTypeEnum bodyType,
 
-        @Schema(description = "컨디션(식욕) 체크", example = "MIDDLE")
+        @Schema(description = "식욕. LOW=식욕이 떨어짐, MIDDLE=식욕 평범, HIGH=식욕이 많음", example = "MIDDLE")
         AppetiteTypeEnum appetiteType,
 
         @Schema(description = "메모", example = "산책 직후 측정")

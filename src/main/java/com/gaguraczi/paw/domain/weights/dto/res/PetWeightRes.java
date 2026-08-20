@@ -22,10 +22,10 @@ public record PetWeightRes(
         @Schema(description = "몸무게(kg)", example = "4.20")
         BigDecimal weight,
 
-        @Schema(description = "체형 상태", example = "HEALTHY")
+        @Schema(description = "체형. SKINNY=마름, HEALTHY=적정, OVER_WEIGHT=과체중", example = "HEALTHY")
         BodyTypeEnum bodyType,
 
-        @Schema(description = "컨디션(식욕) 체크", example = "LOW")
+        @Schema(description = "식욕. LOW=식욕이 떨어짐, MIDDLE=식욕 평범, HIGH=식욕이 많음", example = "LOW")
         AppetiteTypeEnum appetiteType,
 
         @Schema(description = "메모", example = "식사 후 같은 시간대에 측정했어요.")

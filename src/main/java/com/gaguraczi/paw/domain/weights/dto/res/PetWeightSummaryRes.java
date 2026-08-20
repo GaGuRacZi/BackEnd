@@ -14,10 +14,10 @@ public record PetWeightSummaryRes(
         @Schema(description = "현재 체중(kg). 기록이 없으면 펫 등록 시 체중", example = "4.20")
         BigDecimal currentWeight,
 
-        @Schema(description = "가장 최근 기록일자. 기록이 없으면 null", example = "2026-07-06T20:30:00")
+        @Schema(description = "가장 최근 기록 시각. 기록이 없으면 null", example = "2026-07-06T20:30:00", nullable = true)
         LocalDateTime lastRecordedAt,
 
-        @Schema(description = "이번 달 증감(kg). 비교 대상이 없으면 null", example = "0.10")
+        @Schema(description = "이번 달 증감(kg). 양수=증가. 비교 대상이 없으면 null", example = "0.10", nullable = true)
         BigDecimal monthChange
 ) {
 

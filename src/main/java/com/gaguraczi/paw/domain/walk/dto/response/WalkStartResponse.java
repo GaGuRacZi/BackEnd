@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @Schema(description = "산책 자동기록 시작 응답")
 public class WalkStartResponse {
 
-    @Schema(description = "반려동물 id. 종료 API에 그대로 사용", example = "1")
+    @Schema(description = "반려동물 id. 종료 API에 그대로 사용. walkId는 아직 없음", example = "1")
     private final Long petId;
 
     @Schema(description = "산책 날짜", example = "2026-07-06")

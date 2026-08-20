@@ -6,7 +6,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-@Schema(description = "체중 그래프 조회 기간")
+@Schema(description = "체중 그래프 조회 기간. ONE_MONTH=최근 1개월(일), SIX_MONTHS=최근 6개월(월)")
 public enum WeightGraphPeriodEnum {
 
     @Schema(description = "최근 1개월 (일 단위 집계)")

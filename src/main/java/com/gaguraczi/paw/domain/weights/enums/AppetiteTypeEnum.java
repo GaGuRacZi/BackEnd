@@ -7,11 +7,14 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-@Schema(description = "식욕 상태 (LOW: 식욕이 떨어짐, MIDDLE: 식욕 평범, HIGH: 식욕이 많음)")
+@Schema(description = "식욕. 요청/응답은 영문 enum. LOW=식욕이 떨어짐, MIDDLE=식욕 평범, HIGH=식욕이 많음")
 public enum AppetiteTypeEnum {
 
+    @Schema(description = "식욕이 떨어짐")
     LOW("식욕이 떨어짐"),
+    @Schema(description = "식욕 평범")
     MIDDLE("식욕 평범"),
+    @Schema(description = "식욕이 많음")
     HIGH("식욕이 많음");
 
     private final String label;

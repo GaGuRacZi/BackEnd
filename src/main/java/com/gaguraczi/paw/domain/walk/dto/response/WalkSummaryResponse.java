@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @Getter
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Schema(description = "산책 기록 목록 응답")
+@Schema(description = "산책 기록 목록 한 줄. 완료 기록만 포함됩니다.")
 public class WalkSummaryResponse {
 
     @Schema(description = "산책 id", example = "1")
@@ -39,9 +39,9 @@ public class WalkSummaryResponse {
     @Schema(description = "산책 거리(km)", example = "1.8")
     private final BigDecimal walkingAmount;
 
-    @Schema(description = "산책 강도", example = "보통")
+    @Schema(description = "산책 강도 한글. 목록 카드에 그대로 표시", example = "보통")
     private final WalkTypeEnum walkType;
 
-    @Schema(description = "산책 진행 상태", example = "COMPLETED")
+    @Schema(description = "COMPLETED 고정. 진행 중 타이머는 목록에 없습니다", example = "COMPLETED")
     private final WalkStatusEnum walkStatus;
 }
