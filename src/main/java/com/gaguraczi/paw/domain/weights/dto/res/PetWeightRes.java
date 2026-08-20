@@ -25,7 +25,7 @@ public record PetWeightRes(
         @Schema(description = "체형 상태", example = "HEALTHY")
         BodyTypeEnum bodyType,
 
-        @Schema(description = "컨디션(식욕) 체크", example = "LOW")
+        @Schema(description = "컨디션(식욕) 체크", example = "Low")
         AppetiteTypeEnum appetiteType,
 
         @Schema(description = "메모", example = "식사 후 같은 시간대에 측정했어요.")

@@ -23,7 +23,7 @@ public record PetWeightUpdateReq(
         @Schema(description = "체형 상태", example = "OVER_WEIGHT")
         BodyTypeEnum bodyType,
 
-        @Schema(description = "컨디션(식욕) 체크", example = "MIDDLE")
+        @Schema(description = "컨디션(식욕) 체크", example = "Middle")
         AppetiteTypeEnum appetiteType,
 
         @Schema(description = "메모", example = "산책 직후 측정")
