@@ -22,7 +22,9 @@ import com.gaguraczi.paw.utils.S3.S3Dto;
 import com.gaguraczi.paw.utils.S3.S3Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -33,6 +35,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Year;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -53,89 +56,87 @@ public class PetWeightService {
     private final PetRepository petRepository;
     private final SecurityUtils securityUtils;
     private final S3Utils s3Utils;
+    private final ObjectProvider<PetWeightService> self;
 
 
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public PetWeightRes create(Long petId, PetWeightCreateReq req, List<MultipartFile> images) {
-        Pet pet = loadOwnedPet(petId);
+        self.getObject().requireOwnedPet(petId);
         validateRecordedAt(req.recordedAt());
 
         List<MultipartFile> files = normalizeFiles(images);
         validatePhotoCount(files.size());
         List<S3Dto> uploaded = uploadAll(files);
-        scheduleUploadedCleanupOnRollback(uploaded);
 
-        try {
-            PetWeightEntity petWeight = PetWeightEntity.builder()
-                    .pet(pet)
-                    .weight(req.weight())
-                    .bodyType(req.bodyType())
-                    .appetiteType(req.appetiteType())
-                    .memoContent(blankToNull(req.memoContent()))
-                    .recordedAt(req.recordedAt())
-                    .build();
-
-            petWeight.replacePhotos(toPhotos(uploaded));
-            petWeightRepository.save(petWeight);
-            syncPetCurrentWeight(pet);
-
-            return PetWeightRes.from(petWeight);
-        } catch (RuntimeException e) {
-            uploaded.forEach(u -> s3Utils.deleteQuietly(u.getKey()));
-            throw e;
-        }
+        return self.getObject().saveCreated(petId, req, uploaded);
     }
 
     @Transactional
-    public PetWeightRes update(Long petId, Long petWeightId, PetWeightUpdateReq req, List<MultipartFile> images) {
+    public PetWeightRes saveCreated(Long petId, PetWeightCreateReq req, List<S3Dto> uploaded) {
+        scheduleUploadedCleanupOnRollback(uploaded);
+
         Pet pet = loadOwnedPet(petId);
-        PetWeightEntity petWeight = loadRecord(pet, petWeightId);
+        PetWeightEntity petWeight = PetWeightEntity.builder()
+                .pet(pet)
+                .weight(req.weight())
+                .bodyType(req.bodyType())
+                .appetiteType(req.appetiteType())
+                .memoContent(blankToNull(req.memoContent()))
+                .recordedAt(req.recordedAt())
+                .build();
+
+        petWeight.replacePhotos(toPhotos(uploaded));
+        petWeightRepository.save(petWeight);
+        syncPetCurrentWeight(pet);
+
+        return PetWeightRes.from(petWeight);
+    }
+
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public PetWeightRes update(Long petId, Long petWeightId, PetWeightUpdateReq req, List<MultipartFile> images) {
+        if (req != null) {
+            validateRecordedAt(req.recordedAt());
+        }
 
         List<String> keepUrls = req != null ? req.keepPhotoUrls() : null;
         List<MultipartFile> files = normalizeFiles(images);
-        int keptCount = keepUrls != null ? keepUrls.size() : petWeight.getPhotos().size();
-        validatePhotoCount(keptCount + files.size());
-
-        List<PetWeightPhoto> removed = new ArrayList<>();
-        if (keepUrls != null) {
-            Set<String> keepSet = new HashSet<>(keepUrls);
-            for (PetWeightPhoto photo : petWeight.getPhotos()) {
-                if (!keepSet.contains(photo.getPhotoS3Url())) {
-                    removed.add(photo);
-                }
-            }
-        }
-
+        List<String> removedKeys = self.getObject().prepareUpdate(petId, petWeightId, keepUrls, files.size());
         List<S3Dto> uploaded = uploadAll(files);
+
+        return self.getObject().saveUpdated(petId, petWeightId, req, keepUrls, removedKeys, uploaded);
+    }
+
+    @Transactional
+    public PetWeightRes saveUpdated(
+            Long petId,
+            Long petWeightId,
+            PetWeightUpdateReq req,
+            List<String> keepUrls,
+            List<String> removedKeys,
+            List<S3Dto> uploaded
+    ) {
         scheduleUploadedCleanupOnRollback(uploaded);
 
-        try {
-            if (req != null) {
-                validateRecordedAt(req.recordedAt());
-                petWeight.update(
-                        req.weight(),
-                        req.bodyType(),
-                        req.appetiteType(),
-                        req.memoContent(),
-                        req.recordedAt()
-                );
-            }
+        Pet pet = loadOwnedPet(petId);
+        PetWeightEntity petWeight = loadRecord(pet, petWeightId);
 
-            petWeight.syncPhotos(keepUrls, toPhotos(uploaded));
-
-            List<String> removedKeys = removed.stream()
-                    .map(PetWeightPhoto::getPhotoKey)
-                    .filter(Objects::nonNull)
-                    .toList();
-            afterCommit(() -> removedKeys.forEach(s3Utils::deleteQuietly));
-
-            syncPetCurrentWeight(pet);
-            return PetWeightRes.from(petWeight);
-        } catch (RuntimeException e) {
-            uploaded.forEach(u -> s3Utils.deleteQuietly(u.getKey()));
-            throw e;
+        if (req != null) {
+            petWeight.update(
+                    req.weight(),
+                    req.bodyType(),
+                    req.appetiteType(),
+                    req.memoContent(),
+                    req.recordedAt()
+            );
         }
+
+        petWeight.syncPhotos(keepUrls, toPhotos(uploaded));
+
+        afterCommit(() -> removedKeys.forEach(s3Utils::deleteQuietly));
+
+        syncPetCurrentWeight(pet);
+        return PetWeightRes.from(petWeight);
     }
 
     @Transactional
@@ -166,14 +167,14 @@ public class PetWeightService {
         Pet pet = loadOwnedPet(petId);
         YearMonth target = resolveYearMonth(year, month);
 
-        List<PetWeightEntity> records = petWeightRepository.findAllByPetAndRecordedAtBetweenOrderByRecordedAtAsc(
-                pet,
-                target.atDay(1).atStartOfDay(),
-                target.atEndOfMonth().atTime(LocalTime.MAX)
-        );
+        List<PetWeightEntity> records = petWeightRepository
+                .findAllByPetAndRecordedAtBetweenOrderByRecordedAtDescPetWeightIdDesc(
+                        pet,
+                        target.atDay(1).atStartOfDay(),
+                        target.atEndOfMonth().atTime(LocalTime.MAX)
+                );
 
         return records.stream()
-                .sorted((a, b) -> b.getRecordedAt().compareTo(a.getRecordedAt()))
                 .map(PetWeightRes::from)
                 .toList();
     }
@@ -202,9 +203,9 @@ public class PetWeightService {
                 .map(entry -> PetWeightPointRes.of(entry.getKey(), entry.getValue()))
                 .toList();
 
-        BigDecimal min = points.stream().map(PetWeightPointRes::weight)
+        BigDecimal min = records.stream().map(PetWeightEntity::getWeight)
                 .min(BigDecimal::compareTo).orElse(null);
-        BigDecimal max = points.stream().map(PetWeightPointRes::weight)
+        BigDecimal max = records.stream().map(PetWeightEntity::getWeight)
                 .max(BigDecimal::compareTo).orElse(null);
 
         return PetWeightGraphRes.of(target, startDate, endDate, min, max, points);
@@ -228,6 +229,29 @@ public class PetWeightService {
                 latest.getRecordedAt(),
                 calculateMonthChange(pet, latest)
         );
+    }
+
+
+    public void requireOwnedPet(Long petId) {
+        loadOwnedPet(petId);
+    }
+
+    public List<String> prepareUpdate(Long petId, Long petWeightId, List<String> keepUrls, int newFileCount) {
+        Pet pet = loadOwnedPet(petId);
+        PetWeightEntity petWeight = loadRecord(pet, petWeightId);
+
+        int keptCount = countKeptPhotos(petWeight, keepUrls);
+        validatePhotoCount(keptCount + newFileCount);
+
+        if (keepUrls == null) {
+            return List.of();
+        }
+        Set<String> keepSet = new HashSet<>(keepUrls);
+        return petWeight.getPhotos().stream()
+                .filter(photo -> !keepSet.contains(photo.getPhotoS3Url()))
+                .map(PetWeightPhoto::getPhotoKey)
+                .filter(Objects::nonNull)
+                .toList();
     }
 
 
@@ -271,7 +295,7 @@ public class PetWeightService {
         if (year == null || month == null) {
             return YearMonth.now();
         }
-        if (month < 1 || month > 12) {
+        if (year < Year.MIN_VALUE || year > Year.MAX_VALUE || month < 1 || month > 12) {
             throw GeneralException.of(PetWeightErrorCode.PET_WEIGHT_INVALID_PERIOD);
         }
         return YearMonth.of(year, month);
@@ -300,6 +324,22 @@ public class PetWeightService {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private int countKeptPhotos(PetWeightEntity petWeight, List<String> keepUrls) {
+        if (keepUrls == null) {
+            return petWeight.getPhotos().size();
+        }
+        Set<String> existingUrls = new HashSet<>();
+        for (PetWeightPhoto photo : petWeight.getPhotos()) {
+            if (photo.getPhotoS3Url() != null) {
+                existingUrls.add(photo.getPhotoS3Url());
+            }
+        }
+        return (int) keepUrls.stream()
+                .filter(existingUrls::contains)
+                .distinct()
+                .count();
     }
 
     private void afterCommit(Runnable action) {

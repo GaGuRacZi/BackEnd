@@ -29,7 +29,7 @@ public class WalkConverter {
     public static WalkEntity toWalk(WalkCreateRequest request, Pet pet) {
         return WalkEntity.builder()
                 .pet(pet)
-                .walkDate(request.getWalkDate())
+                .walkDate(request.getStartTime().toLocalDate())
                 .weatherType(WeatherTypeEnum.from(request.getWeatherType()))
                 .temp(request.getTemp())
                 .startTime(request.getStartTime())

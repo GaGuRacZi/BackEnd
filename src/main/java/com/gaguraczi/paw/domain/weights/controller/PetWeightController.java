@@ -226,8 +226,7 @@ public class PetWeightController {
                                                 "petId": 1,
                                                 "currentWeight": 4.20,
                                                 "lastRecordedAt": "2026-07-06T20:30:00",
-                                                "monthChange": 0.10,
-                                                "abnormal": false
+                                                "monthChange": 0.10
                                               }
                                             }
                                             """

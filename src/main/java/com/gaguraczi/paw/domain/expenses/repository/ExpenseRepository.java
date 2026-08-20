@@ -43,4 +43,18 @@ public interface ExpenseRepository extends JpaRepository<ExpenseEntity, Long> {
             where e.pet.petId = :petId
             """)
     Long sumExpenseAmountByPetId(@Param("petId") Long petId);
+
+
+    @Query("""
+            select coalesce(sum(e.expenseAmount), 0L)
+            from ExpenseEntity e
+            where e.pet.petId = :petId
+              and e.expenseDate >= :startDateTime
+              and e.expenseDate < :endDateTime
+            """)
+    Long sumExpenseAmountByPetIdAndPeriod(
+            @Param("petId") Long petId,
+            @Param("startDateTime") LocalDateTime startDateTime,
+            @Param("endDateTime") LocalDateTime endDateTime
+    );
 }

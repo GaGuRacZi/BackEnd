@@ -21,9 +21,12 @@ import com.gaguraczi.paw.domain.walk.redis.WalkInProgressRedisStore;
 import com.gaguraczi.paw.domain.walk.redis.WalkInProgressSession;
 import com.gaguraczi.paw.domain.walk.repository.WalkRepository;
 import com.gaguraczi.paw.global.exception.GeneralException;
+import com.gaguraczi.paw.global.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
@@ -46,14 +49,15 @@ public class WalkService {
     private final WalkRepository walkRepository;
     private final PetRepository petRepository;
     private final WalkInProgressRedisStore walkInProgressRedisStore;
+    private final SecurityUtils securityUtils;
 
    // 산책 기록 수동 저장
     @Transactional
     public WalkResponse createWalk(WalkCreateRequest request) {
-        Pet pet = getPetOrThrow(request.getPetId());
+        Pet pet = loadOwnedPet(request.getPetId());
 
         validateWalkTime(request.getStartTime(), request.getEndTime());
-        validateNotFuture(request.getWalkDate());
+        validateNotFuture(request.getStartTime().toLocalDate());
 
         WalkEntity walk = WalkConverter.toWalk(request, pet);
         WalkEntity saved = walkRepository.save(walk);
@@ -63,7 +67,7 @@ public class WalkService {
 
     //타이머 시작 — DB에 쓰지 않고 Redis에 6시간 보관
     public WalkStartResponse startWalk(WalkStartRequest request) {
-        getPetOrThrow(request.getPetId());
+        loadOwnedPet(request.getPetId());
 
         LocalDateTime startTime = (request.getStartTime() != null)
                 ? request.getStartTime()
@@ -76,7 +80,7 @@ public class WalkService {
         );
 
         if (!walkInProgressRedisStore.saveIfAbsent(session)) {
-            throw new GeneralException(WalkErrorCode.WALK_ALREADY_IN_PROGRESS);
+            throw GeneralException.of(WalkErrorCode.WALK_ALREADY_IN_PROGRESS);
         }
 
         return WalkConverter.toWalkStartResponse(session);
@@ -85,49 +89,49 @@ public class WalkService {
    // 타이머 종료 — Redis 세션을 꺼내 완료 기록만 DB에 저장
     @Transactional
     public WalkResponse finishWalk(WalkFinishRequest request) {
-        Pet pet = getPetOrThrow(request.getPetId());
+        Pet pet = loadOwnedPet(request.getPetId());
 
         String json = walkInProgressRedisStore.getRaw(request.getPetId())
-                .orElseThrow(() -> new GeneralException(WalkErrorCode.WALK_IN_PROGRESS_NOT_FOUND));
+                .orElseThrow(() -> GeneralException.of(WalkErrorCode.WALK_IN_PROGRESS_NOT_FOUND));
         WalkInProgressSession session = walkInProgressRedisStore.parse(json);
-
-        if (!walkInProgressRedisStore.removeIfUnchanged(request.getPetId(), json)) {
-            throw new GeneralException(WalkErrorCode.WALK_ALREADY_FINISHED);
+        if (session.isProcessing()) {
+            throw GeneralException.of(WalkErrorCode.WALK_ALREADY_FINISHED);
         }
 
-        try {
-            LocalDateTime endTime = (request.getEndTime() != null)
-                    ? request.getEndTime()
-                    : LocalDateTime.now();
+        String processingJson = walkInProgressRedisStore.markProcessingIfUnchanged(request.getPetId(), json)
+                .orElseThrow(() -> GeneralException.of(WalkErrorCode.WALK_ALREADY_FINISHED));
+        registerFinishSessionCleanup(request.getPetId(), processingJson, json);
 
-            validateWalkTime(session.getStartTime(), endTime);
+        LocalDateTime endTime = (request.getEndTime() != null)
+                ? request.getEndTime()
+                : LocalDateTime.now();
 
-            WalkEntity walk = WalkConverter.toFinishedWalk(session, pet, request, endTime);
-            WalkEntity saved = walkRepository.save(walk);
+        validateWalkTime(session.getStartTime(), endTime);
 
-            return WalkConverter.toWalkResponse(saved);
-        } catch (RuntimeException e) {
-            walkInProgressRedisStore.restore(request.getPetId(), json);
-            throw e;
-        }
+        WalkEntity walk = WalkConverter.toFinishedWalk(session, pet, request, endTime);
+        WalkEntity saved = walkRepository.save(walk);
+
+        return WalkConverter.toWalkResponse(saved);
     }
 
 
     public WalkResponse getInProgressWalk(Long petId) {
+        loadOwnedPet(petId);
         WalkInProgressSession session = walkInProgressRedisStore.getAndRefreshTtl(petId)
-                .orElseThrow(() -> new GeneralException(WalkErrorCode.WALK_IN_PROGRESS_NOT_FOUND));
+                .orElseThrow(() -> GeneralException.of(WalkErrorCode.WALK_IN_PROGRESS_NOT_FOUND));
 
         return WalkConverter.toInProgressWalkResponse(session);
     }
 
     //산책 기록 조회
     public WalkResponse getWalk(Long walkId) {
-        return WalkConverter.toWalkResponse(getWalkOrThrow(walkId));
+        return WalkConverter.toWalkResponse(loadOwnedWalk(walkId));
     }
 
     //산책 기록 목록 조회
     public List<WalkSummaryResponse> getWalks(Long petId, LocalDate date,
                                               LocalDate startDate, LocalDate endDate) {
+        loadOwnedPet(petId);
         List<WalkEntity> walks;
 
         if (date != null) {
@@ -136,6 +140,8 @@ public class WalkService {
             validateDateRange(startDate, endDate);
             walks = walkRepository
                     .findAllByPet_PetIdAndWalkDateBetweenOrderByWalkDateDescStartTimeDesc(petId, startDate, endDate);
+        } else if (startDate != null || endDate != null) {
+            throw GeneralException.of(WalkErrorCode.WALK_DATE_RANGE_INVALID);
         } else {
             walks = walkRepository.findAllByPet_PetIdOrderByWalkDateDescStartTimeDesc(petId);
         }
@@ -147,6 +153,7 @@ public class WalkService {
 
    //주간 요약
     public WalkWeeklySummaryResponse getWeeklySummary(Long petId, LocalDate baseDate) {
+        loadOwnedPet(petId);
         LocalDate base = (baseDate != null) ? baseDate : LocalDate.now();
 
         LocalDate thisWeekStart = base.with(DayOfWeek.MONDAY);
@@ -177,6 +184,7 @@ public class WalkService {
 
    //일 별 통계
     public List<WalkDailyStatResponse> getDailyStats(Long petId, LocalDate startDate, LocalDate endDate) {
+        loadOwnedPet(petId);
         LocalDate end = (endDate != null) ? endDate : LocalDate.now();
         LocalDate start = (startDate != null) ? startDate : end.minusDays(6); // 기본 최근 7일
 
@@ -207,7 +215,7 @@ public class WalkService {
 
     @Transactional
     public WalkResponse updateWalk(Long walkId, WalkUpdateRequest request) {
-        WalkEntity walk = getWalkOrThrow(walkId);
+        WalkEntity walk = loadOwnedWalk(walkId);
 
         LocalDateTime newStart = (request.getStartTime() != null) ? request.getStartTime() : walk.getStartTime();
         LocalDateTime newEnd = (request.getEndTime() != null) ? request.getEndTime() : walk.getEndTime();
@@ -236,45 +244,76 @@ public class WalkService {
 
     @Transactional
     public WalkIdResponse deleteWalk(Long walkId) {
-        WalkEntity walk = getWalkOrThrow(walkId);
+        WalkEntity walk = loadOwnedWalk(walkId);
         walkRepository.delete(walk);
         return WalkConverter.toWalkIdResponse(walkId);
     }
 
 
-    private WalkEntity getWalkOrThrow(Long walkId) {
-        return walkRepository.findById(walkId)
-                .orElseThrow(() -> new GeneralException(WalkErrorCode.WALK_NOT_FOUND));
+    private WalkEntity loadOwnedWalk(Long walkId) {
+        WalkEntity walk = walkRepository.findById(walkId)
+                .orElseThrow(() -> GeneralException.of(WalkErrorCode.WALK_NOT_FOUND));
+        if (!walk.getPet().getUser().getUid().equals(securityUtils.currentUser().getUid())) {
+            throw GeneralException.of(WalkErrorCode.WALK_FORBIDDEN);
+        }
+        return walk;
     }
 
-    private Pet getPetOrThrow(Long petId) {
-        return petRepository.findById(petId)
-                .orElseThrow(() -> new GeneralException(WalkErrorCode.PET_NOT_FOUND));
+    private Pet loadOwnedPet(Long petId) {
+        Pet pet = petRepository.findById(petId)
+                .orElseThrow(() -> GeneralException.of(WalkErrorCode.PET_NOT_FOUND));
+        if (!pet.getUser().getUid().equals(securityUtils.currentUser().getUid())) {
+            throw GeneralException.of(WalkErrorCode.PET_NOT_FOUND);
+        }
+        return pet;
     }
 
 
     private void validateWalkTime(LocalDateTime startTime, LocalDateTime endTime) {
+        if (endTime != null && endTime.isAfter(LocalDateTime.now())) {
+            throw GeneralException.of(WalkErrorCode.WALK_TIME_INVALID);
+        }
         if (startTime == null || endTime == null) {
             return;
         }
         if (endTime.isBefore(startTime)) {
-            throw new GeneralException(WalkErrorCode.WALK_TIME_INVALID);
+            throw GeneralException.of(WalkErrorCode.WALK_TIME_INVALID);
         }
     }
 
     private void validateNotFuture(LocalDate walkDate) {
         if (walkDate != null && walkDate.isAfter(LocalDate.now())) {
-            throw new GeneralException(WalkErrorCode.WALK_FUTURE_DATE);
+            throw GeneralException.of(WalkErrorCode.WALK_FUTURE_DATE);
         }
     }
 
     private void validateDateRange(LocalDate startDate, LocalDate endDate) {
         if (startDate.isAfter(endDate)) {
-            throw new GeneralException(WalkErrorCode.WALK_DATE_RANGE_INVALID);
+            throw GeneralException.of(WalkErrorCode.WALK_DATE_RANGE_INVALID);
         }
         if (ChronoUnit.DAYS.between(startDate, endDate) >= MAX_STAT_DAYS) {
-            throw new GeneralException(WalkErrorCode.WALK_STAT_RANGE_TOO_LONG);
+            throw GeneralException.of(WalkErrorCode.WALK_STAT_RANGE_TOO_LONG);
         }
+    }
+
+    private void registerFinishSessionCleanup(Long petId, String processingJson, String originalJson) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            walkInProgressRedisStore.removeIfUnchanged(petId, processingJson);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                walkInProgressRedisStore.removeIfUnchanged(petId, processingJson);
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    walkInProgressRedisStore.restoreIfUnchanged(petId, processingJson, originalJson);
+                }
+            }
+        });
     }
 
 

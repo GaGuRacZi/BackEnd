@@ -59,12 +59,34 @@ public class WalkInProgressRedisStore {
         }
     }
 
+    public Optional<String> markProcessingIfUnchanged(Long petId, String expectedJson) {
+        WalkInProgressSession session = parse(expectedJson);
+        if (session.isProcessing()) {
+            return Optional.empty();
+        }
+        WalkInProgressSession processing = WalkInProgressSession.builder()
+                .petId(session.getPetId())
+                .startTime(session.getStartTime())
+                .walkDate(session.getWalkDate())
+                .processing(true)
+                .build();
+        try {
+            String processingJson = objectMapper.writeValueAsString(processing);
+            if (redisUtil.compareAndSet(key(petId), expectedJson, processingJson, TTL_SECONDS)) {
+                return Optional.of(processingJson);
+            }
+            return Optional.empty();
+        } catch (JsonProcessingException e) {
+            throw new GeneralException(WalkErrorCode.WALK_IN_PROGRESS_NOT_FOUND, e);
+        }
+    }
+
     public boolean removeIfUnchanged(Long petId, String expectedJson) {
         return redisUtil.compareAndDelete(key(petId), expectedJson);
     }
 
-    public void restore(Long petId, String json) {
-        redisUtil.setDataExpire(key(petId), json, TTL_SECONDS);
+    public boolean restoreIfUnchanged(Long petId, String expectedProcessingJson, String originalJson) {
+        return redisUtil.compareAndSet(key(petId), expectedProcessingJson, originalJson, TTL_SECONDS);
     }
 
     private String key(Long petId) {

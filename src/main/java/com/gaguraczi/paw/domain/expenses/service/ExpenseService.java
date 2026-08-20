@@ -43,6 +43,7 @@ public class ExpenseService {
         Pet pet = loadOwnedPet(petId);
         LocalDateTime expenseDate = request.expenseDate().atStartOfDay();
         validateNotFuture(expenseDate);
+        validateAmountMatchesDetails(request.expenseAmount(), request.expenseDetails());
 
         ExpenseEntity expense = ExpenseEntity.builder()
                 .pet(pet)
@@ -110,19 +111,19 @@ public class ExpenseService {
         loadOwnedPet(petId);
         YearMonth yearMonth = resolveYearMonth(year, month);
 
-        List<ExpenseEntity> expensesOfMonth = findExpensesOfMonth(petId, yearMonth);
+        LocalDateTime startDateTime = yearMonth.atDay(1).atStartOfDay();
+        LocalDateTime endDateTime = yearMonth.plusMonths(1).atDay(1).atStartOfDay();
 
         // 이번 달 병원비는 기록별 결제금액(expenseAmount) 합계 기준
-        long monthlyTotalAmount = expensesOfMonth.stream()
-                .mapToLong(ExpenseEntity::getExpenseAmount)
-                .sum();
+        Long monthlyTotalAmount = expenseRepository.sumExpenseAmountByPetIdAndPeriod(
+                petId, startDateTime, endDateTime);
 
         Long totalAmount = expenseRepository.sumExpenseAmountByPetId(petId);
 
         return new ExpenseSummaryResponse(
                 yearMonth.getYear(),
                 yearMonth.getMonthValue(),
-                monthlyTotalAmount,
+                monthlyTotalAmount == null ? 0L : monthlyTotalAmount,
                 totalAmount == null ? 0L : totalAmount
         );
     }
@@ -147,6 +148,15 @@ public class ExpenseService {
             throw GeneralException.of(ExpenseErrorCode.EXPENSE_INVALID_PERIOD);
         }
         return YearMonth.of(year, month);
+    }
+
+    private void validateAmountMatchesDetails(Long expenseAmount, List<ExpenseDetailCreateRequest> details) {
+        long detailsSum = details.stream()
+                .mapToLong(detail -> detail.expenseAmount().longValue())
+                .sum();
+        if (detailsSum != expenseAmount) {
+            throw GeneralException.of(ExpenseErrorCode.EXPENSE_AMOUNT_MISMATCH);
+        }
     }
 
     private void validateNotFuture(LocalDateTime expenseDate) {

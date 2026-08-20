@@ -19,4 +19,7 @@ public class WalkInProgressSession {
     private Long petId;
     private LocalDateTime startTime;
     private LocalDate walkDate;
+
+    @Builder.Default
+    private boolean processing = false;
 }

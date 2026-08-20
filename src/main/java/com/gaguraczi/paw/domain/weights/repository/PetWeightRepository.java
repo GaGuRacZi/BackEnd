@@ -2,6 +2,7 @@ package com.gaguraczi.paw.domain.weights.repository;
 
 import com.gaguraczi.paw.domain.users.entity.Pet;
 import com.gaguraczi.paw.domain.weights.entity.PetWeightEntity;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
@@ -15,17 +16,17 @@ public interface PetWeightRepository extends JpaRepository<PetWeightEntity, Long
             Pet pet, LocalDateTime start, LocalDateTime end);
 
 
+    @EntityGraph(attributePaths = "photos")
+    List<PetWeightEntity> findAllByPetAndRecordedAtBetweenOrderByRecordedAtDescPetWeightIdDesc(
+            Pet pet, LocalDateTime start, LocalDateTime end);
+
+
     Optional<PetWeightEntity> findFirstByPetOrderByRecordedAtDescPetWeightIdDesc(Pet pet);
 
 
     Optional<PetWeightEntity> findFirstByPetAndRecordedAtLessThanOrderByRecordedAtDescPetWeightIdDesc(
             Pet pet, LocalDateTime before);
 
-
-    List<PetWeightEntity> findTop2ByPetOrderByRecordedAtDescPetWeightIdDesc(Pet pet);
-
-
-    List<PetWeightEntity> findAllByPetOrderByRecordedAtDescPetWeightIdDesc(Pet pet);
 
     Optional<PetWeightEntity> findByPetWeightIdAndPet(Long petWeightId, Pet pet);
 }

@@ -5,6 +5,7 @@ import com.gaguraczi.paw.domain.expenses.enums.PaymentTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -27,6 +28,7 @@ public record ExpenseUpdateRequest(
 
         @Schema(description = "방문 병원/구매처", example = "행복동물병원")
         @Size(max = 255, message = "병원명은 255자 이하여야 합니다.")
+        @Pattern(regexp = "\\S(.*\\S)?", message = "병원명은 공백일 수 없습니다.")
         String expenseName,
 
         @Schema(description = "세부 항목 목록. 보내면 기존 항목 전체를 이 목록으로 교체합니다 (생략 시 기존 항목 유지).")
