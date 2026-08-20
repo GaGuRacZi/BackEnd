@@ -19,8 +19,6 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
     @Query("select t from TodoEntity t join fetch t.tag where t.todoId = :todoId and t.user.uid = :uid")
     Optional<TodoEntity> findMyTodo(@Param("todoId") Long todoId, @Param("uid") UUID uid);
 
-    List<TodoEntity> findAllByRoutineEnabledTrue();
-
     boolean existsByTag_TagId(Long tagId);
 
     List<TodoEntity> findAllByUser_UidAndTag_TagId(UUID uid, Long tagId);
