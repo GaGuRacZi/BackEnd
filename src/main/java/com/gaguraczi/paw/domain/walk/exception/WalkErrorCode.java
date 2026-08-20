@@ -30,7 +30,9 @@ public enum WalkErrorCode implements BaseErrorCode {
 
     WALK_FORBIDDEN(HttpStatus.FORBIDDEN, "WALK_403_1", "해당 산책 기록에 접근할 권한이 없습니다."),
 
-    WALK_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "WALK_409_1", "이미 진행 중인 산책이 있습니다.");
+    WALK_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "WALK_409_1", "이미 진행 중인 산책이 있습니다."),
+
+    WALK_SESSION_CORRUPT(HttpStatus.INTERNAL_SERVER_ERROR, "WALK_500_1", "산책 세션을 처리하지 못했습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
