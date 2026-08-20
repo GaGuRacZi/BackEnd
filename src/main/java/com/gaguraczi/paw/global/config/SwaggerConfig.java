@@ -40,6 +40,9 @@ public class SwaggerConfig {
                         - auth / users / pets / location / terms / breeds / regions
                         - communities / comments
                         - visits (진료 녹음·전사·처방·AI 요약) / medications (처방 CATALOG 검색)
+                        - Walk (`/api/walks`): 수동 기록 + 타이머(Redis 6시간). 날씨/강도는 **한글**
+                        - Expense (`/api/v1/.../expenses`): 의료비. 결제금액 = 세부항목 합계
+                        - pet-weights (`/pets/{petId}/weights`): 체중. multipart 사진 최대 3장
                         
                         ## 진료 기록 화면 흐름
                         1. `POST /visits` 로 녹음 업로드 → 즉시 `status=PROCESSING`
