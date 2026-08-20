@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-@Tag(name = "users", description = "유저 프로필 API")
+@Tag(name = "users", description = "유저 프로필 API. JWT Bearer 필수. FCM 토큰은 PUT /users/me/push-token.")
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
@@ -253,8 +253,67 @@ public class UserController {
 
     @Operation(
             summary = "FCM 푸시 토큰 등록/해제",
-            description = "Access Token(JWT) 필수. 로그인 후 디바이스 토큰을 올립니다. pushToken이 비어 있으면 해제합니다."
+            description = """
+                    Access Token(JWT) 필수.
+                    - 로그인 직후 디바이스 FCM 토큰을 올립니다. 알림 채널 on/off는 `PATCH /mypage/notifications/settings`
+                    - `pushToken`이 null이거나 공백이면 서버에서 토큰을 지웁니다 (로그아웃 시 호출 권장)
+                    - 회원 탈퇴 시에도 토큰은 서버에서 비워집니다
+                    """,
+            requestBody = @RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = PushTokenUpdateReq.class),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "등록",
+                                            value = """
+                                                    { "pushToken": "fcm-device-token" }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "해제",
+                                            value = """
+                                                    { "pushToken": "" }
+                                                    """
+                                    )
+                            }
+                    )
+            )
     )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "성공 (USER_PUSH_TOKEN_200)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "변경 성공",
+                                    value = """
+                                            {
+                                              "isSuccess": true,
+                                              "code": "USER_PUSH_TOKEN_200",
+                                              "message": "푸시 토큰이 변경되었습니다.",
+                                              "result": null
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "JWT 만료/미인증 (JWT_401_1)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "JWT_401_1",
+                                    value = """
+                                            {"isSuccess":false,"code":"JWT_401_1","message":"token 유효기간이 만료되었습니다.","result":null}
+                                            """
+                            )
+                    )
+            )
+    })
     @PutMapping("/me/push-token")
     public ApiResponse<Void> updatePushToken(
             @org.springframework.web.bind.annotation.RequestBody PushTokenUpdateReq req

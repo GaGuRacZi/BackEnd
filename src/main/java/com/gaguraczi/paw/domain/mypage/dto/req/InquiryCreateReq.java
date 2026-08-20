@@ -8,7 +8,12 @@ import jakarta.validation.constraints.NotNull;
 @Schema(description = "문의 등록 요청 (multipart data part JSON)")
 public record InquiryCreateReq(
         @NotNull(message = "문의 유형은 필수입니다.")
-        @Schema(description = "문의 유형", example = "ACCOUNT", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(
+                description = "문의 유형",
+                example = "PAYMENT",
+                requiredMode = Schema.RequiredMode.REQUIRED,
+                allowableValues = {"ACCOUNT", "PAYMENT", "PET", "COMMUNITY", "ETC"}
+        )
         InquiryType inquiryType,
 
         @NotBlank(message = "문의 내용은 필수입니다.")
