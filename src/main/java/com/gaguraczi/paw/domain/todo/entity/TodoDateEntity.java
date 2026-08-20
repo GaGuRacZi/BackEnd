@@ -1,11 +1,13 @@
 package com.gaguraczi.paw.domain.todo.entity;
 
+import com.gaguraczi.paw.domain.todo.support.TodoRemindAt;
 import com.gaguraczi.paw.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -18,7 +20,10 @@ import java.time.LocalDateTime;
                 name = "uk_todo_date",
                 columnNames = {"todo_id", "date"}
         ),
-        indexes = @Index(name = "idx_todo_date_date", columnList = "date")
+        indexes = {
+                @Index(name = "idx_todo_date_date", columnList = "date"),
+                @Index(name = "idx_todo_date_remind_at", columnList = "remind_at")
+        }
 )
 public class TodoDateEntity extends BaseEntity {
 
@@ -36,6 +41,12 @@ public class TodoDateEntity extends BaseEntity {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Column(name = "remind_at", columnDefinition = "timestamptz")
+    private Instant remindAt;
+
+    @Column(name = "notified_at", columnDefinition = "timestamptz")
+    private Instant notifiedAt;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "todo_id", nullable = false)
     private TodoEntity todo;
@@ -46,6 +57,8 @@ public class TodoDateEntity extends BaseEntity {
         todoDate.date = date;
         todoDate.completed = false;
         todoDate.completedAt = null;
+        todoDate.remindAt = TodoRemindAt.of(date, todo.getTodoTime());
+        todoDate.notifiedAt = null;
         return todoDate;
     }
 
@@ -56,5 +69,11 @@ public class TodoDateEntity extends BaseEntity {
 
     public void changeDate(LocalDate date) {
         this.date = date;
+        refreshSchedule();
+    }
+
+    public void refreshSchedule() {
+        this.remindAt = TodoRemindAt.of(this.date, this.todo.getTodoTime());
+        this.notifiedAt = null;
     }
 }

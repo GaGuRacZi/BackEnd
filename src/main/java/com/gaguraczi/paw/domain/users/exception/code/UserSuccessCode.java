@@ -10,7 +10,8 @@ import org.springframework.http.HttpStatus;
 public enum UserSuccessCode implements BaseSuccessCode {
 
     USER_PROFILE_200(HttpStatus.OK, "USER_PROFILE_200", "프로필 조회에 성공했습니다."),
-    USER_PROFILE_UPDATE_200(HttpStatus.OK, "USER_PROFILE_UPDATE_200", "프로필이 수정되었습니다.");
+    USER_PROFILE_UPDATE_200(HttpStatus.OK, "USER_PROFILE_UPDATE_200", "프로필이 수정되었습니다."),
+    USER_PUSH_TOKEN_200(HttpStatus.OK, "USER_PUSH_TOKEN_200", "푸시 토큰이 저장되었습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

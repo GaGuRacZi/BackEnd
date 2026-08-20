@@ -13,6 +13,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalTime;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -61,8 +63,20 @@ public class NotificationSettingService {
 
     /** 동시 lazy 생성 요청이 uid unique 제약에 충돌하면, 먼저 커밋된 행을 다시 조회해 복구한다. */
     private NotificationSetting createDefault(User user) {
+        NotificationSetting setting = NotificationSetting.builder()
+                .user(user)
+                .todoAlarm(true)
+                .healthAlarm(true)
+                .aiAnalysisAlarm(true)
+                .communityAlarm(true)
+                .chatAlarm(false)
+                .benefitAlarm(false)
+                .dndEnabled(true)
+                .dndStart(LocalTime.of(22, 0))
+                .dndEnd(LocalTime.of(7, 0))
+                .build();
         try {
-            return notificationSettingRepository.save(NotificationSetting.builder().user(user).build());
+            return notificationSettingRepository.save(setting);
         } catch (DataIntegrityViolationException e) {
             return notificationSettingRepository.findByUser(user)
                     .orElseThrow(() -> e);

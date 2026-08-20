@@ -39,12 +39,6 @@ public record PetUpdateReq(
         Gender gender,
 
         @Schema(description = "중성화 여부", example = "true")
-        Boolean neutering,
-
-        @Schema(
-                description = "혈액형. DOG: NONE/DEA_1_1_POSITIVE/DEA_1_1_NEGATIVE/UNKNOWN, CAT: NONE/A/B/AB/UNKNOWN",
-                example = "DEA_1_1_POSITIVE"
-        )
-        String bloodType
+        Boolean neutering
 ) {
 }

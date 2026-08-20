@@ -2,29 +2,41 @@ package com.gaguraczi.paw.global.fcm;
 
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.MessagingErrorCode;
 import com.google.firebase.messaging.Notification;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class FcmPushService {
 
-    public void sendVisitStatus(String pushToken, String type, Long visitId, Long petId, String title, String body) {
+    private final FcmTokenClearer fcmTokenClearer;
+
+    public void send(String pushToken, String title, String body, Map<String, String> data) {
         if (pushToken == null || pushToken.isBlank()) {
             return;
         }
         if (FirebaseApp.getApps().isEmpty()) {
-            log.warn("Firebase is not initialized; skip FCM type={}", type);
+            log.warn("Firebase is not initialized; skip FCM");
             return;
         }
+        String token = pushToken.trim();
         try {
-            Message.Builder builder = Message.builder()
-                    .setToken(pushToken.trim())
-                    .putData("type", type)
-                    .putData("visitId", String.valueOf(visitId))
-                    .putData("petId", String.valueOf(petId));
+            Message.Builder builder = Message.builder().setToken(token);
+            if (data != null) {
+                data.forEach((key, value) -> {
+                    if (key != null && value != null) {
+                        builder.putData(key, value);
+                    }
+                });
+            }
             if (title != null && body != null) {
                 builder.setNotification(Notification.builder()
                         .setTitle(title)
@@ -32,8 +44,18 @@ public class FcmPushService {
                         .build());
             }
             FirebaseMessaging.getInstance().send(builder.build());
+        } catch (FirebaseMessagingException e) {
+            if (isUnregistered(e)) {
+                fcmTokenClearer.clearByToken(token);
+            }
+            log.warn("FCM send skipped: {}", e.getMessage());
         } catch (Exception e) {
-            log.warn("FCM send skipped type={} visitId={}: {}", type, visitId, e.getMessage());
+            log.warn("FCM send skipped: {}", e.getMessage());
         }
+    }
+
+    private static boolean isUnregistered(FirebaseMessagingException e) {
+        MessagingErrorCode code = e.getMessagingErrorCode();
+        return code == MessagingErrorCode.UNREGISTERED || code == MessagingErrorCode.INVALID_ARGUMENT;
     }
 }

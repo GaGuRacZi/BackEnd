@@ -5,7 +5,9 @@ import com.gaguraczi.paw.domain.auth.repository.OAuthRepository;
 import com.gaguraczi.paw.domain.mypage.dto.res.MypageHomeRes;
 import com.gaguraczi.paw.domain.mypage.dto.res.MypageProfileRes;
 import com.gaguraczi.paw.domain.mypage.exception.code.MypageErrorCode;
+import com.gaguraczi.paw.domain.notification.repository.NotificationRepository;
 import com.gaguraczi.paw.domain.region.entity.LegalRegion;
+import com.gaguraczi.paw.domain.region.enums.RegionLevel;
 import com.gaguraczi.paw.domain.region.repository.LegalRegionRepository;
 import com.gaguraczi.paw.domain.users.entity.Pet;
 import com.gaguraczi.paw.domain.users.entity.User;
@@ -28,12 +30,14 @@ public class MypageProfileService {
     private final PetRepository petRepository;
     private final OAuthRepository oAuthRepository;
     private final LegalRegionRepository legalRegionRepository;
+    private final NotificationRepository notificationRepository;
     private final S3Utils s3Utils;
 
     public MypageHomeRes getHome() {
         User user = securityUtils.currentUser();
         Pet mainPet = petRepository.findFirstByUserAndIsMainTrue(user).orElse(null);
-        return MypageHomeRes.of(user, mainPet);
+        long unread = notificationRepository.countByUser_UidAndIsReadFalse(user.getUid());
+        return MypageHomeRes.of(user, mainPet, regionDisplayName(user), unread);
     }
 
     public MypageProfileRes getProfile() {
@@ -56,5 +60,42 @@ public class MypageProfileService {
         LegalRegion region = legalRegionRepository.findById(regionCode)
                 .orElseThrow(() -> GeneralException.of(MypageErrorCode.REGION_NOT_FOUND));
         user.updateLocation(null, region, region.getName());
+    }
+
+    /** 가능하면 시/도 + 시군구 (`경기도 고양시`). */
+    String regionDisplayName(User user) {
+        String fromRegion = formatSidoSigungu(user.getRegion());
+        if (fromRegion != null && !fromRegion.isBlank()) {
+            return fromRegion;
+        }
+        String address = user.getLocationAddress();
+        return (address == null || address.isBlank()) ? null : address;
+    }
+
+    private String formatSidoSigungu(LegalRegion region) {
+        if (region == null) {
+            return null;
+        }
+        String sido = null;
+        String sigungu = null;
+        LegalRegion current = region;
+        for (int i = 0; i < 3 && current != null; i++) {
+            if (current.getLevel() == RegionLevel.SIDO) {
+                sido = current.getName();
+            } else if (current.getLevel() == RegionLevel.SIGUNGU) {
+                sigungu = current.getName();
+            }
+            if (current.getParentCode() == null) {
+                break;
+            }
+            current = legalRegionRepository.findById(current.getParentCode()).orElse(null);
+        }
+        if (sido != null && sigungu != null) {
+            return sido + " " + sigungu;
+        }
+        if (sigungu != null) {
+            return sigungu;
+        }
+        return sido != null ? sido : region.getName();
     }
 }

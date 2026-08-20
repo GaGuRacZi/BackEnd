@@ -1,5 +1,6 @@
 package com.gaguraczi.paw.domain.users.controller;
 
+import com.gaguraczi.paw.domain.users.dto.req.PushTokenUpdateReq;
 import com.gaguraczi.paw.domain.users.dto.req.UserProfileUpdateReq;
 import com.gaguraczi.paw.domain.users.dto.res.UserProfileRes;
 import com.gaguraczi.paw.domain.users.exception.code.UserSuccessCode;
@@ -248,6 +249,18 @@ public class UserController {
                 UserSuccessCode.USER_PROFILE_UPDATE_200,
                 userService.updateMyProfile(data, image)
         );
+    }
+
+    @Operation(
+            summary = "FCM 푸시 토큰 등록/해제",
+            description = "Access Token(JWT) 필수. 로그인 후 디바이스 토큰을 올립니다. pushToken이 비어 있으면 해제합니다."
+    )
+    @PutMapping("/me/push-token")
+    public ApiResponse<Void> updatePushToken(
+            @org.springframework.web.bind.annotation.RequestBody PushTokenUpdateReq req
+    ) {
+        userService.updatePushToken(req == null ? null : req.pushToken());
+        return ApiResponse.onSuccess(UserSuccessCode.USER_PUSH_TOKEN_200, null);
     }
 
     @Schema(name = "UserProfileMultipart", description = "유저 프로필 수정 multipart")

@@ -43,12 +43,6 @@ public record PetCreateReq(
 
         @NotNull(message = "중성화 여부는 필수입니다.")
         @Schema(description = "중성화 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
-        Boolean neutering,
-
-        @Schema(
-                description = "혈액형. DOG: NONE/DEA_1_1_POSITIVE/DEA_1_1_NEGATIVE/UNKNOWN, CAT: NONE/A/B/AB/UNKNOWN. 미입력 시 NONE",
-                example = "DEA_1_1_POSITIVE"
-        )
-        String bloodType
+        Boolean neutering
 ) {
 }

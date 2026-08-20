@@ -20,11 +20,13 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -36,6 +38,7 @@ public class TodoService {
     private final TodoDateRepository todoDateRepository;
     private final TagRepository tagRepository;
     private final UserRepository userRepository;
+    private final Clock clock;
 
     private static final Comparator<TodoDateEntity> LIST_ORDER =
             Comparator.comparing(
@@ -73,7 +76,7 @@ public class TodoService {
         WeekEnum week = null;
 
         if (routineEnabled) {
-            startDate = (request.startDate() != null) ? request.startDate() : LocalDate.now();
+            startDate = (request.startDate() != null) ? request.startDate() : LocalDate.now(clock);
             endDate = request.endDate();
             week = request.week();
             validateRoutine(startDate, endDate, week);
@@ -93,6 +96,13 @@ public class TodoService {
             throw new GeneralException(TodoErrorCode.TODO_CREATE_400_1);
         }
 
+        LocalDate today = LocalDate.now(clock);
+        if (!routineEnabled) {
+            saveSingleDate(todo, request.date());
+        } else if (matchesToday(todo, today)) {
+            upsertDate(todo, today);
+        }
+
         return TodoDetailResponse.from(todo);
     }
 
@@ -103,7 +113,7 @@ public class TodoService {
 
         boolean wasRoutine = todo.isRoutineEnabled();
         boolean nowRoutine = (request.routineEnabled() != null) ? request.routineEnabled() : wasRoutine;
-
+        LocalTime previousTime = todo.getTodoTime();
 
         if (wasRoutine != nowRoutine) {
             throw new GeneralException(TodoErrorCode.TODO_ROUTINE_TYPE_CHANGE_400_6);
@@ -127,7 +137,8 @@ public class TodoService {
         todo.update(tag, request.todo(), request.subTodo(), todoTime, nowRoutine, startDate, endDate, week);
         todoRepository.flush();
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
+        boolean timeChanged = !Objects.equals(previousTime, todoTime);
 
         if (nowRoutine) {
 
@@ -135,12 +146,18 @@ public class TodoService {
             todoDateRepository.flush();
 
             deleteStaleDates(todoId, startDate, endDate, week);
+            if (matchesToday(todo, today)) {
+                upsertDate(todo, today);
+            }
         } else {
             TodoDateEntity todoDate = todoDateRepository.findAllByTodo_TodoIdOrderByDateAsc(todoId).stream()
                     .findFirst()
                     .orElseThrow(() -> new GeneralException(TodoErrorCode.TODO_DATE_GET_404_2));
-            if (!todoDate.getDate().equals(request.date())) {
+            boolean dateChanged = !todoDate.getDate().equals(request.date());
+            if (dateChanged) {
                 todoDate.changeDate(request.date());
+            } else if (timeChanged) {
+                todoDate.refreshSchedule();
             }
         }
 
@@ -209,7 +226,15 @@ public class TodoService {
         }
     }
 
-
+    static boolean matchesToday(TodoEntity todo, LocalDate today) {
+        if (!todo.isRoutineEnabled() || todo.getWeek() == null || todo.getStartDate() == null || todo.getEndDate() == null) {
+            return false;
+        }
+        if (today.isBefore(todo.getStartDate()) || today.isAfter(todo.getEndDate())) {
+            return false;
+        }
+        return today.getDayOfWeek() == todo.getWeek().toDayOfWeek();
+    }
 
     private void deleteStaleDates(Long todoId, LocalDate startDate, LocalDate endDate, WeekEnum week) {
         DayOfWeek dayOfWeek = week.toDayOfWeek();
@@ -233,5 +258,17 @@ public class TodoService {
         } catch (DataIntegrityViolationException e) {
             throw new GeneralException(TodoErrorCode.TODO_CREATE_400_1);
         }
+    }
+
+    private void upsertDate(TodoEntity todo, LocalDate date) {
+        todoDateRepository.findByTodo_TodoIdAndDate(todo.getTodoId(), date)
+                .ifPresentOrElse(TodoDateEntity::refreshSchedule, () -> {
+                    try {
+                        todoDateRepository.saveAndFlush(TodoDateEntity.create(todo, date));
+                    } catch (DataIntegrityViolationException ignored) {
+                        todoDateRepository.findByTodo_TodoIdAndDate(todo.getTodoId(), date)
+                                .ifPresent(TodoDateEntity::refreshSchedule);
+                    }
+                });
     }
 }

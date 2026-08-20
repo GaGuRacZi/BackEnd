@@ -8,8 +8,6 @@ import com.gaguraczi.paw.domain.pets.dto.res.PetRes;
 import com.gaguraczi.paw.domain.pets.exception.code.PetErrorCode;
 import com.gaguraczi.paw.domain.users.entity.Pet;
 import com.gaguraczi.paw.domain.users.entity.User;
-import com.gaguraczi.paw.domain.users.enums.CatBloodType;
-import com.gaguraczi.paw.domain.users.enums.DogBloodType;
 import com.gaguraczi.paw.domain.users.enums.PetType;
 import com.gaguraczi.paw.domain.users.repository.PetRepository;
 import com.gaguraczi.paw.global.exception.GeneralException;
@@ -86,30 +84,6 @@ public class PetService {
         return pet;
     }
 
-    private String resolveBloodType(PetType petType, String bloodType) {
-        if (bloodType == null || bloodType.isBlank()) {
-            return null;
-        }
-        String normalized = bloodType.trim().toUpperCase();
-        boolean valid = switch (petType) {
-            case DOG -> isValidEnumName(DogBloodType.class, normalized);
-            case CAT -> isValidEnumName(CatBloodType.class, normalized);
-        };
-        if (!valid) {
-            throw GeneralException.of(PetErrorCode.PET_BLOOD_TYPE_MISMATCH);
-        }
-        return normalized;
-    }
-
-    private static <E extends Enum<E>> boolean isValidEnumName(Class<E> enumClass, String name) {
-        for (E value : enumClass.getEnumConstants()) {
-            if (value.name().equals(name)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     @Transactional
     public PetRes create(PetCreateReq req, MultipartFile image) {
         User user = securityUtils.currentUser();
@@ -120,7 +94,6 @@ public class PetService {
             throw GeneralException.of(PetErrorCode.PET_BREED_REQUIRED);
         }
 
-        String bloodType = resolveBloodType(req.petType(), req.bloodType());
         S3Dto uploaded = uploadProfileImage(image);
 
         try {
@@ -136,7 +109,6 @@ public class PetService {
                     .petWeight(req.petWeight())
                     .gender(req.gender())
                     .neutering(req.neutering())
-                    .bloodType(bloodType == null ? DogBloodType.NONE.name() : bloodType)
                     .profileS3Key(uploaded != null ? uploaded.getKey() : null)
                     .profileUrl(uploaded != null ? uploaded.getUrl() : null)
                     .isMain(isFirstPet)
@@ -202,15 +174,6 @@ public class PetService {
             }
         }
 
-        boolean bloodTypeTouched = req.bloodType() != null && !req.bloodType().isBlank();
-        String bloodType = bloodTypeTouched ? resolveBloodType(petType, req.bloodType()) : null;
-
-        if (petTypeChanged && !bloodTypeTouched) {
-            // 기존 품종의 혈액형 코드는 새 petType 기준으로 무효하므로 초기화한다.
-            bloodTypeTouched = true;
-            bloodType = DogBloodType.NONE.name();
-        }
-
         pet.update(
                 req.petType(),
                 breedTouched ? breed : null,
@@ -219,9 +182,7 @@ public class PetService {
                 req.birth(),
                 req.petWeight(),
                 req.gender(),
-                req.neutering(),
-                bloodType,
-                bloodTypeTouched
+                req.neutering()
         );
     }
 

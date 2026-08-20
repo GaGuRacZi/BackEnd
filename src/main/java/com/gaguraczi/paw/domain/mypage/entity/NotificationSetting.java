@@ -54,15 +54,15 @@ public class NotificationSetting extends BaseEntity {
 
     @Builder.Default
     @Column(name = "chat_alarm", nullable = false)
-    private Boolean chatAlarm = true;
+    private Boolean chatAlarm = false;
 
     @Builder.Default
     @Column(name = "benefit_alarm", nullable = false)
-    private Boolean benefitAlarm = true;
+    private Boolean benefitAlarm = false;
 
     @Builder.Default
     @Column(name = "dnd_enabled", nullable = false)
-    private Boolean dndEnabled = false;
+    private Boolean dndEnabled = true;
 
     @Builder.Default
     @Column(name = "dnd_start", nullable = false)

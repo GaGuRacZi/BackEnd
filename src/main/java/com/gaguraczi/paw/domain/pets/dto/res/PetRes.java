@@ -18,8 +18,7 @@ public record PetRes(
         Gender gender,
         Boolean neutering,
         boolean main,
-        String profileUrl,
-        String bloodType
+        String profileUrl
 ) {
     public static PetRes from(Pet pet) {
         return new PetRes(
@@ -33,8 +32,7 @@ public record PetRes(
                 pet.getGender(),
                 pet.getNeutering(),
                 pet.isMain(),
-                pet.getProfileUrl(),
-                pet.getBloodType()
+                pet.getProfileUrl()
         );
     }
 }
