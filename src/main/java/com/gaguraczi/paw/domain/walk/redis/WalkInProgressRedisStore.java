@@ -1,13 +1,13 @@
 package com.gaguraczi.paw.domain.walk.redis;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gaguraczi.paw.domain.walk.exception.WalkErrorCode;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import com.gaguraczi.paw.utils.RedisUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Optional;
 
@@ -20,17 +20,10 @@ public class WalkInProgressRedisStore {
     private static final long TTL_SECONDS = 6L * 60 * 60;
 
     private final RedisUtil redisUtil;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper;
 
     public boolean saveIfAbsent(WalkInProgressSession session) {
-        try {
-            return redisUtil.setIfAbsent(
-                    key(session.getPetId()),
-                    objectMapper.writeValueAsString(session),
-                    TTL_SECONDS);
-        } catch (JsonProcessingException e) {
-            throw new GeneralException(WalkErrorCode.WALK_IN_PROGRESS_NOT_FOUND, e);
-        }
+        return redisUtil.setIfAbsent(key(session.getPetId()), writeJson(session), TTL_SECONDS);
     }
 
     public Optional<WalkInProgressSession> getAndRefreshTtl(Long petId) {
@@ -52,10 +45,10 @@ public class WalkInProgressRedisStore {
 
     public WalkInProgressSession parse(String json) {
         try {
-            return objectMapper.readValue(json, WalkInProgressSession.class);
-        } catch (JsonProcessingException e) {
+            return jsonMapper.readValue(json, WalkInProgressSession.class);
+        } catch (JacksonException e) {
             log.warn("Failed to parse in-progress walk session", e);
-            throw new GeneralException(WalkErrorCode.WALK_IN_PROGRESS_NOT_FOUND, e);
+            throw new GeneralException(WalkErrorCode.WALK_SESSION_CORRUPT, e);
         }
     }
 
@@ -70,15 +63,11 @@ public class WalkInProgressRedisStore {
                 .walkDate(session.getWalkDate())
                 .processing(true)
                 .build();
-        try {
-            String processingJson = objectMapper.writeValueAsString(processing);
-            if (redisUtil.compareAndSet(key(petId), expectedJson, processingJson, TTL_SECONDS)) {
-                return Optional.of(processingJson);
-            }
-            return Optional.empty();
-        } catch (JsonProcessingException e) {
-            throw new GeneralException(WalkErrorCode.WALK_IN_PROGRESS_NOT_FOUND, e);
+        String processingJson = writeJson(processing);
+        if (redisUtil.compareAndSet(key(petId), expectedJson, processingJson, TTL_SECONDS)) {
+            return Optional.of(processingJson);
         }
+        return Optional.empty();
     }
 
     public boolean removeIfUnchanged(Long petId, String expectedJson) {
@@ -91,6 +80,15 @@ public class WalkInProgressRedisStore {
 
     public void delete(Long petId) {
         redisUtil.deleteData(key(petId));
+    }
+
+    private String writeJson(WalkInProgressSession session) {
+        try {
+            return jsonMapper.writeValueAsString(session);
+        } catch (JacksonException e) {
+            log.warn("Failed to serialize in-progress walk session", e);
+            throw new GeneralException(WalkErrorCode.WALK_SESSION_CORRUPT, e);
+        }
     }
 
     private String key(Long petId) {
