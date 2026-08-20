@@ -32,6 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -57,6 +58,7 @@ public class PetWeightService {
     private final SecurityUtils securityUtils;
     private final S3Utils s3Utils;
     private final ObjectProvider<PetWeightService> self;
+    private final Clock clock;
 
 
 
@@ -184,7 +186,7 @@ public class PetWeightService {
         Pet pet = loadOwnedPet(petId);
         WeightGraphPeriodEnum target = period != null ? period : WeightGraphPeriodEnum.ONE_MONTH;
 
-        LocalDate endDate = LocalDate.now();
+        LocalDate endDate = LocalDate.now(clock);
         LocalDate startDate = endDate.minusMonths(target.getMonths()).plusDays(1);
         if (startDate.isAfter(endDate)) {
             throw GeneralException.of(PetWeightErrorCode.PET_WEIGHT_INVALID_PERIOD);
@@ -257,7 +259,7 @@ public class PetWeightService {
 
 
     private BigDecimal calculateMonthChange(Pet pet, PetWeightEntity latest) {
-        LocalDateTime monthStart = YearMonth.now().atDay(1).atStartOfDay();
+        LocalDateTime monthStart = YearMonth.now(clock).atDay(1).atStartOfDay();
         if (latest.getRecordedAt().isBefore(monthStart)) {
             return null;
         }
@@ -269,7 +271,7 @@ public class PetWeightService {
 
         if (baseline == null) {
             List<PetWeightEntity> thisMonth = petWeightRepository.findAllByPetAndRecordedAtBetweenOrderByRecordedAtAsc(
-                    pet, monthStart, YearMonth.now().atEndOfMonth().atTime(LocalTime.MAX));
+                    pet, monthStart, YearMonth.now(clock).atEndOfMonth().atTime(LocalTime.MAX));
             if (thisMonth.size() < 2) {
                 return null;
             }
@@ -293,7 +295,7 @@ public class PetWeightService {
 
     private YearMonth resolveYearMonth(Integer year, Integer month) {
         if (year == null || month == null) {
-            return YearMonth.now();
+            return YearMonth.now(clock);
         }
         if (year < Year.MIN_VALUE || year > Year.MAX_VALUE || month < 1 || month > 12) {
             throw GeneralException.of(PetWeightErrorCode.PET_WEIGHT_INVALID_PERIOD);
@@ -302,7 +304,7 @@ public class PetWeightService {
     }
 
     private void validateRecordedAt(LocalDateTime recordedAt) {
-        if (recordedAt != null && recordedAt.isAfter(LocalDateTime.now())) {
+        if (recordedAt != null && recordedAt.isAfter(LocalDateTime.now(clock))) {
             throw GeneralException.of(PetWeightErrorCode.PET_WEIGHT_FUTURE_NOT_ALLOWED);
         }
     }

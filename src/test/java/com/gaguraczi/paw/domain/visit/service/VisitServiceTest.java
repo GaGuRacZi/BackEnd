@@ -28,6 +28,7 @@ import com.gaguraczi.paw.domain.visit.repository.VisitRepository;
 import com.gaguraczi.paw.domain.visit.support.VisitAudioValidator;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import com.gaguraczi.paw.global.security.SecurityUtils;
+import com.gaguraczi.paw.global.time.AppTime;
 import com.gaguraczi.paw.utils.S3.S3Utils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,7 +37,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -77,6 +80,7 @@ class VisitServiceTest {
 
     private VisitService visitService;
     private VisitProperties visitProperties;
+    private final Clock clock = Clock.fixed(java.time.Instant.parse("2026-08-20T20:00:00Z"), AppTime.KST);
     private User user;
     private Pet pet;
 
@@ -95,7 +99,8 @@ class VisitServiceTest {
                 visitProcessService,
                 visitAiSummaryTxService,
                 visitAiSummaryClient,
-                visitProperties
+                visitProperties,
+                clock
         );
         user = User.builder().uid(UUID.randomUUID()).coin(4).usedCoin(1).build();
         pet = pet(user);
@@ -139,7 +144,7 @@ class VisitServiceTest {
     @Test
     void doesNotRechargeWhenAiSummaryAlreadyDone() {
         Visit visit = readyVisit();
-        visit.completeAiSummary("# 기존 요약");
+        visit.completeAiSummary("# 기존 요약", LocalDateTime.of(2026, 8, 21, 5, 0));
         when(visitAccessService.requireOwnedVisit(11L, user.getUid())).thenReturn(visit);
 
         VisitAiSummaryRes res = visitService.generateAiSummary(11L);

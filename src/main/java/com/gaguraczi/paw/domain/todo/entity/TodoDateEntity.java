@@ -66,9 +66,9 @@ public class TodoDateEntity extends BaseEntity {
         return todoDate;
     }
 
-    public void changeCompleted(boolean completed) {
+    public void changeCompleted(boolean completed, LocalDateTime now) {
         this.completed = completed;
-        this.completedAt = completed ? LocalDateTime.now() : null;
+        this.completedAt = completed ? now : null;
     }
 
     public void changeDate(LocalDate date) {

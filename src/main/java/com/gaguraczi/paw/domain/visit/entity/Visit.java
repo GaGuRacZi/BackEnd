@@ -177,10 +177,10 @@ public class Visit extends BaseEntity {
         this.aiSummaryCoinCharged = coinCharged;
     }
 
-    public void completeAiSummary(String markdown) {
+    public void completeAiSummary(String markdown, LocalDateTime generatedAt) {
         this.aiSummaryMd = markdown;
         this.aiSummaryStatus = AiSummaryStatus.DONE;
-        this.aiSummaryGeneratedAt = LocalDateTime.now();
+        this.aiSummaryGeneratedAt = generatedAt;
     }
 
     public void resetAiSummary() {

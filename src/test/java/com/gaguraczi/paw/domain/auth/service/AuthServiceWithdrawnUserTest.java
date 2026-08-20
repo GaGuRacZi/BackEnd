@@ -27,6 +27,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -58,7 +59,7 @@ class AuthServiceWithdrawnUserTest {
     @Test
     void 탈퇴_계정은_로컬_로그인_토큰을_발급하지_않는다() {
         User user = User.builder().uid(UUID.randomUUID()).email("user@example.com").build();
-        user.withdraw();
+        user.withdraw(LocalDateTime.of(2026, 8, 21, 5, 0));
         OAuth oauth = OAuth.builder()
                 .user(user)
                 .providerId("user@example.com")
@@ -83,7 +84,7 @@ class AuthServiceWithdrawnUserTest {
     @Test
     void 탈퇴_계정은_카카오_로그인_토큰을_발급하지_않는다() {
         User user = User.builder().uid(UUID.randomUUID()).build();
-        user.withdraw();
+        user.withdraw(LocalDateTime.of(2026, 8, 21, 5, 0));
         OAuth oauth = OAuth.builder()
                 .user(user)
                 .providerId("kakao-1")

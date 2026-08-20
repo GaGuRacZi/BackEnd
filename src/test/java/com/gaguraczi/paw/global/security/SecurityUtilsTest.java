@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,7 +38,7 @@ class SecurityUtilsTest {
     void 탈퇴_계정은_currentUid도_거부한다() {
         UUID uid = UUID.randomUUID();
         User user = User.builder().uid(uid).build();
-        user.withdraw();
+        user.withdraw(LocalDateTime.of(2026, 8, 21, 5, 0));
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(uid.toString(), null)
         );

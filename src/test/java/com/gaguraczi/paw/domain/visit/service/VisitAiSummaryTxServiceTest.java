@@ -11,6 +11,7 @@ import com.gaguraczi.paw.domain.visit.enums.VisitStatus;
 import com.gaguraczi.paw.domain.visit.exception.code.VisitErrorCode;
 import com.gaguraczi.paw.domain.visit.repository.VisitRepository;
 import com.gaguraczi.paw.global.exception.GeneralException;
+import com.gaguraczi.paw.global.time.AppTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,7 +19,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,10 +39,11 @@ class VisitAiSummaryTxServiceTest {
     private UserRepository userRepository;
 
     private VisitAiSummaryTxService txService;
+    private final Clock clock = Clock.fixed(Instant.parse("2026-08-20T20:00:00Z"), AppTime.KST);
 
     @BeforeEach
     void setUp() {
-        txService = new VisitAiSummaryTxService(visitRepository, userRepository);
+        txService = new VisitAiSummaryTxService(visitRepository, userRepository, clock);
     }
 
     @Test
@@ -79,7 +84,7 @@ class VisitAiSummaryTxServiceTest {
         UUID uid = UUID.randomUUID();
         User user = User.builder().uid(uid).coin(5).usedCoin(0).build();
         Visit visit = readyVisit(user);
-        visit.completeAiSummary("이미 생성된 요약");
+        visit.completeAiSummary("이미 생성된 요약", LocalDateTime.of(2026, 8, 21, 5, 0));
         when(visitRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(visit));
 
         VisitAiSummaryTxService.ReserveResult result = txService.reserve(11L, uid, 1);
@@ -158,7 +163,7 @@ class VisitAiSummaryTxServiceTest {
         UUID uid = UUID.randomUUID();
         User user = User.builder().uid(uid).coin(2).usedCoin(2).build();
         Visit visit = readyVisit(user);
-        visit.completeAiSummary("# 완료");
+        visit.completeAiSummary("# 완료", LocalDateTime.of(2026, 8, 21, 5, 0));
         when(visitRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(visit));
         when(userRepository.findByIdForUpdate(uid)).thenReturn(Optional.of(user));
 

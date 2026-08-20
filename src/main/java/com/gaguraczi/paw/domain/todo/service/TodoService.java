@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
@@ -185,7 +186,7 @@ public class TodoService {
                 .orElseThrow(() -> new GeneralException(TodoErrorCode.TODO_DATE_GET_404_2));
 
         if (todoDate.isCompleted() != completed) {
-            todoDate.changeCompleted(completed);
+            todoDate.changeCompleted(completed, LocalDateTime.now(clock));
         }
 
         return TodoListResponse.from(todoDate);

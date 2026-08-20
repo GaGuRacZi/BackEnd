@@ -4,6 +4,7 @@ import com.gaguraczi.paw.domain.community.repository.CommunityRepository;
 import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.global.redis.RefreshTokenRedisStore;
 import com.gaguraczi.paw.global.security.SecurityUtils;
+import com.gaguraczi.paw.global.time.AppTime;
 import com.gaguraczi.paw.utils.S3.S3Utils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +12,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,6 +31,8 @@ class WithdrawalServiceTest {
     private RefreshTokenRedisStore refreshTokenRedisStore;
     @Mock
     private S3Utils s3Utils;
+    @Mock
+    private Clock clock;
 
     @InjectMocks
     private WithdrawalService withdrawalService;
@@ -37,6 +42,8 @@ class WithdrawalServiceTest {
         UUID uid = UUID.randomUUID();
         User user = User.builder().uid(uid).profileS3Key("user/a.png").locationAddress("서울").build();
         when(securityUtils.currentUser()).thenReturn(user);
+        when(clock.getZone()).thenReturn(AppTime.KST);
+        when(clock.instant()).thenReturn(Instant.parse("2026-08-20T20:00:00Z"));
 
         withdrawalService.withdraw();
 

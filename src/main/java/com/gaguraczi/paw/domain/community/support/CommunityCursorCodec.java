@@ -3,11 +3,11 @@ package com.gaguraczi.paw.domain.community.support;
 import com.gaguraczi.paw.domain.community.enums.CommunitySort;
 import com.gaguraczi.paw.domain.community.exception.code.CommunityErrorCode;
 import com.gaguraczi.paw.global.exception.GeneralException;
+import com.gaguraczi.paw.global.time.AppTime;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.Base64;
 
@@ -67,7 +67,7 @@ public final class CommunityCursorCodec {
         try {
             return LocalDateTime.parse(value);
         } catch (DateTimeParseException ignored) {
-            return LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(value)), ZoneOffset.UTC);
+            return LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(value)), AppTime.KST);
         }
     }
 
@@ -81,7 +81,7 @@ public final class CommunityCursorCodec {
         }
         LocalDateTime createdAt = LocalDateTime.ofInstant(
                 Instant.ofEpochMilli(Long.parseLong(parts[0])),
-                ZoneOffset.UTC);
+                AppTime.KST);
         return new Cursor(CommunitySort.LATEST, createdAt, null, Long.parseLong(parts[1]));
     }
 

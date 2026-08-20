@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.EnumSet;
 
 @Service
@@ -24,6 +26,7 @@ public class WithdrawalService {
     private final CommunityRepository communityRepository;
     private final RefreshTokenRedisStore refreshTokenRedisStore;
     private final S3Utils s3Utils;
+    private final Clock clock;
 
     public WithdrawalPreviewRes preview() {
         User user = securityUtils.currentUser();
@@ -43,7 +46,7 @@ public class WithdrawalService {
     public void withdraw() {
         User user = securityUtils.currentUser();
         String profileS3Key = user.getProfileS3Key();
-        user.withdraw();
+        user.withdraw(LocalDateTime.now(clock));
         refreshTokenRedisStore.deleteAll(user.getUid().toString());
         s3Utils.scheduleDeleteAfterCommit(profileS3Key);
     }

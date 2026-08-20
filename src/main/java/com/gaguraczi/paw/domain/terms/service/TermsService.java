@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -29,6 +30,7 @@ public class TermsService {
 
     private final TermsRepository termsRepository;
     private final UserAgreementRepository userAgreementRepository;
+    private final Clock clock;
 
     public List<TermsSummaryRes> list() {
         return termsRepository.findAllByOrderByRequiredDescTypeAsc().stream()
@@ -77,7 +79,7 @@ public class TermsService {
                     .termsType(terms.getType())
                     .termsVersion(terms.getVersion())
                     .agreed(true)
-                    .agreedAt(LocalDateTime.now())
+                    .agreedAt(LocalDateTime.now(clock))
                     .build());
         }
         if (!toSave.isEmpty()) {
