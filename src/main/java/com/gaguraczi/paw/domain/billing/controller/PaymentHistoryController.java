@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,67 +31,65 @@ public class PaymentHistoryController {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "BILLING_PAYMENT_LIST_200"
+                    description = "성공 (BILLING_PAYMENT_LIST_200)",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(name = "결제 목록", value = BillingApiDocs.PAYMENT_LIST_EXAMPLE)
+                    )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "잘못된 커서 (MYPAGE_400)",
+                    description = "유효하지 않은 커서 (MYPAGE_400)",
                     content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "MYPAGE_400",
-                                    value = """
-                                            {"isSuccess":false,"code":"MYPAGE_400","message":"요청 처리에 실패했습니다.","result":null}
-                                            """
-                            )
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(name = "MYPAGE_400", value = BillingApiDocs.MYPAGE_400_EXAMPLE)
                     )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
                     description = BillingApiDocs.JWT_401_1_DESCRIPTION,
                     content = @Content(
-                            mediaType = "application/json",
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
                             examples = @ExampleObject(name = "JWT_401_1", value = BillingApiDocs.JWT_401_1_EXAMPLE)
                     )
             )
     })
     @GetMapping
     public ApiResponse<CursorPageRes<PaymentHistoryItemRes>> getPayments(
-            @Parameter(description = "이전 응답의 nextCursor") @RequestParam(required = false) String cursor,
-            @Parameter(description = "페이지 크기. 기본 20, 최대 50", example = "20") @RequestParam(required = false) Integer size
+            @Parameter(
+                    description = "이전 응답의 nextCursor. opaque 값이며 해석하지 마세요.",
+                    example = "MjAyNi0wNy0yMFQyMzoxMDowMHwx"
+            ) @RequestParam(required = false) String cursor,
+            @Parameter(description = "페이지 크기. 기본 20, 최대 50", example = "20")
+            @RequestParam(required = false) Integer size
     ) {
         return ApiResponse.onSuccess(BillingSuccessCode.PAYMENT_LIST_200, subscriptionService.getPayments(cursor, size));
     }
 
-    @Operation(summary = "결제 내역 상세", description = "본인 결제 건만 조회할 수 있습니다. 없거나 타인이면 BILLING_404_2.")
+    @Operation(summary = "결제 내역 상세", description = BillingApiDocs.PAYMENT_DETAIL_DESCRIPTION)
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "BILLING_PAYMENT_DETAIL_200",
+                    description = "성공 (BILLING_PAYMENT_DETAIL_200)",
                     content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(name = "성공", value = BillingApiDocs.PAYMENT_ITEM_EXAMPLE)
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(name = "결제 상세", value = BillingApiDocs.PAYMENT_ITEM_EXAMPLE)
                     )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
                     description = BillingApiDocs.JWT_401_1_DESCRIPTION,
                     content = @Content(
-                            mediaType = "application/json",
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
                             examples = @ExampleObject(name = "JWT_401_1", value = BillingApiDocs.JWT_401_1_EXAMPLE)
                     )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
-                    description = "BILLING_404_2",
+                    description = "없거나 타인 결제 (BILLING_404_2)",
                     content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "BILLING_404_2",
-                                    value = """
-                                            {"isSuccess":false,"code":"BILLING_404_2","message":"결제 내역을 찾을 수 없습니다.","result":null}
-                                            """
-                            )
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(name = "BILLING_404_2", value = BillingApiDocs.BILLING_404_2_EXAMPLE)
                     )
             )
     })

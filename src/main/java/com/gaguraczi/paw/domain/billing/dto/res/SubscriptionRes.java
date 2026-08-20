@@ -24,9 +24,9 @@ public record SubscriptionRes(
         boolean unlimitedCoin,
         @Schema(description = "남은 코인", example = "8")
         int coin,
-        @Schema(description = "현재 결제 기간 시작. BASIC이면 null")
+        @Schema(description = "현재 결제 기간 시작. BASIC이면 null", example = "2026-08-20T23:10:00")
         LocalDateTime periodStart,
-        @Schema(description = "다음 결제일(기간 종료). BASIC이면 null")
+        @Schema(description = "다음 결제일(기간 종료). BASIC이면 null", example = "2026-09-20T23:10:00")
         LocalDateTime periodEnd,
         @Schema(description = "예약된 다운그레이드 플랜. 없으면 null", example = "BASIC")
         SubscribeType pendingPlan,

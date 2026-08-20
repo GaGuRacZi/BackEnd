@@ -14,7 +14,7 @@ import java.util.UUID;
 public record AdminInquiryRes(
         @Schema(description = "문의 ID", example = "1")
         Long inquiryId,
-        @Schema(description = "작성자 uid")
+        @Schema(description = "작성자 uid", example = "550e8400-e29b-41d4-a716-446655440000")
         UUID uid,
         @Schema(description = "작성자 닉네임", example = "길동이")
         String nickname,
@@ -22,15 +22,15 @@ public record AdminInquiryRes(
         String email,
         @Schema(description = "문의 유형", example = "PAYMENT")
         InquiryType inquiryType,
-        @Schema(description = "문의 내용")
+        @Schema(description = "문의 내용", example = "구독 결제가 반복해서 실패해요.")
         String content,
         @Schema(description = "첨부 파일 URL 목록")
         List<String> attachmentUrls,
         @Schema(description = "처리 상태", example = "RECEIVED")
         InquiryStatus status,
-        @Schema(description = "관리자 답변. 없으면 null")
+        @Schema(description = "관리자 답변. 없으면 null", example = "결제 내역을 확인했습니다. 재시도해 주세요.")
         String answer,
-        @Schema(description = "등록 시각")
+        @Schema(description = "등록 시각", example = "2026-08-20T11:00:00")
         LocalDateTime createdAt
 ) {
     public static AdminInquiryRes from(Inquiry inquiry) {

@@ -13,10 +13,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -26,7 +28,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "admin-inquiries", description = "관리자 문의 API. ADMIN 역할 필요.")
+@Tag(name = "admin-inquiries", description = AdminInquiryApiDocs.TAG_DESCRIPTION)
 @RestController
 @RequestMapping("/admin/inquiries")
 @RequiredArgsConstructor
@@ -35,29 +37,68 @@ public class AdminInquiryController {
 
     private final AdminInquiryService adminInquiryService;
 
-    @Operation(
-            summary = "문의 목록",
-            description = "전체 유저 문의를 최신순 커서로 조회합니다. status, inquiryType은 선택 필터입니다."
-    )
+    @Operation(summary = "문의 목록", description = AdminInquiryApiDocs.LIST_DESCRIPTION)
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ADMIN_INQUIRY_LIST_200"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "성공 (ADMIN_INQUIRY_LIST_200)",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(name = "문의 목록", value = AdminInquiryApiDocs.LIST_EXAMPLE)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "유효하지 않은 커서 (MYPAGE_400)",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(name = "MYPAGE_400", value = BillingApiDocs.MYPAGE_400_EXAMPLE)
+                    )
+            ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
                     description = BillingApiDocs.JWT_401_1_DESCRIPTION,
-                    content = @Content(examples = @ExampleObject(value = BillingApiDocs.JWT_401_1_EXAMPLE))
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(name = "JWT_401_1", value = BillingApiDocs.JWT_401_1_EXAMPLE)
+                    )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "403",
-                    description = BillingApiDocs.JWT_403_3_DESCRIPTION,
-                    content = @Content(examples = @ExampleObject(value = BillingApiDocs.JWT_403_3_EXAMPLE))
+                    description = "권한 없음",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = {
+                                    @ExampleObject(
+                                            name = "JWT_403_2",
+                                            summary = "유효하지 않은 token",
+                                            value = BillingApiDocs.JWT_403_2_EXAMPLE
+                                    ),
+                                    @ExampleObject(
+                                            name = "JWT_403_3",
+                                            summary = "ADMIN 권한 없음",
+                                            value = BillingApiDocs.JWT_403_3_EXAMPLE
+                                    )
+                            }
+                    )
             )
     })
     @GetMapping
     public ApiResponse<CursorPageRes<AdminInquiryRes>> getInquiries(
-            @RequestParam(required = false) String cursor,
-            @Parameter(description = "페이지 크기. 기본 20, 최대 50") @RequestParam(required = false) Integer size,
-            @RequestParam(required = false) InquiryStatus status,
-            @RequestParam(required = false) InquiryType inquiryType
+            @Parameter(
+                    description = "이전 응답의 nextCursor. opaque 값이며 해석하지 마세요.",
+                    example = "MjAyNi0wOC0yMFQxMTowMDowMHwx"
+            ) @RequestParam(required = false) String cursor,
+            @Parameter(description = "페이지 크기. 기본 20, 최대 50", example = "20")
+            @RequestParam(required = false) Integer size,
+            @Parameter(
+                    description = "처리 상태 필터. 생략 시 전체.",
+                    example = "RECEIVED"
+            ) @RequestParam(required = false) InquiryStatus status,
+            @Parameter(
+                    description = "문의 유형 필터. 생략 시 전체.",
+                    example = "PAYMENT"
+            ) @RequestParam(required = false) InquiryType inquiryType
     ) {
         return ApiResponse.onSuccess(
                 MypageSuccessCode.ADMIN_INQUIRY_LIST_200,
@@ -65,34 +106,139 @@ public class AdminInquiryController {
         );
     }
 
-    @Operation(summary = "문의 상세")
+    @Operation(summary = "문의 상세", description = AdminInquiryApiDocs.DETAIL_DESCRIPTION)
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ADMIN_INQUIRY_DETAIL_200"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "성공 (ADMIN_INQUIRY_DETAIL_200)",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(name = "문의 상세", value = AdminInquiryApiDocs.DETAIL_EXAMPLE)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = BillingApiDocs.JWT_401_1_DESCRIPTION,
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(name = "JWT_401_1", value = BillingApiDocs.JWT_401_1_EXAMPLE)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "권한 없음",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = {
+                                    @ExampleObject(
+                                            name = "JWT_403_2",
+                                            summary = "유효하지 않은 token",
+                                            value = BillingApiDocs.JWT_403_2_EXAMPLE
+                                    ),
+                                    @ExampleObject(
+                                            name = "JWT_403_3",
+                                            summary = "ADMIN 권한 없음",
+                                            value = BillingApiDocs.JWT_403_3_EXAMPLE
+                                    )
+                            }
+                    )
+            ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
-                    description = "MYPAGE_404_1",
+                    description = "문의 없음 (MYPAGE_404_1)",
                     content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
                             examples = @ExampleObject(
-                                    value = """
-                                            {"isSuccess":false,"code":"MYPAGE_404_1","message":"문의 내역을 찾을 수 없습니다.","result":null}
-                                            """
+                                    name = "MYPAGE_404_1",
+                                    value = AdminInquiryApiDocs.MYPAGE_404_1_EXAMPLE
                             )
                     )
             )
     })
     @GetMapping("/{inquiryId}")
-    public ApiResponse<AdminInquiryRes> getDetail(@PathVariable Long inquiryId) {
+    public ApiResponse<AdminInquiryRes> getDetail(
+            @Parameter(description = "문의 ID", example = "1", required = true) @PathVariable Long inquiryId
+    ) {
         return ApiResponse.onSuccess(MypageSuccessCode.ADMIN_INQUIRY_DETAIL_200, adminInquiryService.getDetail(inquiryId));
     }
 
-    @Operation(summary = "문의 답변", description = "답변을 저장하고 status를 ANSWERED로 바꿉니다. 재답변은 덮어씁니다.")
+    @Operation(
+            summary = "문의 답변",
+            description = AdminInquiryApiDocs.ANSWER_DESCRIPTION,
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = InquiryAnswerReq.class),
+                            examples = @ExampleObject(
+                                    name = "답변 등록",
+                                    value = AdminInquiryApiDocs.ANSWER_REQ_EXAMPLE
+                            )
+                    )
+            )
+    )
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ADMIN_INQUIRY_ANSWER_200"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "MYPAGE_404_1")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "성공 (ADMIN_INQUIRY_ANSWER_200)",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(name = "답변 완료", value = AdminInquiryApiDocs.ANSWER_EXAMPLE)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "유효성 오류 (COMMON_400)",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(
+                                    name = "COMMON_400",
+                                    value = AdminInquiryApiDocs.COMMON_400_ANSWER_EXAMPLE
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = BillingApiDocs.JWT_401_1_DESCRIPTION,
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(name = "JWT_401_1", value = BillingApiDocs.JWT_401_1_EXAMPLE)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "권한 없음",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = {
+                                    @ExampleObject(
+                                            name = "JWT_403_2",
+                                            summary = "유효하지 않은 token",
+                                            value = BillingApiDocs.JWT_403_2_EXAMPLE
+                                    ),
+                                    @ExampleObject(
+                                            name = "JWT_403_3",
+                                            summary = "ADMIN 권한 없음",
+                                            value = BillingApiDocs.JWT_403_3_EXAMPLE
+                                    )
+                            }
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "문의 없음 (MYPAGE_404_1)",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(
+                                    name = "MYPAGE_404_1",
+                                    value = AdminInquiryApiDocs.MYPAGE_404_1_EXAMPLE
+                            )
+                    )
+            )
     })
     @PatchMapping("/{inquiryId}")
     public ApiResponse<AdminInquiryRes> answer(
-            @PathVariable Long inquiryId,
+            @Parameter(description = "문의 ID", example = "1", required = true) @PathVariable Long inquiryId,
             @Valid @RequestBody InquiryAnswerReq req
     ) {
         return ApiResponse.onSuccess(MypageSuccessCode.ADMIN_INQUIRY_ANSWER_200, adminInquiryService.answer(inquiryId, req));
