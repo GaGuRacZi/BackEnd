@@ -52,14 +52,16 @@ class VisitTest {
         Visit visit = processingVisit();
         visit.applyShortSummary("진료", "한줄", List.of("a", "b", "c"), List.of("care"), "", null, 10);
 
-        visit.markAiSummaryGenerating();
+        visit.markAiSummaryGenerating(true);
         assertThat(visit.getAiSummaryStatus()).isEqualTo(AiSummaryStatus.GENERATING);
+        assertThat(visit.isAiSummaryCoinCharged()).isTrue();
 
         visit.completeAiSummary("# 상세");
         assertThat(visit.isAiSummaryDone()).isTrue();
 
         visit.resetAiSummary();
         assertThat(visit.getAiSummaryStatus()).isEqualTo(AiSummaryStatus.NONE);
+        assertThat(visit.isAiSummaryCoinCharged()).isFalse();
         assertThat(visit.isAiSummaryDone()).isFalse();
     }
 

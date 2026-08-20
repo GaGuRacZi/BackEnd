@@ -42,6 +42,7 @@ public class SwaggerConfig {
                         - visits (진료 녹음·전사·처방·AI 요약) / medications (처방 CATALOG 검색)
                         - Walk (`/api/walks`): 수동 기록 + 타이머(Redis 6시간). 날씨/강도는 **한글**
                         - Expense (`/api/v1/.../expenses`): 의료비. 결제금액 = 세부항목 합계
+                        - billing (`/mypage/subscription`, `/mypage/payments`): 요금제 변경·결제 내역. PG 없이 즉시 성공
                         - pet-weights (`/pets/{petId}/weights`): 체중. multipart 사진 최대 3장
                         
                         ## 진료 기록 화면 흐름

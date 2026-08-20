@@ -3,6 +3,7 @@ package com.gaguraczi.paw.domain.visit.service;
 import com.gaguraczi.paw.domain.users.entity.Pet;
 import com.gaguraczi.paw.domain.users.entity.User;
 import com.gaguraczi.paw.domain.users.enums.Gender;
+import com.gaguraczi.paw.domain.users.enums.SubscribeType;
 import com.gaguraczi.paw.domain.users.repository.UserRepository;
 import com.gaguraczi.paw.domain.visit.entity.Visit;
 import com.gaguraczi.paw.domain.visit.enums.AiSummaryStatus;
@@ -52,6 +53,7 @@ class VisitAiSummaryTxServiceTest {
 
         assertThat(result).isEqualTo(VisitAiSummaryTxService.ReserveResult.RESERVED);
         assertThat(visit.getAiSummaryStatus()).isEqualTo(AiSummaryStatus.GENERATING);
+        assertThat(visit.isAiSummaryCoinCharged()).isTrue();
         assertThat(user.coinBalance()).isEqualTo(2);
         assertThat(user.usedCoinBalance()).isEqualTo(2);
     }
@@ -122,15 +124,16 @@ class VisitAiSummaryTxServiceTest {
     @Test
     void refundsCoinAndResetsGenerating() {
         UUID uid = UUID.randomUUID();
-        User user = User.builder().uid(uid).coin(2).usedCoin(2).build();
+        User user = User.builder().uid(uid).coin(3).usedCoin(1).build();
         Visit visit = readyVisit(user);
-        visit.markAiSummaryGenerating();
         when(visitRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(visit));
         when(userRepository.findByIdForUpdate(uid)).thenReturn(Optional.of(user));
 
+        txService.reserve(11L, uid, 1);
         txService.refund(11L, uid, 1);
 
         assertThat(visit.getAiSummaryStatus()).isEqualTo(AiSummaryStatus.NONE);
+        assertThat(visit.isAiSummaryCoinCharged()).isFalse();
         assertThat(user.coinBalance()).isEqualTo(3);
         assertThat(user.usedCoinBalance()).isEqualTo(1);
     }
@@ -179,6 +182,72 @@ class VisitAiSummaryTxServiceTest {
         assertThat(visit.getAiSummaryStatus()).isEqualTo(AiSummaryStatus.DONE);
         assertThat(visit.getAiSummaryMd()).isEqualTo("# 요약");
         assertThat(visit.getAiSummaryGeneratedAt()).isNotNull();
+    }
+
+    @Test
+    void ultimate는_코인을_차감하지_않는다() {
+        UUID uid = UUID.randomUUID();
+        User user = User.builder().uid(uid).coin(3).usedCoin(0).subscribe(SubscribeType.ULTIMATE).build();
+        Visit visit = readyVisit(user);
+        when(visitRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(visit));
+        when(userRepository.findByIdForUpdate(uid)).thenReturn(Optional.of(user));
+
+        VisitAiSummaryTxService.ReserveResult result = txService.reserve(11L, uid, 1);
+
+        assertThat(result).isEqualTo(VisitAiSummaryTxService.ReserveResult.RESERVED);
+        assertThat(visit.isAiSummaryCoinCharged()).isFalse();
+        assertThat(user.coinBalance()).isEqualTo(3);
+        assertThat(user.usedCoinBalance()).isZero();
+    }
+
+    @Test
+    void ultimate는_환불에서도_코인을_건드리지_않는다() {
+        UUID uid = UUID.randomUUID();
+        User user = User.builder().uid(uid).coin(3).usedCoin(0).subscribe(SubscribeType.ULTIMATE).build();
+        Visit visit = readyVisit(user);
+        when(visitRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(visit));
+        when(userRepository.findByIdForUpdate(uid)).thenReturn(Optional.of(user));
+
+        txService.reserve(11L, uid, 1);
+        txService.refund(11L, uid, 1);
+
+        assertThat(visit.getAiSummaryStatus()).isEqualTo(AiSummaryStatus.NONE);
+        assertThat(user.coinBalance()).isEqualTo(3);
+        assertThat(user.usedCoinBalance()).isZero();
+    }
+
+    @Test
+    void 예약_후_ULTIMATE로_바뀌어도_차감된_코인은_환불한다() {
+        UUID uid = UUID.randomUUID();
+        User user = User.builder().uid(uid).coin(3).usedCoin(1).subscribe(SubscribeType.PRO).build();
+        Visit visit = readyVisit(user);
+        when(visitRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(visit));
+        when(userRepository.findByIdForUpdate(uid)).thenReturn(Optional.of(user));
+
+        txService.reserve(11L, uid, 1);
+        user.updateSubscribe(SubscribeType.ULTIMATE);
+        txService.refund(11L, uid, 1);
+
+        assertThat(user.hasUnlimitedCoins()).isTrue();
+        assertThat(user.coinBalance()).isEqualTo(3);
+        assertThat(user.usedCoinBalance()).isEqualTo(1);
+    }
+
+    @Test
+    void 예약_후_PRO로_바뀌어도_미차감_코인은_환불하지_않는다() {
+        UUID uid = UUID.randomUUID();
+        User user = User.builder().uid(uid).coin(3).usedCoin(0).subscribe(SubscribeType.ULTIMATE).build();
+        Visit visit = readyVisit(user);
+        when(visitRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(visit));
+        when(userRepository.findByIdForUpdate(uid)).thenReturn(Optional.of(user));
+
+        txService.reserve(11L, uid, 1);
+        user.updateSubscribe(SubscribeType.PRO);
+        txService.refund(11L, uid, 1);
+
+        assertThat(user.hasUnlimitedCoins()).isFalse();
+        assertThat(user.coinBalance()).isEqualTo(3);
+        assertThat(user.usedCoinBalance()).isZero();
     }
 
     private static Visit readyVisit(User user) {
