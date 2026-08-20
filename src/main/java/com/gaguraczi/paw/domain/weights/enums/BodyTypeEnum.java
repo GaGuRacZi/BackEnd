@@ -1,16 +1,18 @@
 package com.gaguraczi.paw.domain.weights.enums;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(description = "체형 상태")
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+@Getter
+@RequiredArgsConstructor
+@Schema(description = "체형 상태 (SKINNY: 마름, HEALTHY: 적정, OVER_WEIGHT: 과체중)")
 public enum BodyTypeEnum {
 
-    @Schema(description = "마름")
-    SKINNY,
+    SKINNY("마름"),
+    HEALTHY("적정"),
+    OVER_WEIGHT("과체중");
 
-    @Schema(description = "적정")
-    HEALTHY,
-
-    @Schema(description = "과체중")
-    OVER_WEIGHT
+    private final String label;
 }
