@@ -33,7 +33,7 @@ public record ExpenseCreateResponse(
         Long totalAmount
 ) {
 
-    public static ExpenseCreateResponse from(ExpenseEntity expense) {
+    public static ExpenseCreateResponse from(ExpenseEntity expense,Long totalAmount) {
         return new ExpenseCreateResponse(
                 expense.getExpenseId(),
                 expense.getPet().getPetId(),
@@ -41,7 +41,7 @@ public record ExpenseCreateResponse(
                 expense.getExpenseDate().toLocalDate(),
                 expense.getPaymentType(),
                 expense.getPaymentType().getLabel(),
-                expense.getTotalAmount()
+                totalAmount
         );
     }
 }
