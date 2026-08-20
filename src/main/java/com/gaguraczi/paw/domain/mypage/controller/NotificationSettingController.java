@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -57,7 +58,7 @@ public class NotificationSettingController {
             )
     })
     @PatchMapping
-    public ApiResponse<NotificationSettingRes> update(@RequestBody NotificationSettingUpdateReq req) {
+    public ApiResponse<NotificationSettingRes> update(@Valid @RequestBody NotificationSettingUpdateReq req) {
         return ApiResponse.onSuccess(MypageSuccessCode.NOTIFICATION_SETTING_UPDATE_200, notificationSettingService.update(req));
     }
 }

@@ -154,6 +154,9 @@ public class User extends BaseEntity {
         this.intro = null;
         this.profileS3Key = null;
         this.profileUrl = null;
+        this.userPoint = null;
+        this.region = null;
+        this.locationAddress = null;
         this.email = "withdrawn-" + this.uid + "@paw.local";
         this.pushToken = null;
     }

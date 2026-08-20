@@ -70,7 +70,7 @@ public class PetService {
                     .ifPresent(next -> next.setMain(true));
         }
         if (profileS3Key != null) {
-            s3Utils.deleteQuietly(profileS3Key);
+            s3Utils.scheduleDeleteAfterCommit(profileS3Key);
         }
     }
 

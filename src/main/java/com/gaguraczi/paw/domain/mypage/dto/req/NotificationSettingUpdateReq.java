@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalTime;
 
 @Schema(description = "알림 설정 수정 요청 (보낸 필드만 반영, 개별/일괄 수정 겸용)")
+@DndWindowPair
 public record NotificationSettingUpdateReq(
         @Schema(description = "할 일 알림", example = "true")
         Boolean todoAlarm,

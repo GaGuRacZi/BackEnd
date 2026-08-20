@@ -5,9 +5,6 @@ import com.gaguraczi.paw.domain.mypage.exception.code.MypageSuccessCode;
 import com.gaguraczi.paw.domain.mypage.service.WithdrawalService;
 import com.gaguraczi.paw.global.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,26 +31,8 @@ public class WithdrawalController {
 
     @Operation(
             summary = "회원 탈퇴",
-            description = "Access Token(JWT) 필수. Soft delete로 처리되며 개인식별정보는 익명화됩니다. 이미 생성된 커뮤니티 글/댓글은 보존됩니다."
+            description = "Access Token(JWT) 필수. Soft delete로 처리되며 개인식별정보는 익명화됩니다. 이미 생성된 커뮤니티 글/댓글은 보존됩니다. 이미 탈퇴한 계정은 인증 오류로 거부됩니다."
     )
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "200",
-                    description = "탈퇴 성공",
-                    content = @Content(mediaType = "application/json")
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "400",
-                    description = "이미 탈퇴한 계정",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "MYPAGE_400_2",
-                                    value = "{\"isSuccess\":false,\"code\":\"MYPAGE_400_2\",\"message\":\"이미 탈퇴한 계정입니다.\",\"result\":null}"
-                            )
-                    )
-            )
-    })
     @DeleteMapping
     public ApiResponse<Void> withdraw() {
         withdrawalService.withdraw();

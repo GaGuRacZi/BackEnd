@@ -556,6 +556,9 @@ public class AuthService {
     }
 
     private LoginRes issueTokens(User user, String provider) {
+        if (user == null || user.isDeleted()) {
+            throw AuthException.of(AuthErrorCode.LOCAL_LOGIN_401_2);
+        }
         String uid = user.getUid().toString();
         String accessToken = jwtTokenProvider.createAccessToken(uid, user.getRole().name());
         String refreshToken = jwtTokenProvider.createRefreshToken(uid, provider);
