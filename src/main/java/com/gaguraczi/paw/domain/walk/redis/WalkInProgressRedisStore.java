@@ -89,6 +89,10 @@ public class WalkInProgressRedisStore {
         return redisUtil.compareAndSet(key(petId), expectedProcessingJson, originalJson, TTL_SECONDS);
     }
 
+    public void delete(Long petId) {
+        redisUtil.deleteData(key(petId));
+    }
+
     private String key(Long petId) {
         return KEY_PREFIX + petId;
     }

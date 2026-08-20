@@ -24,6 +24,9 @@ public enum MypageSuccessCode implements BaseSuccessCode {
     INQUIRY_CREATE_200(HttpStatus.OK, "MYPAGE_INQUIRY_CREATE_200", "문의가 등록되었습니다."),
     INQUIRY_LIST_200(HttpStatus.OK, "MYPAGE_INQUIRY_LIST_200", "문의 내역 조회에 성공했습니다."),
     INQUIRY_DETAIL_200(HttpStatus.OK, "MYPAGE_INQUIRY_DETAIL_200", "문의 상세 조회에 성공했습니다."),
+    ADMIN_INQUIRY_LIST_200(HttpStatus.OK, "ADMIN_INQUIRY_LIST_200", "문의 목록 조회에 성공했습니다."),
+    ADMIN_INQUIRY_DETAIL_200(HttpStatus.OK, "ADMIN_INQUIRY_DETAIL_200", "문의 상세 조회에 성공했습니다."),
+    ADMIN_INQUIRY_ANSWER_200(HttpStatus.OK, "ADMIN_INQUIRY_ANSWER_200", "문의 답변이 등록되었습니다."),
     WITHDRAWAL_PREVIEW_200(HttpStatus.OK, "MYPAGE_WITHDRAWAL_PREVIEW_200", "탈퇴 전 확인 정보 조회에 성공했습니다."),
     WITHDRAWAL_200(HttpStatus.OK, "MYPAGE_WITHDRAWAL_200", "회원 탈퇴가 완료되었습니다.");
 

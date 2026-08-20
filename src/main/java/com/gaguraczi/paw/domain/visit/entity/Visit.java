@@ -28,6 +28,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -109,6 +110,11 @@ public class Visit extends BaseEntity {
     @Column(name = "ai_summary_generated_at")
     private LocalDateTime aiSummaryGeneratedAt;
 
+    @Builder.Default
+    @ColumnDefault("false")
+    @Column(name = "ai_summary_coin_charged", nullable = false)
+    private boolean aiSummaryCoinCharged = false;
+
     @Column(name = "fail_reason", columnDefinition = "TEXT")
     private String failReason;
 
@@ -163,7 +169,12 @@ public class Visit extends BaseEntity {
     }
 
     public void markAiSummaryGenerating() {
+        markAiSummaryGenerating(false);
+    }
+
+    public void markAiSummaryGenerating(boolean coinCharged) {
         this.aiSummaryStatus = AiSummaryStatus.GENERATING;
+        this.aiSummaryCoinCharged = coinCharged;
     }
 
     public void completeAiSummary(String markdown) {
@@ -176,6 +187,7 @@ public class Visit extends BaseEntity {
         this.aiSummaryStatus = AiSummaryStatus.NONE;
         this.aiSummaryMd = null;
         this.aiSummaryGeneratedAt = null;
+        this.aiSummaryCoinCharged = false;
     }
 
     public boolean isAiSummaryDone() {

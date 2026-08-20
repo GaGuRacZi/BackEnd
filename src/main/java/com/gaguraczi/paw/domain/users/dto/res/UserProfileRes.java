@@ -21,10 +21,12 @@ public class UserProfileRes {
     private final String regionCode;
     private final String regionName;
     private final boolean isNew;
-    @Schema(description = "남은 코인. 신규 회원 기본 10. AI 상세 요약 1회에 1개 차감.", example = "9")
+    @Schema(description = "남은 코인. 신규 회원 기본 3. AI 상세 요약 1회에 1개 차감. unlimitedCoin이면 차감하지 않습니다.", example = "2")
     private final int coin;
     @Schema(description = "사용한 코인 누적. 요약 실패 시 환불되면 줄어듭니다.", example = "1")
     private final int usedCoin;
+    @Schema(description = "어른 젤리(ULTIMATE) 요금제면 true. true이면 AI 요약 코인을 차감하지 않습니다.", example = "false")
+    private final boolean unlimitedCoin;
 
     public static UserProfileRes from(User user) {
         return UserProfileRes.builder()
@@ -39,6 +41,7 @@ public class UserProfileRes {
                 .isNew(user.isNew())
                 .coin(user.coinBalance())
                 .usedCoin(user.usedCoinBalance())
+                .unlimitedCoin(user.hasUnlimitedCoins())
                 .build();
     }
 }

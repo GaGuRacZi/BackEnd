@@ -71,9 +71,9 @@ public class User extends BaseEntity {
     private String pushToken;
 
     @Builder.Default
-    @ColumnDefault("10")
+    @ColumnDefault("3")
     @Column(name = "coin", nullable = false)
-    private Integer coin = 10;
+    private Integer coin = SubscribeType.BASIC_INCLUDED_COINS;
 
     @Builder.Default
     @ColumnDefault("0")
@@ -187,5 +187,24 @@ public class User extends BaseEntity {
         }
         this.coin = coinBalance() + amount;
         this.usedCoin = Math.max(0, usedCoinBalance() - amount);
+    }
+
+    public void grantCoin(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("amount must be positive");
+        }
+        this.coin = coinBalance() + amount;
+    }
+
+    public void updateSubscribe(SubscribeType subscribe) {
+        this.subscribe = subscribe == null ? SubscribeType.BASIC : subscribe;
+    }
+
+    public SubscribeType currentPlan() {
+        return subscribe == null ? SubscribeType.BASIC : subscribe;
+    }
+
+    public boolean hasUnlimitedCoins() {
+        return currentPlan().unlimitedCoins();
     }
 }
