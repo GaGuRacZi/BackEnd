@@ -19,9 +19,9 @@ public record NoticeListItemRes(
 ) {
     private static final int NEW_BADGE_DAYS = 7;
 
-    public static NoticeListItemRes from(Notice notice) {
+    public static NoticeListItemRes from(Notice notice, LocalDate today) {
         boolean isNew = notice.getCreatedAt() != null
-                && notice.getCreatedAt().toLocalDate().isAfter(LocalDate.now().minusDays(NEW_BADGE_DAYS));
+                && notice.getCreatedAt().toLocalDate().isAfter(today.minusDays(NEW_BADGE_DAYS));
         return new NoticeListItemRes(notice.getNoticeId(), notice.getTitle(), isNew, notice.getCreatedAt());
     }
 }

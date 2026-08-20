@@ -12,6 +12,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import java.util.TimeZone;
+
 @SpringBootApplication
 @EnableScheduling
 @EnableConfigurationProperties({
@@ -31,6 +33,7 @@ public class PawApplication {
 	 * @param args command-line arguments passed to the application
 	 */
 	public static void main(String[] args) {
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
 		SpringApplication.run(PawApplication.class, args);
 	}
 

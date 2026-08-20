@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -36,6 +37,7 @@ public class ExpenseService {
     private final ExpenseRepository expenseRepository;
     private final PetRepository petRepository;
     private final SecurityUtils securityUtils;
+    private final Clock clock;
 
 
     @Transactional
@@ -142,7 +144,7 @@ public class ExpenseService {
 
     private YearMonth resolveYearMonth(Integer year, Integer month) {
         if (year == null && month == null) {
-            return YearMonth.now();
+            return YearMonth.now(clock);
         }
         if (year == null || month == null || month < 1 || month > 12) {
             throw GeneralException.of(ExpenseErrorCode.EXPENSE_INVALID_PERIOD);
@@ -160,7 +162,7 @@ public class ExpenseService {
     }
 
     private void validateNotFuture(LocalDateTime expenseDate) {
-        if (expenseDate != null && expenseDate.toLocalDate().isAfter(LocalDate.now())) {
+        if (expenseDate != null && expenseDate.toLocalDate().isAfter(LocalDate.now(clock))) {
             throw GeneralException.of(ExpenseErrorCode.EXPENSE_FUTURE_NOT_ALLOWED);
         }
     }

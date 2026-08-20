@@ -41,6 +41,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,6 +64,7 @@ public class VisitService {
     private final VisitAiSummaryTxService visitAiSummaryTxService;
     private final VisitAiSummaryClient visitAiSummaryClient;
     private final VisitProperties visitProperties;
+    private final Clock clock;
 
     @Transactional
     public VisitCreateRes create(VisitCreateReq req, MultipartFile audio) {
@@ -104,7 +107,7 @@ public class VisitService {
 
     @Transactional(readOnly = true)
     public VisitDetailRes get(Long visitId) {
-        return VisitDetailRes.from(ownedVisit(visitId));
+        return VisitDetailRes.from(ownedVisit(visitId), LocalDate.now(clock));
     }
 
     @Transactional(readOnly = true)
@@ -295,7 +298,7 @@ public class VisitService {
         if (breed != null) {
             sb.append(", ").append(breed);
         }
-        String age = VisitPetDisplay.ageLabel(pet.getBirth());
+        String age = VisitPetDisplay.ageLabel(pet.getBirth(), LocalDate.now(clock));
         if (age != null) {
             sb.append(", ").append(age);
         }

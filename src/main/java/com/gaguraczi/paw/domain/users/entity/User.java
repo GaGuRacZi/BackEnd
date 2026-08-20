@@ -146,9 +146,9 @@ public class User extends BaseEntity {
     }
 
     /** Soft delete: 개인식별정보는 익명화하고 이미 생성된 콘텐츠(커뮤니티 글/댓글 등)는 보존한다. */
-    public void withdraw() {
+    public void withdraw(LocalDateTime now) {
         this.isDeleted = true;
-        this.deletedAt = LocalDateTime.now();
+        this.deletedAt = now;
         this.name = null;
         this.nickname = "탈퇴한 사용자";
         this.intro = null;
