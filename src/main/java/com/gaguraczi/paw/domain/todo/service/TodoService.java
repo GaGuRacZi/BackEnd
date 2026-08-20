@@ -9,6 +9,7 @@ import com.gaguraczi.paw.domain.todo.entity.TodoDateEntity;
 import com.gaguraczi.paw.domain.todo.entity.TodoEntity;
 import com.gaguraczi.paw.domain.todo.enums.WeekEnum;
 import com.gaguraczi.paw.domain.todo.exception.code.TodoErrorCode;
+import com.gaguraczi.paw.domain.todo.generator.RoutineTodoDateGenerator;
 import com.gaguraczi.paw.domain.todo.repository.TagRepository;
 import com.gaguraczi.paw.domain.todo.repository.TodoDateRepository;
 import com.gaguraczi.paw.domain.todo.repository.TodoRepository;
@@ -39,6 +40,7 @@ public class TodoService {
     private final TodoDateRepository todoDateRepository;
     private final TagRepository tagRepository;
     private final UserRepository userRepository;
+    private final RoutineTodoDateGenerator routineTodoDateGenerator;
     private final Clock clock;
 
     private static final Comparator<TodoDateEntity> LIST_ORDER =
@@ -100,8 +102,8 @@ public class TodoService {
         LocalDate today = LocalDate.now(clock);
         if (!routineEnabled) {
             saveSingleDate(todo, request.date());
-        } else if (matchesToday(todo, today)) {
-            upsertDate(todo, today);
+        } else {
+            routineTodoDateGenerator.generate(todo, today);
         }
 
         return TodoDetailResponse.from(todo);
@@ -154,9 +156,7 @@ public class TodoService {
                 todoDateRepository.flush();
 
                 deleteStaleDates(todoId, startDate, endDate, week);
-                if (matchesToday(todo, today)) {
-                    upsertDate(todo, today);
-                }
+                routineTodoDateGenerator.generate(todo, today);
             }
         } else {
             TodoDateEntity todoDate = todoDateRepository.findAllByTodo_TodoIdOrderByDateAsc(todoId).stream()
@@ -235,16 +235,6 @@ public class TodoService {
         }
     }
 
-    static boolean matchesToday(TodoEntity todo, LocalDate today) {
-        if (!todo.isRoutineEnabled() || todo.getWeek() == null || todo.getStartDate() == null || todo.getEndDate() == null) {
-            return false;
-        }
-        if (today.isBefore(todo.getStartDate()) || today.isAfter(todo.getEndDate())) {
-            return false;
-        }
-        return today.getDayOfWeek() == todo.getWeek().toDayOfWeek();
-    }
-
     private void deleteStaleDates(Long todoId, LocalDate startDate, LocalDate endDate, WeekEnum week) {
         DayOfWeek dayOfWeek = week.toDayOfWeek();
 
@@ -267,17 +257,5 @@ public class TodoService {
         } catch (DataIntegrityViolationException e) {
             throw new GeneralException(TodoErrorCode.TODO_CREATE_400_1);
         }
-    }
-
-    private void upsertDate(TodoEntity todo, LocalDate date) {
-        todoDateRepository.findByTodo_TodoIdAndDate(todo.getTodoId(), date)
-                .ifPresentOrElse(TodoDateEntity::refreshSchedule, () -> {
-                    try {
-                        todoDateRepository.saveAndFlush(TodoDateEntity.create(todo, date));
-                    } catch (DataIntegrityViolationException ignored) {
-                        todoDateRepository.findByTodo_TodoIdAndDate(todo.getTodoId(), date)
-                                .ifPresent(TodoDateEntity::refreshSchedule);
-                    }
-                });
     }
 }
