@@ -14,9 +14,9 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
 
     @Query("""
             SELECT n FROM Notice n
-            WHERE (:keyword IS NULL OR n.title LIKE CONCAT('%', :keyword, '%'))
+            WHERE (:#{#keyword == null} = true OR n.title LIKE CONCAT('%', CAST(:keyword AS string), '%'))
               AND (
-                    :cursorCreatedAt IS NULL
+                    :#{#cursorCreatedAt == null} = true
                     OR n.createdAt < :cursorCreatedAt
                     OR (n.createdAt = :cursorCreatedAt AND n.noticeId < :cursorNoticeId)
                   )
