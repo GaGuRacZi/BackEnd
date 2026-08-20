@@ -16,7 +16,7 @@ public interface InquiryRepository extends JpaRepository<Inquiry, Long> {
             SELECT i FROM Inquiry i
             WHERE i.user.uid = :uid
               AND (
-                    :cursorCreatedAt IS NULL
+                    :#{#cursorCreatedAt == null} = true
                     OR i.createdAt < :cursorCreatedAt
                     OR (i.createdAt = :cursorCreatedAt AND i.inquiryId < :cursorInquiryId)
                   )
