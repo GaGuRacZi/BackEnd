@@ -19,6 +19,7 @@ import com.gaguraczi.paw.domain.auth.exception.code.AuthSuccessCode;
 import com.gaguraczi.paw.domain.auth.repository.OAuthRepository;
 import com.gaguraczi.paw.domain.location.dto.res.LegalDistrictAddressRes;
 import com.gaguraczi.paw.domain.location.service.NaverMapService;
+import com.gaguraczi.paw.domain.mypage.service.NotificationSettingService;
 import com.gaguraczi.paw.domain.region.entity.LegalRegion;
 import com.gaguraczi.paw.domain.region.service.LegalRegionService;
 import com.gaguraczi.paw.domain.terms.enums.TermsType;
@@ -70,6 +71,7 @@ public class AuthService {
     private final LegalRegionService legalRegionService;
     private final NaverMapService naverMapService;
     private final TermsService termsService;
+    private final NotificationSettingService notificationSettingService;
     private final ObjectProvider<AuthService> self;
     private final RedisUtil redisUtil;
 
@@ -265,6 +267,7 @@ public class AuthService {
 
         current.completeOnboarding(name, nickname, intro, point, region);
         termsService.saveAgreements(current, agreements);
+        notificationSettingService.getOrCreate(current);
         return new AuthResult(null, AuthSuccessCode.ONBOARDING_200);
     }
 
@@ -553,6 +556,9 @@ public class AuthService {
     }
 
     private LoginRes issueTokens(User user, String provider) {
+        if (user == null || user.isDeleted()) {
+            throw AuthException.of(AuthErrorCode.LOCAL_LOGIN_401_2);
+        }
         String uid = user.getUid().toString();
         String accessToken = jwtTokenProvider.createAccessToken(uid, user.getRole().name());
         String refreshToken = jwtTokenProvider.createRefreshToken(uid, provider);

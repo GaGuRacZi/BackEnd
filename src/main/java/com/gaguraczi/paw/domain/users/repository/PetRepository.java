@@ -11,7 +11,11 @@ public interface PetRepository extends JpaRepository<Pet, Long> {
 
     List<Pet> findByUser(User user);
 
+    List<Pet> findByUserOrderByIsMainDescPetIdAsc(User user);
+
     boolean existsByUser(User user);
 
     Optional<Pet> findFirstByUserAndIsMainTrue(User user);
+
+    Optional<Pet> findFirstByUserAndPetIdNotOrderByCreatedAtDesc(User user, Long petId);
 }

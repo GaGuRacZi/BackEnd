@@ -55,6 +55,11 @@ public class UserService {
         return UserProfileRes.from(user);
     }
 
+    @Transactional
+    public void updatePushToken(String pushToken) {
+        securityUtils.currentUser().updatePushToken(pushToken);
+    }
+
     private void applyProfileImage(User user, MultipartFile image) {
         ProfileImageValidator.validate(image);
         String previousKey = user.getProfileS3Key();
