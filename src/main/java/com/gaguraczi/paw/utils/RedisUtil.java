@@ -163,6 +163,11 @@ public class RedisUtil {
         redisTemplate.delete(key);
     }
 
+    public boolean expire(String key, long durationSeconds) {
+        Boolean result = redisTemplate.expire(key, durationSeconds, TimeUnit.SECONDS);
+        return Boolean.TRUE.equals(result);
+    }
+
     // 현재 값이 expected와 같을 때만 newValue로 교체 (CAS SET EX) — 성공 시 true
     public boolean compareAndSet(String key, String expected, String newValue, long durationSeconds) {
         Long result = redisTemplate.execute(
