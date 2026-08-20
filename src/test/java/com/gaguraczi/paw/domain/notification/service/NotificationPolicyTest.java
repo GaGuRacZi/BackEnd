@@ -77,6 +77,24 @@ class NotificationPolicyTest {
                 .isTrue();
     }
 
+    @Test
+    void chatAlarm이_꺼져_있으면_채팅_채널을_막는다() {
+        NotificationSetting setting = on().chatAlarm(false).build();
+
+        assertThat(NotificationPolicy.isChannelEnabled(setting, NotificationCategory.CHAT)).isFalse();
+        assertThat(NotificationPolicy.allowFcm(setting, NotificationCategory.CHAT, false, LocalTime.of(12, 0)))
+                .isFalse();
+    }
+
+    @Test
+    void chatAlarm이_켜져_있으면_채팅_채널을_연다() {
+        NotificationSetting setting = on().chatAlarm(true).build();
+
+        assertThat(NotificationPolicy.isChannelEnabled(setting, NotificationCategory.CHAT)).isTrue();
+        assertThat(NotificationPolicy.allowFcm(setting, NotificationCategory.CHAT, false, LocalTime.of(12, 0)))
+                .isTrue();
+    }
+
     private NotificationSetting.NotificationSettingBuilder<?, ?> on() {
         return NotificationSetting.builder()
                 .user(user)

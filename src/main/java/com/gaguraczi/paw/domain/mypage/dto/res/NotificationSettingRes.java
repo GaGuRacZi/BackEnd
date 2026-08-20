@@ -17,7 +17,7 @@ public record NotificationSettingRes(
         Boolean aiAnalysisAlarm,
         @Schema(description = "커뮤니티 알림 (댓글·답글·거래 문의)", example = "true")
         Boolean communityAlarm,
-        @Schema(description = "채팅 알림", example = "false")
+        @Schema(description = "채팅 알림. 기본 false. true여야 상대 메시지 인박스·FCM이 나갑니다", example = "false")
         Boolean chatAlarm,
         @Schema(description = "혜택/이벤트 알림", example = "false")
         Boolean benefitAlarm,

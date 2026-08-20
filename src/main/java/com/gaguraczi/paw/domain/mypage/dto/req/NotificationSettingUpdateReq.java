@@ -25,7 +25,7 @@ public record NotificationSettingUpdateReq(
         @Schema(description = "커뮤니티 알림", example = "true")
         Boolean communityAlarm,
 
-        @Schema(description = "채팅 알림", example = "true")
+        @Schema(description = "채팅 알림. true여야 상대 메시지 인박스·FCM이 나갑니다. 기본값은 false", example = "true")
         Boolean chatAlarm,
 
         @Schema(description = "혜택/이벤트 알림", example = "false")
