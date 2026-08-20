@@ -139,6 +139,9 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
     @Query("SELECT c FROM Community c WHERE c.postId = :postId")
     Optional<Community> findDetailById(@Param("postId") Long postId);
 
+    @EntityGraph(attributePaths = {"photos"})
+    List<Community> findByPostIdIn(Collection<Long> postIds);
+
     boolean existsByUser_UidAndPostTypeAndMarketStatusIn(UUID uid, PostType postType, Collection<MarketStatus> marketStatuses);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)

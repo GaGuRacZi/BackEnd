@@ -36,6 +36,7 @@ public class NotificationPolicy {
             case TODO -> Boolean.TRUE.equals(setting.getTodoAlarm());
             case AI -> Boolean.TRUE.equals(setting.getAiAnalysisAlarm());
             case COMMUNITY -> Boolean.TRUE.equals(setting.getCommunityAlarm());
+            case CHAT -> Boolean.TRUE.equals(setting.getChatAlarm());
             case EMERGENCY -> true;
         };
     }

@@ -255,7 +255,8 @@ public class UserController {
             summary = "FCM 푸시 토큰 등록/해제",
             description = """
                     Access Token(JWT) 필수.
-                    - 로그인 직후 디바이스 FCM 토큰을 올립니다. 알림 채널 on/off는 `PATCH /mypage/notifications/settings`
+                    - 로그인 직후 디바이스 FCM 토큰을 올립니다. 채널 on/off는 `PATCH /mypage/notifications/settings`
+                    - 채팅 푸시도 이 토큰으로 갑니다. `chatAlarm`이 꺼져 있으면 토큰이 있어도 채팅 FCM은 나가지 않습니다.
                     - `pushToken`이 null이거나 공백이면 서버에서 토큰을 지웁니다 (로그아웃 시 호출 권장)
                     - 회원 탈퇴 시에도 토큰은 서버에서 비워집니다
                     """,

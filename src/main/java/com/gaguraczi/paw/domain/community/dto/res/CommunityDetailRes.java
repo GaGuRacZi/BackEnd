@@ -27,6 +27,7 @@ public record CommunityDetailRes(
         @Schema(example = "3") Long likeCount,
         @Schema(example = "2") Long commentCount,
         @Schema(description = "현재 로그인 유저 좋아요 여부", example = "false") Boolean likedByMe,
+        @Schema(description = "현재 로그인 유저가 작성한 글인지 여부", example = "false") Boolean isMine,
         @Schema(example = "길동이") String authorNickname,
         MarketTradeType tradeType,
         MarketStatus marketStatus,
@@ -37,7 +38,7 @@ public record CommunityDetailRes(
         String regionName,
         @Schema(example = "2026-08-08T10:00:00") LocalDateTime createdAt
 ) {
-    public static CommunityDetailRes from(Community community, long viewCount, long likeCount, Boolean likedByMe) {
+    public static CommunityDetailRes from(Community community, long viewCount, long likeCount, Boolean likedByMe, Boolean isMine) {
         List<CommunityPhotoRes> photos = community.getPhotos().stream()
                 .sorted(Comparator.comparing(p -> p.getSortOrder() == null ? 0 : p.getSortOrder()))
                 .map(CommunityPhotoRes::from)
@@ -55,6 +56,7 @@ public record CommunityDetailRes(
                 likeCount,
                 community.getCommentCount(),
                 likedByMe,
+                isMine,
                 community.getUser().getNickname(),
                 community.getTradeType(),
                 community.getMarketStatus(),

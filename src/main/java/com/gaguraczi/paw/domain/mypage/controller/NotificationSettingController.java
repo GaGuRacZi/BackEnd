@@ -35,9 +35,10 @@ public class NotificationSettingController {
             description = """
                     Access Token(JWT) 필수.
                     - 설정이 없으면 기본값으로 생성 후 반환합니다.
-                    - 기본값: 할 일/건강 이상/AI/커뮤니티 ON, 채팅/혜택 OFF, 방해 금지 22:00~07:00 ON
+                    - 기본값: 할 일/건강 이상/AI/커뮤니티 ON, **채팅/혜택 OFF**, 방해 금지 22:00~07:00 ON
                     - `items`는 Figma 카피·순서입니다. PATCH에는 boolean 필드명(`todoAlarm` 등)을 쓰세요.
-                    - 건강 이상 알림은 방해 금지 시간에도 FCM이 나갈 수 있습니다.
+                    - 건강 이상 알림은 방해 금지 시간에도 FCM이 나갈 수 있습니다. 채팅은 DND 예외가 아닙니다.
+                    - 채팅 푸시/인박스는 `chatAlarm=true` 이고 상대가 메시지를 보낸 뒤에만 쌓입니다. 토큰은 `PUT /users/me/push-token`.
                     """
     )
     @ApiResponses({
@@ -137,9 +138,10 @@ public class NotificationSettingController {
             summary = "알림 설정 수정 (개별/일괄)",
             description = """
                     Access Token(JWT) 필수. 보낸 필드만 부분 반영됩니다.
-                    - 개별 토글: `{ "todoAlarm": false }`
+                    - 개별 토글: `{ "chatAlarm": true }` 처럼 보낸 필드만 반영합니다.
+                    - 채팅 알림을 켜야 `POST /chat/rooms/{roomId}/messages` 상대에게 인박스·FCM이 갑니다.
                     - 방해 금지: `dndStart`와 `dndEnd`는 함께 보내야 합니다. 한쪽만 보내면 MYPAGE_400_1
-                    - 자정 넘김(22:00~07:00)을 허용합니다.
+                    - 자정 넘김(22:00~07:00)을 허용합니다. 채팅 FCM은 DND 구간에 나가지 않습니다.
                     """,
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     required = true,
@@ -147,7 +149,13 @@ public class NotificationSettingController {
                             mediaType = "application/json",
                             examples = {
                                     @ExampleObject(
-                                            name = "개별 토글",
+                                            name = "채팅 알림 켜기",
+                                            value = """
+                                                    { "chatAlarm": true }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "혜택 알림 켜기",
                                             value = """
                                                     { "benefitAlarm": true }
                                                     """

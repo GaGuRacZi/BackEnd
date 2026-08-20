@@ -10,6 +10,8 @@ public enum NotificationTargetType {
     VISIT,
     @Schema(description = "커뮤니티 게시글. targetId=postId")
     POST,
+    @Schema(description = "채팅방. targetId=roomId. GET /chat/rooms/{roomId}")
+    CHAT_ROOM,
     @Schema(description = "지도/위치")
     MAP
 }
