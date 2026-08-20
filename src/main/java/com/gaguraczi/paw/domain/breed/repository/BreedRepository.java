@@ -20,7 +20,7 @@ public interface BreedRepository extends JpaRepository<Breed, Long> {
     @Query("""
             SELECT b FROM Breed b
             WHERE b.petType = :petType
-              AND (:q IS NULL OR :q = '' OR LOWER(b.name) LIKE LOWER(CONCAT('%', :q, '%')))
+              AND (:#{#q == null || #q.isEmpty()} = true OR LOWER(b.name) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')))
             ORDER BY b.name ASC
             """)
     List<Breed> search(@Param("petType") PetType petType, @Param("q") String q);
@@ -29,7 +29,7 @@ public interface BreedRepository extends JpaRepository<Breed, Long> {
             SELECT b FROM Breed b
             WHERE b.petType = :petType
               AND b.isPopular = true
-              AND (:q IS NULL OR :q = '' OR LOWER(b.name) LIKE LOWER(CONCAT('%', :q, '%')))
+              AND (:#{#q == null || #q.isEmpty()} = true OR LOWER(b.name) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')))
             ORDER BY b.name ASC
             """)
     List<Breed> searchPopular(@Param("petType") PetType petType, @Param("q") String q);
