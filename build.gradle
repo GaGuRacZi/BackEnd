@@ -114,3 +114,7 @@ tasks.named('bootRun') {
 	sourceResources sourceSets.main
 	jvmArgs '-Djava.net.preferIPv4Stack=true'
 }
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

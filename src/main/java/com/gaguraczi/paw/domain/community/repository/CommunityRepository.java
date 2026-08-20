@@ -142,6 +142,8 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
     @EntityGraph(attributePaths = {"photos"})
     List<Community> findByPostIdIn(Collection<Long> postIds);
 
+    boolean existsByUser_UidAndPostTypeAndMarketStatusIn(UUID uid, PostType postType, Collection<MarketStatus> marketStatuses);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Community c SET c.commentCount = c.commentCount + 1 WHERE c.postId = :postId")
     int increaseCommentCount(@Param("postId") Long postId);

@@ -301,6 +301,7 @@ public class AuthController {
                     이메일/비밀번호로 로그인합니다. JWT 불필요(permitAll).
                     - 신규 시 LoginRes / 카카오만 있는 이메일이면 LOGIN_LINK_201
                     - 실패: LOCAL_LOGIN_401_2
+                    - 탈퇴 계정도 LOCAL_LOGIN_401_2 (비밀번호 오류와 동일 코드, 재가입 안 됨)
                     """,
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     required = true,
@@ -390,7 +391,7 @@ public class AuthController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
-                    description = "아이디/비밀번호 불일치",
+                    description = "아이디/비밀번호 불일치 또는 탈퇴 계정 (LOCAL_LOGIN_401_2)",
                     content = @Content(
                             mediaType = "application/json",
                             examples = @ExampleObject(
@@ -414,6 +415,7 @@ public class AuthController {
                     카카오 accessToken으로 로그인/가입합니다. JWT 불필요(permitAll).
                     - 성공: KAKAO_LOGIN_200_1(신규) / KAKAO_LOGIN_200_2(기존)
                     - 동일 이메일의 로컬 계정이 있으면 LOGIN_LINK_201(existingProvider=LOCAL)
+                    - 탈퇴 계정은 LOCAL_LOGIN_401_2 (재가입 안 됨)
                     """,
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     required = true,
@@ -492,15 +494,24 @@ public class AuthController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
-                    description = "카카오 토큰 무효",
+                    description = "카카오 토큰 무효 또는 탈퇴 계정",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "KAKAO_LOGIN_401",
-                                    value = """
-                                            {"isSuccess":false,"code":"KAKAO_LOGIN_401","message":"유효하지 않은 카카오 토큰입니다.","result":null}
-                                            """
-                            )
+                            examples = {
+                                    @ExampleObject(
+                                            name = "KAKAO_LOGIN_401",
+                                            value = """
+                                                    {"isSuccess":false,"code":"KAKAO_LOGIN_401","message":"유효하지 않은 카카오 토큰입니다.","result":null}
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "LOCAL_LOGIN_401_2",
+                                            summary = "탈퇴 계정",
+                                            value = """
+                                                    {"isSuccess":false,"code":"LOCAL_LOGIN_401_2","message":"아이디 또는 비밀번호가 올바르지 않습니다.","result":null}
+                                                    """
+                                    )
+                            }
                     )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(

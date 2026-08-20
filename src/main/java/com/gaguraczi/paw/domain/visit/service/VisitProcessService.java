@@ -6,9 +6,9 @@ import com.gaguraczi.paw.domain.visit.client.OpenAiSttClient;
 import com.gaguraczi.paw.domain.visit.config.VisitProperties;
 import com.gaguraczi.paw.domain.visit.entity.Visit;
 import com.gaguraczi.paw.domain.visit.exception.code.VisitErrorCode;
+import com.gaguraczi.paw.domain.visit.fcm.VisitFcmService;
 import com.gaguraczi.paw.global.config.AsyncConfig;
 import com.gaguraczi.paw.global.exception.GeneralException;
-import com.gaguraczi.paw.global.fcm.FcmPushService;
 import com.gaguraczi.paw.utils.S3.S3Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +30,7 @@ public class VisitProcessService {
     private final VisitSpeakerMapper visitSpeakerMapper;
     private final VisitShortSummaryService visitShortSummaryService;
     private final VisitProperties visitProperties;
-    private final FcmPushService fcmPushService;
+    private final VisitFcmService visitFcmService;
 
     @Async(AsyncConfig.VISIT_TASK_EXECUTOR)
     public void processAsync(Long visitId) {
@@ -41,7 +41,7 @@ public class VisitProcessService {
             String message = e instanceof GeneralException ge ? ge.getMessage() : "진료 요약 생성에 실패했습니다.";
             visitProcessTxService.markFailed(visitId, message);
             try {
-                notifyStatus(visitId, "VISIT_FAILED", "진료 요약", "진료 요약 생성에 실패했어요.");
+                notifyStatus(visitId, VisitFcmService.TYPE_FAILED);
             } catch (Exception notifyEx) {
                 log.warn("Visit failed push failed visitId={}: {}", visitId, notifyEx.getMessage());
             }
@@ -52,7 +52,7 @@ public class VisitProcessService {
         log.error("Visit processing rejected visitId={}", visitId);
         visitProcessTxService.markFailed(visitId, "진료 요약 생성에 실패했습니다.");
         try {
-            notifyStatus(visitId, "VISIT_FAILED", "진료 요약", "진료 요약 생성에 실패했어요.");
+            notifyStatus(visitId, VisitFcmService.TYPE_FAILED);
         } catch (Exception e) {
             log.warn("Visit failed push failed visitId={}: {}", visitId, e.getMessage());
         }
@@ -76,7 +76,7 @@ public class VisitProcessService {
             VisitShortSummary summary = visitShortSummaryService.summarize(turns, pet);
             visitProcessTxService.saveReady(visitId, turns, summary, transcript.durationSec());
             try {
-                notifyStatus(visitId, "VISIT_READY", "진료 요약", "AI 진료 요약이 완료되었어요.");
+                notifyStatus(visitId, VisitFcmService.TYPE_READY);
             } catch (Exception e) {
                 log.warn("Visit ready push failed visitId={}: {}", visitId, e.getMessage());
             }
@@ -91,16 +91,9 @@ public class VisitProcessService {
         }
     }
 
-    private void notifyStatus(Long visitId, String type, String title, String body) {
+    private void notifyStatus(Long visitId, String type) {
         visitProcessTxService.loadNotifyTarget(visitId).ifPresent(target ->
-                fcmPushService.sendVisitStatus(
-                        target.pushToken(),
-                        type,
-                        target.visitId(),
-                        target.petId(),
-                        title,
-                        body
-                )
+                visitFcmService.notifyStatus(target.user(), type, target.visitId(), target.petId())
         );
     }
 

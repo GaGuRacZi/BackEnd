@@ -74,15 +74,16 @@ public class VisitProcessTxService {
     @Transactional(readOnly = true)
     public Optional<NotifyTarget> loadNotifyTarget(Long visitId) {
         return visitRepository.findById(visitId).map(visit -> {
-            User user = visit.getUser();
+            Hibernate.initialize(visit.getUser());
+            Hibernate.initialize(visit.getPet());
             return new NotifyTarget(
-                    user.getPushToken(),
+                    visit.getUser(),
                     visit.getVisitId(),
                     visit.getPet().getPetId()
             );
         });
     }
 
-    public record NotifyTarget(String pushToken, Long visitId, Long petId) {
+    public record NotifyTarget(User user, Long visitId, Long petId) {
     }
 }

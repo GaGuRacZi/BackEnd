@@ -15,6 +15,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -88,6 +89,14 @@ public class User extends BaseEntity {
     @Column(name = "is_new")
     private boolean isNew = true;
 
+    @Builder.Default
+    @ColumnDefault("false")
+    @Column(name = "is_deleted", nullable = false)
+    private boolean isDeleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     public void completeOnboarding(
             String name,
             String nickname,
@@ -130,6 +139,26 @@ public class User extends BaseEntity {
         if (locationAddress != null && !locationAddress.isBlank()) {
             this.locationAddress = locationAddress;
         }
+    }
+
+    public void updatePushToken(String pushToken) {
+        this.pushToken = (pushToken == null || pushToken.isBlank()) ? null : pushToken.trim();
+    }
+
+    /** Soft delete: 개인식별정보는 익명화하고 이미 생성된 콘텐츠(커뮤니티 글/댓글 등)는 보존한다. */
+    public void withdraw() {
+        this.isDeleted = true;
+        this.deletedAt = LocalDateTime.now();
+        this.name = null;
+        this.nickname = "탈퇴한 사용자";
+        this.intro = null;
+        this.profileS3Key = null;
+        this.profileUrl = null;
+        this.userPoint = null;
+        this.region = null;
+        this.locationAddress = null;
+        this.email = "withdrawn-" + this.uid + "@paw.local";
+        this.pushToken = null;
     }
 
     public int coinBalance() {

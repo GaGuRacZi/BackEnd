@@ -70,6 +70,7 @@ public class SecurityConfig {
                         .requestMatchers("/terms", "/terms/**").permitAll()
                         .requestMatchers("/location/address", "/location/resolve").authenticated()
                         .requestMatchers("/regions/search").permitAll()
+                        .requestMatchers("/mypage/notices", "/mypage/notices/**").permitAll()
                         .requestMatchers(
                                 "/auth/onboarding",
                                 "/auth/onboarding/**",
