@@ -4,6 +4,7 @@ import com.gaguraczi.paw.domain.community.event.CommentCreatedEvent;
 import com.gaguraczi.paw.domain.community.repository.CommentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -16,7 +17,7 @@ public class CommentCreatedListener {
     private final CommunityFcmService communityFcmService;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onCommentCreated(CommentCreatedEvent event) {
         if (event == null || event.commentId() == null) {
             return;
