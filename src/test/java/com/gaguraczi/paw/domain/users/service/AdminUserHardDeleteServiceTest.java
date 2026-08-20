@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
@@ -167,6 +168,12 @@ class AdminUserHardDeleteServiceTest {
             verify(hardDeleteJdbcRepository).deleteAllByUid(targetUid);
             verify(walkInProgressRedisStore, never()).delete(any());
             verify(refreshTokenRedisStore, never()).deleteAll(any());
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+
+            verify(walkInProgressRedisStore).delete(11L);
+            verify(refreshTokenRedisStore).deleteAll(targetUid.toString());
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
