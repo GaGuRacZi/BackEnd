@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -44,6 +45,7 @@ public class SubscriptionService {
     private final SubscriptionRepository subscriptionRepository;
     private final PaymentHistoryRepository paymentHistoryRepository;
     private final Clock clock;
+    private final SubscriptionRenewalTxService subscriptionRenewalTxService;
 
     @Transactional
     public SubscriptionRes getCurrent() {
@@ -98,13 +100,18 @@ public class SubscriptionService {
         return SubscriptionRes.of(user, subscription);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public int processDue() {
         List<Subscription> due = subscriptionRepository.findDue(now());
         int processed = 0;
         for (Subscription row : due) {
-            processDueOne(row.getUser().getUid());
-            processed++;
+            UUID uid = row.getUser().getUid();
+            try {
+                subscriptionRenewalTxService.processDueOne(uid);
+                processed++;
+            } catch (RuntimeException e) {
+                log.error("Billing renewal failed uid={}", uid, e);
+            }
         }
         return processed;
     }
@@ -130,7 +137,7 @@ public class SubscriptionService {
             SubscribeType pending = subscription.getPendingPlan();
             applyPlanNow(user, subscription, pending, true);
             if (pending.isPaid()) {
-                mockPay(user, pending, PaymentType.PURCHASE);
+                mockPay(user, pending, PaymentType.RENEWAL);
             }
             return;
         }

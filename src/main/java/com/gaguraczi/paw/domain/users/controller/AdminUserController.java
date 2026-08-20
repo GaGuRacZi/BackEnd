@@ -1,6 +1,5 @@
 package com.gaguraczi.paw.domain.users.controller;
 
-import com.gaguraczi.paw.domain.billing.controller.BillingApiDocs;
 import com.gaguraczi.paw.domain.users.exception.code.UserSuccessCode;
 import com.gaguraczi.paw.domain.users.service.AdminUserHardDeleteService;
 import com.gaguraczi.paw.global.api.ApiResponse;
@@ -62,10 +61,10 @@ public class AdminUserController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
-                    description = BillingApiDocs.JWT_401_1_DESCRIPTION,
+                    description = AdminUserApiDocs.JWT_401_1_DESCRIPTION,
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            examples = @ExampleObject(name = "JWT_401_1", value = BillingApiDocs.JWT_401_1_EXAMPLE)
+                            examples = @ExampleObject(name = "JWT_401_1", value = AdminUserApiDocs.JWT_401_1_EXAMPLE)
                     )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -77,12 +76,12 @@ public class AdminUserController {
                                     @ExampleObject(
                                             name = "JWT_403_2",
                                             summary = "유효하지 않은 token",
-                                            value = BillingApiDocs.JWT_403_2_EXAMPLE
+                                            value = AdminUserApiDocs.JWT_403_2_EXAMPLE
                                     ),
                                     @ExampleObject(
                                             name = "JWT_403_3",
                                             summary = "ADMIN 권한 없음",
-                                            value = BillingApiDocs.JWT_403_3_EXAMPLE
+                                            value = AdminUserApiDocs.JWT_403_3_EXAMPLE
                                     )
                             }
                     )

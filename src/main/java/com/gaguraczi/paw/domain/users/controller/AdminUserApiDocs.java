@@ -8,6 +8,36 @@ public final class AdminUserApiDocs {
     private AdminUserApiDocs() {
     }
 
+    public static final String JWT_401_1_DESCRIPTION = "JWT 만료/미인증 (JWT_401_1)";
+    public static final String JWT_401_1_EXAMPLE = """
+            {
+              "isSuccess": false,
+              "code": "JWT_401_1",
+              "message": "token 유효기간이 만료되었습니다.",
+              "result": null
+            }
+            """;
+
+    public static final String JWT_403_2_DESCRIPTION = "유효하지 않은 token (JWT_403_2)";
+    public static final String JWT_403_2_EXAMPLE = """
+            {
+              "isSuccess": false,
+              "code": "JWT_403_2",
+              "message": "유효하지 않은 token입니다.",
+              "result": null
+            }
+            """;
+
+    public static final String JWT_403_3_DESCRIPTION = "ADMIN 권한 없음 (JWT_403_3)";
+    public static final String JWT_403_3_EXAMPLE = """
+            {
+              "isSuccess": false,
+              "code": "JWT_403_3",
+              "message": "권한 정보가 없는 token입니다.",
+              "result": null
+            }
+            """;
+
     public static final String TAG_DESCRIPTION = """
             관리자 계정 API입니다. ADMIN 역할 JWT 필수.
             

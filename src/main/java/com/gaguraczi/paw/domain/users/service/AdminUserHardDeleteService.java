@@ -16,6 +16,8 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,9 +64,24 @@ public class AdminUserHardDeleteService {
         entityManager.flush();
         entityManager.clear();
 
-        petIds.forEach(walkInProgressRedisStore::delete);
         hardDeleteJdbcRepository.deleteAllByUid(uid);
-        refreshTokenRedisStore.deleteAll(uid.toString());
+        afterCommit(() -> {
+            petIds.forEach(walkInProgressRedisStore::delete);
+            refreshTokenRedisStore.deleteAll(uid.toString());
+        });
         s3Keys.forEach(s3Utils::scheduleDeleteAfterCommit);
+    }
+
+    private void afterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+            return;
+        }
+        action.run();
     }
 }

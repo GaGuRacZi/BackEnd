@@ -25,12 +25,14 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -49,6 +51,8 @@ class SubscriptionServiceTest {
     private SubscriptionRepository subscriptionRepository;
     @Mock
     private PaymentHistoryRepository paymentHistoryRepository;
+    @Mock
+    private SubscriptionRenewalTxService subscriptionRenewalTxService;
 
     private SubscriptionService subscriptionService;
 
@@ -59,7 +63,8 @@ class SubscriptionServiceTest {
                 userRepository,
                 subscriptionRepository,
                 paymentHistoryRepository,
-                CLOCK
+                CLOCK,
+                subscriptionRenewalTxService
         );
     }
 
@@ -179,6 +184,54 @@ class SubscriptionServiceTest {
         verify(paymentHistoryRepository).save(captor.capture());
         assertThat(captor.getValue().getType()).isEqualTo(PaymentType.RENEWAL);
         assertThat(captor.getValue().getAmount()).isEqualTo(4_900);
+    }
+
+    @Test
+    void 스케줄러는_예약된_유료_pending을_RENEWAL로_결제한다() {
+        UUID uid = UUID.randomUUID();
+        User user = User.builder().uid(uid).coin(8).subscribe(SubscribeType.ULTIMATE).build();
+        Subscription subscription = Subscription.builder()
+                .user(user)
+                .plan(SubscribeType.ULTIMATE)
+                .periodStart(LocalDateTime.of(2026, 7, 20, 23, 10))
+                .periodEnd(LocalDateTime.of(2026, 8, 20, 23, 10))
+                .status(SubscriptionStatus.PENDING_CHANGE)
+                .pendingPlan(SubscribeType.PRO)
+                .build();
+        when(userRepository.findByIdForUpdate(uid)).thenReturn(Optional.of(user));
+        when(subscriptionRepository.findByUserUidForUpdate(uid)).thenReturn(Optional.of(subscription));
+        when(paymentHistoryRepository.save(any(PaymentHistory.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        subscriptionService.processDueOne(uid);
+
+        assertThat(user.currentPlan()).isEqualTo(SubscribeType.PRO);
+        assertThat(user.coinBalance()).isEqualTo(18);
+        ArgumentCaptor<PaymentHistory> captor = ArgumentCaptor.forClass(PaymentHistory.class);
+        verify(paymentHistoryRepository).save(captor.capture());
+        assertThat(captor.getValue().getType()).isEqualTo(PaymentType.RENEWAL);
+        assertThat(captor.getValue().getAmount()).isEqualTo(4_900);
+    }
+
+    @Test
+    void processDue는_한_유저_실패_후에도_나머지를_처리하고_성공_건만_센다() {
+        UUID failedUid = UUID.randomUUID();
+        UUID okUid = UUID.randomUUID();
+        Subscription failed = Subscription.builder()
+                .user(User.builder().uid(failedUid).build())
+                .plan(SubscribeType.PRO)
+                .build();
+        Subscription ok = Subscription.builder()
+                .user(User.builder().uid(okUid).build())
+                .plan(SubscribeType.PRO)
+                .build();
+        when(subscriptionRepository.findDue(any())).thenReturn(List.of(failed, ok));
+        doThrow(new RuntimeException("boom")).when(subscriptionRenewalTxService).processDueOne(failedUid);
+
+        int processed = subscriptionService.processDue();
+
+        assertThat(processed).isEqualTo(1);
+        verify(subscriptionRenewalTxService).processDueOne(failedUid);
+        verify(subscriptionRenewalTxService).processDueOne(okUid);
     }
 
     @Test

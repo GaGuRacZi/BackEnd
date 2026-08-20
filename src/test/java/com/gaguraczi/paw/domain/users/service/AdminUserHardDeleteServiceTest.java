@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,6 +27,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -108,5 +111,64 @@ class AdminUserHardDeleteServiceTest {
         verify(refreshTokenRedisStore).deleteAll(targetUid.toString());
         verify(s3Utils).scheduleDeleteAfterCommit("user/a.png");
         verify(s3Utils).scheduleDeleteAfterCommit("pet/b.png");
+    }
+
+    @Test
+    void jdbc_삭제가_실패하면_Redis는_호출되지_않는다() {
+        UUID actor = UUID.randomUUID();
+        UUID targetUid = UUID.randomUUID();
+        User target = User.builder()
+                .uid(targetUid)
+                .role(RoleType.USER)
+                .build();
+        Pet pet = Pet.builder()
+                .petId(11L)
+                .user(target)
+                .petName("아리")
+                .birth(LocalDate.of(2020, 1, 1))
+                .petWeight(new BigDecimal("4.0"))
+                .build();
+        when(securityUtils.currentUid()).thenReturn(actor);
+        when(userRepository.findById(targetUid)).thenReturn(Optional.of(target));
+        when(petRepository.findByUser(target)).thenReturn(List.of(pet));
+        doThrow(new RuntimeException("jdbc fail")).when(hardDeleteJdbcRepository).deleteAllByUid(targetUid);
+
+        assertThatThrownBy(() -> adminUserHardDeleteService.hardDelete(targetUid))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("jdbc fail");
+
+        verify(walkInProgressRedisStore, never()).delete(any());
+        verify(refreshTokenRedisStore, never()).deleteAll(any());
+    }
+
+    @Test
+    void 트랜잭션이_커밋되지_않으면_Redis는_호출되지_않는다() {
+        UUID actor = UUID.randomUUID();
+        UUID targetUid = UUID.randomUUID();
+        User target = User.builder()
+                .uid(targetUid)
+                .role(RoleType.USER)
+                .build();
+        Pet pet = Pet.builder()
+                .petId(11L)
+                .user(target)
+                .petName("아리")
+                .birth(LocalDate.of(2020, 1, 1))
+                .petWeight(new BigDecimal("4.0"))
+                .build();
+        when(securityUtils.currentUid()).thenReturn(actor);
+        when(userRepository.findById(targetUid)).thenReturn(Optional.of(target));
+        when(petRepository.findByUser(target)).thenReturn(List.of(pet));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            adminUserHardDeleteService.hardDelete(targetUid);
+
+            verify(hardDeleteJdbcRepository).deleteAllByUid(targetUid);
+            verify(walkInProgressRedisStore, never()).delete(any());
+            verify(refreshTokenRedisStore, never()).deleteAll(any());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 }
