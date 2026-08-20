@@ -6,6 +6,7 @@ import com.gaguraczi.paw.domain.visit.enums.VisitStatus;
 import com.gaguraczi.paw.domain.visit.support.VisitPetDisplay;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -58,7 +59,7 @@ public record VisitDetailRes(
         @Schema(description = "FAILED일 때 실패 사유. 그 외에는 null.", example = "음성 전사에 실패했습니다.", nullable = true)
         String failReason
 ) {
-    public static VisitDetailRes from(Visit visit) {
+    public static VisitDetailRes from(Visit visit, LocalDate today) {
         boolean ready = visit.getStatus() == VisitStatus.READY;
         return new VisitDetailRes(
                 visit.getVisitId(),
@@ -68,7 +69,7 @@ public record VisitDetailRes(
                 visit.getPet().getPetId(),
                 visit.getPet().getPetName(),
                 VisitPetDisplay.breedName(visit.getPet()),
-                VisitPetDisplay.ageLabel(visit.getPet().getBirth()),
+                VisitPetDisplay.ageLabel(visit.getPet().getBirth(), today),
                 visit.getPet().getProfileUrl(),
                 ready ? List.copyOf(visit.getDiagnosisFindings()) : List.of(),
                 ready ? visit.getOneLineSummary() : null,

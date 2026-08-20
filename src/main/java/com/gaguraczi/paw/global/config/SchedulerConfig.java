@@ -4,8 +4,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import com.gaguraczi.paw.global.time.AppTime;
+
 import java.time.Clock;
-import java.time.ZoneId;
 
 @Configuration
 @EnableScheduling
@@ -13,6 +14,6 @@ public class SchedulerConfig {
 
     @Bean
     public Clock clock() {
-        return Clock.system(ZoneId.of("Asia/Seoul"));
+        return Clock.system(AppTime.KST);
     }
 }

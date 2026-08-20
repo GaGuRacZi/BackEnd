@@ -17,11 +17,7 @@ public final class VisitPetDisplay {
         return pet.getBreedName();
     }
 
-    public static String ageLabel(LocalDate birth) {
-        return ageLabel(birth, LocalDate.now());
-    }
-
-    static String ageLabel(LocalDate birth, LocalDate today) {
+    public static String ageLabel(LocalDate birth, LocalDate today) {
         if (birth == null) {
             return null;
         }

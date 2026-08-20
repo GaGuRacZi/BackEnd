@@ -29,6 +29,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -50,6 +51,7 @@ public class WalkService {
     private final PetRepository petRepository;
     private final WalkInProgressRedisStore walkInProgressRedisStore;
     private final SecurityUtils securityUtils;
+    private final Clock clock;
 
    // 산책 기록 수동 저장
     @Transactional
@@ -71,7 +73,7 @@ public class WalkService {
 
         LocalDateTime startTime = (request.getStartTime() != null)
                 ? request.getStartTime()
-                : LocalDateTime.now();
+                : LocalDateTime.now(clock);
         validateNotFuture(startTime.toLocalDate());
 
         WalkInProgressSession session = WalkConverter.toInProgressSession(
@@ -104,7 +106,7 @@ public class WalkService {
 
         LocalDateTime endTime = (request.getEndTime() != null)
                 ? request.getEndTime()
-                : LocalDateTime.now();
+                : LocalDateTime.now(clock);
 
         validateWalkTime(session.getStartTime(), endTime);
 
@@ -154,7 +156,7 @@ public class WalkService {
    //주간 요약
     public WalkWeeklySummaryResponse getWeeklySummary(Long petId, LocalDate baseDate) {
         loadOwnedPet(petId);
-        LocalDate base = (baseDate != null) ? baseDate : LocalDate.now();
+        LocalDate base = (baseDate != null) ? baseDate : LocalDate.now(clock);
 
         LocalDate thisWeekStart = base.with(DayOfWeek.MONDAY);
         LocalDate thisWeekEnd = thisWeekStart.plusDays(6);
@@ -185,7 +187,7 @@ public class WalkService {
    //일 별 통계
     public List<WalkDailyStatResponse> getDailyStats(Long petId, LocalDate startDate, LocalDate endDate) {
         loadOwnedPet(petId);
-        LocalDate end = (endDate != null) ? endDate : LocalDate.now();
+        LocalDate end = (endDate != null) ? endDate : LocalDate.now(clock);
         LocalDate start = (startDate != null) ? startDate : end.minusDays(6); // 기본 최근 7일
 
         validateDateRange(start, end);
@@ -270,7 +272,7 @@ public class WalkService {
 
 
     private void validateWalkTime(LocalDateTime startTime, LocalDateTime endTime) {
-        if (endTime != null && endTime.isAfter(LocalDateTime.now())) {
+        if (endTime != null && endTime.isAfter(LocalDateTime.now(clock))) {
             throw GeneralException.of(WalkErrorCode.WALK_TIME_INVALID);
         }
         if (startTime == null || endTime == null) {
@@ -282,7 +284,7 @@ public class WalkService {
     }
 
     private void validateNotFuture(LocalDate walkDate) {
-        if (walkDate != null && walkDate.isAfter(LocalDate.now())) {
+        if (walkDate != null && walkDate.isAfter(LocalDate.now(clock))) {
             throw GeneralException.of(WalkErrorCode.WALK_FUTURE_DATE);
         }
     }

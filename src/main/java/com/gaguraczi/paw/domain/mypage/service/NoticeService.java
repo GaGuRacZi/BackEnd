@@ -13,6 +13,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -24,6 +26,7 @@ public class NoticeService {
     private static final int MAX_SIZE = 50;
 
     private final NoticeRepository noticeRepository;
+    private final Clock clock;
 
     public CursorPageRes<NoticeListItemRes> search(String keyword, String cursor, Integer size) {
         int pageSize = normalizeSize(size);
@@ -39,7 +42,9 @@ public class NoticeService {
 
         boolean hasNext = rows.size() > pageSize;
         List<Notice> page = hasNext ? rows.subList(0, pageSize) : rows;
-        List<NoticeListItemRes> content = page.stream().map(NoticeListItemRes::from).toList();
+        List<NoticeListItemRes> content = page.stream()
+                .map(notice -> NoticeListItemRes.from(notice, LocalDate.now(clock)))
+                .toList();
         String nextCursor = hasNext && !page.isEmpty()
                 ? MypageCursorCodec.encode(page.getLast().getCreatedAt(), page.getLast().getNoticeId())
                 : null;

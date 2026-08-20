@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Slf4j
@@ -27,6 +29,7 @@ public class VisitAiSummaryTxService {
 
     private final VisitRepository visitRepository;
     private final UserRepository userRepository;
+    private final Clock clock;
 
     @Transactional
     public ReserveResult reserve(Long visitId, UUID uid, int cost) {
@@ -59,7 +62,7 @@ public class VisitAiSummaryTxService {
     public void complete(Long visitId, String markdown) {
         Visit visit = visitRepository.findByIdForUpdate(visitId)
                 .orElseThrow(() -> GeneralException.of(VisitErrorCode.VISIT_NOT_FOUND));
-        visit.completeAiSummary(markdown);
+        visit.completeAiSummary(markdown, LocalDateTime.now(clock));
     }
 
     @Transactional

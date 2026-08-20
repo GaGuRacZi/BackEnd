@@ -18,6 +18,8 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,9 +47,10 @@ public class VisitShortSummaryService {
     private final ChatModel chatModel;
     private final ObjectMapper objectMapper;
     private final VisitProperties visitProperties;
+    private final Clock clock;
 
     public VisitShortSummary summarize(List<VisitSpeakerMapper.MappedTurn> turns, Pet pet) {
-        String payload = buildPayload(turns, pet);
+        String payload = buildPayload(turns, pet, LocalDate.now(clock));
         try {
             String text = callModel(payload);
             try {
@@ -116,14 +119,14 @@ public class VisitShortSummaryService {
         }
     }
 
-    static String buildPayload(List<VisitSpeakerMapper.MappedTurn> turns, Pet pet) {
+    static String buildPayload(List<VisitSpeakerMapper.MappedTurn> turns, Pet pet, LocalDate today) {
         StringBuilder sb = new StringBuilder();
         sb.append("반려동물: ").append(pet.getPetName());
         String breed = VisitPetDisplay.breedName(pet);
         if (breed != null && !breed.isBlank()) {
             sb.append(" / 품종: ").append(breed);
         }
-        String age = VisitPetDisplay.ageLabel(pet.getBirth());
+        String age = VisitPetDisplay.ageLabel(pet.getBirth(), today);
         if (age != null) {
             sb.append(" / 나이: ").append(age);
         }

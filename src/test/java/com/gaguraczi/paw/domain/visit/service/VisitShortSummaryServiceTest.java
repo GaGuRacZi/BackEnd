@@ -36,7 +36,10 @@ class VisitShortSummaryServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new VisitShortSummaryService(chatModel, new ObjectMapper(), new VisitProperties());
+        service = new VisitShortSummaryService(
+                chatModel, new ObjectMapper(), new VisitProperties(),
+                java.time.Clock.systemUTC()
+        );
     }
 
     @Test

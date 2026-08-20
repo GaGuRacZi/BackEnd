@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -56,7 +57,7 @@ class VisitTest {
         assertThat(visit.getAiSummaryStatus()).isEqualTo(AiSummaryStatus.GENERATING);
         assertThat(visit.isAiSummaryCoinCharged()).isTrue();
 
-        visit.completeAiSummary("# 상세");
+        visit.completeAiSummary("# 상세", LocalDateTime.of(2026, 8, 21, 5, 0));
         assertThat(visit.isAiSummaryDone()).isTrue();
 
         visit.resetAiSummary();

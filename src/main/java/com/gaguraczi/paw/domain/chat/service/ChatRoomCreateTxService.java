@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -21,6 +22,7 @@ public class ChatRoomCreateTxService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomParticipantRepository chatRoomParticipantRepository;
     private final UserRepository userRepository;
+    private final Clock clock;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ChatRoom insert(Long postId, UUID sellerUid, UUID buyerUid) {
@@ -30,7 +32,7 @@ public class ChatRoomCreateTxService {
                 .postId(postId)
                 .seller(seller)
                 .buyer(buyer)
-                .lastMessageAt(LocalDateTime.now())
+                .lastMessageAt(LocalDateTime.now(clock))
                 .build());
         // 안읽음 카운트 서브쿼리가 항상 참여자 행을 찾을 수 있도록 생성 시점에 양쪽 참여자 행을 만들어 둔다.
         chatRoomParticipantRepository.save(ChatRoomParticipant.builder().room(saved).user(buyer).build());
