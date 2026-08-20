@@ -11,15 +11,22 @@ import com.gaguraczi.paw.domain.weights.dto.res.PetWeightPointRes;
 import com.gaguraczi.paw.domain.weights.dto.res.PetWeightRes;
 import com.gaguraczi.paw.domain.weights.dto.res.PetWeightSummaryRes;
 import com.gaguraczi.paw.domain.weights.entity.PetWeightEntity;
+import com.gaguraczi.paw.domain.weights.entity.PetWeightPhoto;
 import com.gaguraczi.paw.domain.weights.enums.WeightGraphPeriodEnum;
 import com.gaguraczi.paw.domain.weights.exception.code.PetWeightErrorCode;
 import com.gaguraczi.paw.domain.weights.repository.PetWeightRepository;
+import com.gaguraczi.paw.domain.weights.support.PetWeightImageValidator;
 import com.gaguraczi.paw.global.exception.GeneralException;
 import com.gaguraczi.paw.global.security.SecurityUtils;
+import com.gaguraczi.paw.utils.S3.S3Dto;
+import com.gaguraczi.paw.utils.S3.S3Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -27,9 +34,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -41,47 +52,90 @@ public class PetWeightService {
     private final PetWeightRepository petWeightRepository;
     private final PetRepository petRepository;
     private final SecurityUtils securityUtils;
+    private final S3Utils s3Utils;
 
 
 
     @Transactional
-    public PetWeightRes create(Long petId, PetWeightCreateReq req) {
+    public PetWeightRes create(Long petId, PetWeightCreateReq req, List<MultipartFile> images) {
         Pet pet = loadOwnedPet(petId);
         validateRecordedAt(req.recordedAt());
 
-        PetWeightEntity petWeight = PetWeightEntity.builder()
-                .pet(pet)
-                .weight(req.weight())
-                .bodyType(req.bodyType())
-                .appetiteType(req.appetiteType())
-                .memoContent(blankToNull(req.memoContent()))
-                .recordedAt(req.recordedAt())
-                .build();
+        List<MultipartFile> files = normalizeFiles(images);
+        validatePhotoCount(files.size());
+        List<S3Dto> uploaded = uploadAll(files);
+        scheduleUploadedCleanupOnRollback(uploaded);
 
-        petWeightRepository.save(petWeight);
-        syncPetCurrentWeight(pet);
+        try {
+            PetWeightEntity petWeight = PetWeightEntity.builder()
+                    .pet(pet)
+                    .weight(req.weight())
+                    .bodyType(req.bodyType())
+                    .appetiteType(req.appetiteType())
+                    .memoContent(blankToNull(req.memoContent()))
+                    .recordedAt(req.recordedAt())
+                    .build();
 
-        return PetWeightRes.from(petWeight);
+            petWeight.replacePhotos(toPhotos(uploaded));
+            petWeightRepository.save(petWeight);
+            syncPetCurrentWeight(pet);
+
+            return PetWeightRes.from(petWeight);
+        } catch (RuntimeException e) {
+            uploaded.forEach(u -> s3Utils.deleteQuietly(u.getKey()));
+            throw e;
+        }
     }
 
     @Transactional
-    public PetWeightRes update(Long petId, Long petWeightId, PetWeightUpdateReq req) {
+    public PetWeightRes update(Long petId, Long petWeightId, PetWeightUpdateReq req, List<MultipartFile> images) {
         Pet pet = loadOwnedPet(petId);
         PetWeightEntity petWeight = loadRecord(pet, petWeightId);
 
-        if (req != null) {
-            validateRecordedAt(req.recordedAt());
-            petWeight.update(
-                    req.weight(),
-                    req.bodyType(),
-                    req.appetiteType(),
-                    req.memoContent(),
-                    req.recordedAt()
-            );
+        List<String> keepUrls = req != null ? req.keepPhotoUrls() : null;
+        List<MultipartFile> files = normalizeFiles(images);
+        int keptCount = keepUrls != null ? keepUrls.size() : petWeight.getPhotos().size();
+        validatePhotoCount(keptCount + files.size());
+
+        List<PetWeightPhoto> removed = new ArrayList<>();
+        if (keepUrls != null) {
+            Set<String> keepSet = new HashSet<>(keepUrls);
+            for (PetWeightPhoto photo : petWeight.getPhotos()) {
+                if (!keepSet.contains(photo.getPhotoS3Url())) {
+                    removed.add(photo);
+                }
+            }
         }
 
-        syncPetCurrentWeight(pet);
-        return PetWeightRes.from(petWeight);
+        List<S3Dto> uploaded = uploadAll(files);
+        scheduleUploadedCleanupOnRollback(uploaded);
+
+        try {
+            if (req != null) {
+                validateRecordedAt(req.recordedAt());
+                petWeight.update(
+                        req.weight(),
+                        req.bodyType(),
+                        req.appetiteType(),
+                        req.memoContent(),
+                        req.recordedAt()
+                );
+            }
+
+            petWeight.syncPhotos(keepUrls, toPhotos(uploaded));
+
+            List<String> removedKeys = removed.stream()
+                    .map(PetWeightPhoto::getPhotoKey)
+                    .filter(Objects::nonNull)
+                    .toList();
+            afterCommit(() -> removedKeys.forEach(s3Utils::deleteQuietly));
+
+            syncPetCurrentWeight(pet);
+            return PetWeightRes.from(petWeight);
+        } catch (RuntimeException e) {
+            uploaded.forEach(u -> s3Utils.deleteQuietly(u.getKey()));
+            throw e;
+        }
     }
 
     @Transactional
@@ -89,8 +143,14 @@ public class PetWeightService {
         Pet pet = loadOwnedPet(petId);
         PetWeightEntity petWeight = loadRecord(pet, petWeightId);
 
+        List<String> keys = petWeight.getPhotos().stream()
+                .map(PetWeightPhoto::getPhotoKey)
+                .filter(Objects::nonNull)
+                .toList();
+
         petWeightRepository.delete(petWeight);
         petWeightRepository.flush();
+        afterCommit(() -> keys.forEach(s3Utils::deleteQuietly));
         syncPetCurrentWeight(pet);
     }
 
@@ -240,5 +300,84 @@ public class PetWeightService {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private void afterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+            return;
+        }
+        action.run();
+    }
+
+    private void scheduleUploadedCleanupOnRollback(List<S3Dto> uploaded) {
+        if (uploaded == null || uploaded.isEmpty()) {
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        List<String> keys = uploaded.stream()
+                .map(S3Dto::getKey)
+                .filter(Objects::nonNull)
+                .toList();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    keys.forEach(s3Utils::deleteQuietly);
+                }
+            }
+        });
+    }
+
+    private List<MultipartFile> normalizeFiles(List<MultipartFile> images) {
+        if (images == null || images.isEmpty()) {
+            return List.of();
+        }
+        List<MultipartFile> files = new ArrayList<>();
+        for (MultipartFile image : images) {
+            if (image != null && !image.isEmpty()) {
+                PetWeightImageValidator.validate(image);
+                files.add(image);
+            }
+        }
+        return files;
+    }
+
+    private void validatePhotoCount(int count) {
+        if (count > PetWeightImageValidator.MAX_PHOTOS) {
+            throw GeneralException.of(PetWeightErrorCode.PET_WEIGHT_PHOTO_LIMIT_400);
+        }
+    }
+
+    private List<S3Dto> uploadAll(List<MultipartFile> files) {
+        List<S3Dto> uploaded = new ArrayList<>();
+        try {
+            for (MultipartFile file : files) {
+                uploaded.add(s3Utils.uploadMultipartUnderDirectory(file, "pet-weight"));
+            }
+            return uploaded;
+        } catch (RuntimeException e) {
+            uploaded.forEach(u -> s3Utils.deleteQuietly(u.getKey()));
+            throw e;
+        }
+    }
+
+    private List<PetWeightPhoto> toPhotos(List<S3Dto> uploaded) {
+        List<PetWeightPhoto> photos = new ArrayList<>();
+        for (S3Dto dto : uploaded) {
+            photos.add(PetWeightPhoto.builder()
+                    .photoS3Url(dto.getUrl())
+                    .photoKey(dto.getKey())
+                    .sortOrder(0)
+                    .build());
+        }
+        return photos;
     }
 }

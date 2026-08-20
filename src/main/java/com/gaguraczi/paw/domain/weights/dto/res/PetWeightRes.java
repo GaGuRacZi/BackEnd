@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
 
 @Schema(name = "PetWeightRes", description = "체중 기록 단건 응답")
 public record PetWeightRes(
@@ -30,10 +32,18 @@ public record PetWeightRes(
         String memoContent,
 
         @Schema(description = "기록일자", example = "2026-07-06T20:30:00")
-        LocalDateTime recordedAt
+        LocalDateTime recordedAt,
+
+        @Schema(description = "메모 사진 목록 (최대 3장)")
+        List<PetWeightPhotoRes> photos
 ) {
 
     public static PetWeightRes from(PetWeightEntity petWeight) {
+        List<PetWeightPhotoRes> photos = petWeight.getPhotos().stream()
+                .sorted(Comparator.comparing(p -> p.getSortOrder() == null ? 0 : p.getSortOrder()))
+                .map(PetWeightPhotoRes::from)
+                .toList();
+
         return new PetWeightRes(
                 petWeight.getPetWeightId(),
                 petWeight.getPet().getPetId(),
@@ -41,7 +51,8 @@ public record PetWeightRes(
                 petWeight.getBodyType(),
                 petWeight.getAppetiteType(),
                 petWeight.getMemoContent(),
-                petWeight.getRecordedAt()
+                petWeight.getRecordedAt(),
+                photos
         );
     }
 }

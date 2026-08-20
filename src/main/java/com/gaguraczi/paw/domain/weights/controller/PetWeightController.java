@@ -1,6 +1,8 @@
 package com.gaguraczi.paw.domain.weights.controller;
 
+import com.gaguraczi.paw.domain.weights.dto.req.PetWeightCreateMultipart;
 import com.gaguraczi.paw.domain.weights.dto.req.PetWeightCreateReq;
+import com.gaguraczi.paw.domain.weights.dto.req.PetWeightUpdateMultipart;
 import com.gaguraczi.paw.domain.weights.dto.req.PetWeightUpdateReq;
 import com.gaguraczi.paw.domain.weights.dto.res.PetWeightGraphRes;
 import com.gaguraczi.paw.domain.weights.dto.res.PetWeightRes;
@@ -12,20 +14,25 @@ import com.gaguraczi.paw.global.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Encoding;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -39,7 +46,22 @@ public class PetWeightController {
 
     @Operation(
             summary = "체중 기록 저장",
-            description = "Access Token(JWT) 필수. 본인 소유 펫만 기록할 수 있습니다. 미래 날짜는 기록할 수 없습니다."
+            description = """
+                    multipart/form-data: data(JSON) + images(0~3장)
+                    - Access Token(JWT) 필수. 본인 소유 펫만 기록할 수 있습니다. 미래 날짜는 기록할 수 없습니다.
+                    - 메모 사진: 파일당 최대 5MB, JPEG/PNG/GIF/WEBP/HEIC/HEIF, 최대 3장
+                    """,
+            requestBody = @RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(implementation = PetWeightCreateMultipart.class),
+                            encoding = {
+                                    @Encoding(name = "data", contentType = MediaType.APPLICATION_JSON_VALUE),
+                                    @Encoding(name = "images", contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+                            }
+                    )
+            )
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -61,7 +83,10 @@ public class PetWeightController {
                                                 "bodyType": "HEALTHY",
                                                 "appetiteType": "LOW",
                                                 "memoContent": "식사 후 같은 시간대에 측정했어요.",
-                                                "recordedAt": "2026-07-06T20:30:00"
+                                                "recordedAt": "2026-07-06T20:30:00",
+                                                "photos": [
+                                                  {"photoId": 1, "url": "https://cdn.example.com/pet-weight/1/a.jpg", "sortOrder": 0}
+                                                ]
                                               }
                                             }
                                             """
@@ -73,12 +98,26 @@ public class PetWeightController {
                     description = "유효성 오류",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "PET_WEIGHT_400_1",
-                                    value = """
-                                            {"isSuccess":false,"code":"PET_WEIGHT_400_1","message":"미래 날짜로는 체중을 기록할 수 없습니다.","result":null}
-                                            """
-                            )
+                            examples = {
+                                    @ExampleObject(
+                                            name = "PET_WEIGHT_400_1",
+                                            value = """
+                                                    {"isSuccess":false,"code":"PET_WEIGHT_400_1","message":"미래 날짜로는 체중을 기록할 수 없습니다.","result":null}
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "PET_WEIGHT_400_3",
+                                            value = """
+                                                    {"isSuccess":false,"code":"PET_WEIGHT_400_3","message":"메모 사진은 최대 3장까지 첨부할 수 있습니다.","result":null}
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "PET_WEIGHT_400_6",
+                                            value = """
+                                                    {"isSuccess":false,"code":"PET_WEIGHT_400_6","message":"지원하지 않는 이미지 형식입니다. JPEG, PNG, GIF, WEBP, HEIC, HEIF만 업로드할 수 있습니다.","result":null}
+                                                    """
+                                    )
+                            }
                     )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -95,27 +134,64 @@ public class PetWeightController {
                     )
             )
     })
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<PetWeightRes> create(
             @Parameter(description = "펫 ID", example = "1") @PathVariable Long petId,
-            @RequestBody @Valid PetWeightCreateReq request
+            @RequestPart("data") @Valid PetWeightCreateReq request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images
     ) {
         return ApiResponse.onSuccess(
                 PetWeightSuccessCode.PET_WEIGHT_CREATE_200,
-                petWeightService.create(petId, request)
+                petWeightService.create(petId, request, images)
         );
     }
 
-    @Operation(summary = "체중 기록 수정", description = "보낸 필드만 반영됩니다.")
-    @PutMapping("/{petWeightId}")
+    @Operation(
+            summary = "체중 기록 수정",
+            description = """
+                    multipart/form-data: data(JSON, 선택) + images(신규 추가, 선택)
+                    - 보낸 필드만 반영됩니다.
+                    - data.keepPhotoUrls를 생략하면 기존 사진은 그대로 두고 images만 추가됩니다.
+                    - data.keepPhotoUrls를 보내면 목록에 없는 기존 사진은 삭제됩니다.
+                    - 최종 사진 수(유지 + 신규) ≤ 3
+                    """,
+            requestBody = @RequestBody(
+                    required = false,
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(implementation = PetWeightUpdateMultipart.class),
+                            encoding = {
+                                    @Encoding(name = "data", contentType = MediaType.APPLICATION_JSON_VALUE),
+                                    @Encoding(name = "images", contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+                            }
+                    )
+            )
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "유효성 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "PET_WEIGHT_400_3",
+                                    value = """
+                                            {"isSuccess":false,"code":"PET_WEIGHT_400_3","message":"메모 사진은 최대 3장까지 첨부할 수 있습니다.","result":null}
+                                            """
+                            )
+                    )
+            )
+    })
+    @PutMapping(value = "/{petWeightId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<PetWeightRes> update(
             @Parameter(description = "펫 ID", example = "1") @PathVariable Long petId,
             @Parameter(description = "체중 기록 ID", example = "1") @PathVariable Long petWeightId,
-            @RequestBody(required = false) @Valid PetWeightUpdateReq request
+            @RequestPart(value = "data", required = false) @Valid PetWeightUpdateReq request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images
     ) {
         return ApiResponse.onSuccess(
                 PetWeightSuccessCode.PET_WEIGHT_UPDATE_200,
-                petWeightService.update(petId, petWeightId, request)
+                petWeightService.update(petId, petWeightId, request, images)
         );
     }
 

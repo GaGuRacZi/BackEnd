@@ -4,6 +4,7 @@ import com.gaguraczi.paw.domain.users.entity.Pet;
 import com.gaguraczi.paw.domain.weights.enums.AppetiteTypeEnum;
 import com.gaguraczi.paw.domain.weights.enums.BodyTypeEnum;
 import com.gaguraczi.paw.global.entity.BaseEntity;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,14 +16,21 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 
 @Entity
@@ -65,6 +73,11 @@ public class PetWeightEntity extends BaseEntity {
     @Column(name = "create_date", nullable = false)
     private LocalDateTime recordedAt;
 
+    @Builder.Default
+    @BatchSize(size = 20)
+    @OneToMany(mappedBy = "petWeight", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PetWeightPhoto> photos = new ArrayList<>();
+
     public void update(
             BigDecimal weight,
             BodyTypeEnum bodyType,
@@ -86,6 +99,42 @@ public class PetWeightEntity extends BaseEntity {
         }
         if (recordedAt != null) {
             this.recordedAt = recordedAt;
+        }
+    }
+
+    public void replacePhotos(List<PetWeightPhoto> nextPhotos) {
+        this.photos.clear();
+        if (nextPhotos == null || nextPhotos.isEmpty()) {
+            return;
+        }
+        for (PetWeightPhoto photo : nextPhotos) {
+            photo.bindPetWeight(this);
+            this.photos.add(photo);
+        }
+        resequencePhotos();
+    }
+
+    /**
+     * keepUrls가 null이면 기존 사진은 그대로 두고 newPhotos만 추가한다(부분 수정 원칙).
+     * keepUrls가 주어지면 목록에 없는 기존 사진은 제거한 뒤 newPhotos를 추가한다.
+     */
+    public void syncPhotos(List<String> keepUrls, List<PetWeightPhoto> newPhotos) {
+        if (keepUrls != null) {
+            Set<String> keepSet = new HashSet<>(keepUrls);
+            this.photos.removeIf(photo -> !keepSet.contains(photo.getPhotoS3Url()));
+        }
+        if (newPhotos != null) {
+            for (PetWeightPhoto photo : newPhotos) {
+                photo.bindPetWeight(this);
+                this.photos.add(photo);
+            }
+        }
+        resequencePhotos();
+    }
+
+    private void resequencePhotos() {
+        for (int i = 0; i < photos.size(); i++) {
+            photos.get(i).changeSortOrder(i);
         }
     }
 }
