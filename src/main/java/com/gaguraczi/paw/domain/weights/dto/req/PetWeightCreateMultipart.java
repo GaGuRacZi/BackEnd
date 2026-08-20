@@ -15,7 +15,7 @@ public class PetWeightCreateMultipart {
                     {
                       "weight": 4.20,
                       "bodyType": "HEALTHY",
-                      "appetiteType": "Low",
+                      "appetiteType": "LOW",
                       "memoContent": "식사 후 같은 시간대에 측정했어요.",
                       "recordedAt": "2026-07-06T20:30:00"
                     }

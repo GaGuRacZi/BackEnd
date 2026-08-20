@@ -25,7 +25,7 @@ public record PetWeightCreateReq(
         @NotNull
         BodyTypeEnum bodyType,
 
-        @Schema(description = "컨디션(식욕) 체크", example = "Low")
+        @Schema(description = "컨디션(식욕) 체크", example = "LOW")
         @NotNull
         AppetiteTypeEnum appetiteType,
 
